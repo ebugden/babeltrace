@@ -115,14 +115,12 @@ class _IntegerFieldClassConst(_FieldClassConst):
 
 
 class _IntegerFieldClass(_FieldClass, _IntegerFieldClassConst):
-    def _field_value_range(self, size):
+    def _set_field_value_range(self, size):
         if size < 1 or size > 64:
             raise ValueError("Value is outside valid range [1, 64] ({})".format(size))
         native_bt.field_class_integer_set_field_value_range(self._ptr, size)
 
-    _field_value_range = property(fset=_field_value_range)
-
-    def _preferred_display_base(self, base):
+    def _set_preferred_display_base(self, base):
         bt2_utils._check_uint64(base)
 
         if base not in (
@@ -134,8 +132,6 @@ class _IntegerFieldClass(_FieldClass, _IntegerFieldClassConst):
             raise ValueError("Display base is not a valid IntegerDisplayBase value")
 
         native_bt.field_class_integer_set_preferred_display_base(self._ptr, base)
-
-    _preferred_display_base = property(fset=_preferred_display_base)
 
 
 class _UnsignedIntegerFieldClassConst(_IntegerFieldClassConst, _FieldClassConst):
@@ -467,7 +463,7 @@ class _StructureFieldClass(_StructureFieldClassConst, _FieldClass):
         )
 
         if user_attributes is not None:
-            self[name]._user_attributes = user_attributes_value
+            self[name]._set_user_attributes(user_attributes_value)
 
     def __iadd__(self, members):
         for name, field_class in members:
@@ -568,13 +564,11 @@ class _OptionWithBoolSelectorFieldClass(
 ):
     _NAME = "Option (with boolean selector)"
 
-    def _selector_is_reversed(self, selector_is_reversed):
+    def _set_selector_is_reversed(self, selector_is_reversed):
         bt2_utils._check_bool(selector_is_reversed)
         native_bt.field_class_option_with_selector_field_bool_set_selector_is_reversed(
             self._ptr, selector_is_reversed
         )
-
-    _selector_is_reversed = property(fset=_selector_is_reversed)
 
 
 class _OptionWithIntegerSelectorFieldClass(
@@ -801,7 +795,7 @@ class _VariantFieldClassWithoutSelector(
         )
 
         if user_attributes is not None:
-            self[name]._user_attributes = user_attributes_value
+            self[name]._set_user_attributes(user_attributes_value)
 
     def __iadd__(self, options):
         for name, field_class in options:
@@ -855,7 +849,7 @@ class _VariantFieldClassWithIntegerSelector(
         )
 
         if user_attributes is not None:
-            self[name]._user_attributes = user_attributes_value
+            self[name]._set_user_attributes(user_attributes_value)
 
     def __iadd__(self, options):
         for name, field_class, ranges in options:

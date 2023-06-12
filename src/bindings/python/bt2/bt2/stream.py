@@ -86,8 +86,6 @@ class _Stream(bt2_user_attrs._WithUserAttrs, _StreamConst):
     def _set_user_attributes_ptr(obj_ptr, value_ptr):
         native_bt.stream_set_user_attributes(obj_ptr, value_ptr)
 
-    def _name(self, name):
+    def _set_name(self, name):
         bt2_utils._check_str(name)
         native_bt.stream_set_name(self._ptr, name)
-
-    _name = property(fget=_StreamConst.name.fget, fset=_name)

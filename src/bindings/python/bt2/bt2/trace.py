@@ -204,22 +204,18 @@ class _Trace(bt2_user_attrs._WithUserAttrs, _TraceConst):
     _trace_class_pycls = property(lambda _: _bt2_trace_class()._TraceClass)
     _trace_env_pycls = property(lambda _: _TraceEnvironment)
 
-    def _name(self, name):
+    def _set_name(self, name):
         bt2_utils._check_str(name)
         status = native_bt.trace_set_name(self._ptr, name)
         bt2_utils._handle_func_status(status, "cannot set trace object's name")
-
-    _name = property(fset=_name)
 
     @staticmethod
     def _set_user_attributes_ptr(obj_ptr, value_ptr):
         native_bt.trace_set_user_attributes(obj_ptr, value_ptr)
 
-    def _uuid(self, uuid):
+    def _set_uuid(self, uuid):
         bt2_utils._check_type(uuid, uuidp.UUID)
         native_bt.trace_set_uuid(self._ptr, uuid.bytes)
-
-    _uuid = property(fset=_uuid)
 
     def create_stream(self, stream_class, id=None, name=None, user_attributes=None):
         bt2_utils._check_type(stream_class, bt2_stream_class._StreamClass)
@@ -248,10 +244,10 @@ class _Trace(bt2_user_attrs._WithUserAttrs, _TraceConst):
         stream = bt2_stream._Stream._create_from_ptr(stream_ptr)
 
         if name is not None:
-            stream._name = name
+            stream._set_name(name)
 
         if user_attributes is not None:
-            stream._user_attributes = user_attributes
+            stream._set_user_attributes(user_attributes)
 
         return stream
 

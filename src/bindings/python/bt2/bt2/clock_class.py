@@ -98,50 +98,36 @@ class _ClockClass(bt2_user_attrs._WithUserAttrs, _ClockClassConst):
     def _set_user_attributes_ptr(obj_ptr, value_ptr):
         native_bt.clock_class_set_user_attributes(obj_ptr, value_ptr)
 
-    def _name(self, name):
+    def _set_name(self, name):
         bt2_utils._check_str(name)
         status = native_bt.clock_class_set_name(self._ptr, name)
         bt2_utils._handle_func_status(status, "cannot set clock class object's name")
 
-    _name = property(fset=_name)
-
-    def _description(self, description):
+    def _set_description(self, description):
         bt2_utils._check_str(description)
         status = native_bt.clock_class_set_description(self._ptr, description)
         bt2_utils._handle_func_status(
             status, "cannot set clock class object's description"
         )
 
-    _description = property(fset=_description)
-
-    def _frequency(self, frequency):
+    def _set_frequency(self, frequency):
         bt2_utils._check_uint64(frequency)
         native_bt.clock_class_set_frequency(self._ptr, frequency)
 
-    _frequency = property(fset=_frequency)
-
-    def _precision(self, precision):
+    def _set_precision(self, precision):
         bt2_utils._check_uint64(precision)
         native_bt.clock_class_set_precision(self._ptr, precision)
 
-    _precision = property(fset=_precision)
-
-    def _offset(self, offset):
+    def _set_offset(self, offset):
         bt2_utils._check_type(offset, ClockClassOffset)
         native_bt.clock_class_set_offset(self._ptr, offset.seconds, offset.cycles)
 
-    _offset = property(fset=_offset)
-
-    def _origin_is_unix_epoch(self, origin_is_unix_epoch):
+    def _set_origin_is_unix_epoch(self, origin_is_unix_epoch):
         bt2_utils._check_bool(origin_is_unix_epoch)
         native_bt.clock_class_set_origin_is_unix_epoch(
             self._ptr, int(origin_is_unix_epoch)
         )
 
-    _origin_is_unix_epoch = property(fset=_origin_is_unix_epoch)
-
-    def _uuid(self, uuid):
+    def _set_uuid(self, uuid):
         bt2_utils._check_type(uuid, uuidp.UUID)
         native_bt.clock_class_set_uuid(self._ptr, uuid.bytes)
-
-    _uuid = property(fset=_uuid)

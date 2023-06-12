@@ -246,22 +246,22 @@ class _StreamClass(bt2_user_attrs._WithUserAttrs, _StreamClassConst):
         event_class = bt2_event_class._EventClass._create_from_ptr(ec_ptr)
 
         if name is not None:
-            event_class._name = name
+            event_class._set_name(name)
 
         if user_attributes is not None:
-            event_class._user_attributes = user_attributes
+            event_class._set_user_attributes(user_attributes)
 
         if log_level is not None:
-            event_class._log_level = log_level
+            event_class._set_log_level(log_level)
 
         if emf_uri is not None:
-            event_class._emf_uri = emf_uri
+            event_class._set_emf_uri(emf_uri)
 
         if specific_context_field_class is not None:
-            event_class._specific_context_field_class = specific_context_field_class
+            event_class._set_specific_context_field_class(specific_context_field_class)
 
         if payload_field_class is not None:
-            event_class._payload_field_class = payload_field_class
+            event_class._set_payload_field_class(payload_field_class)
 
         return event_class
 
@@ -269,21 +269,15 @@ class _StreamClass(bt2_user_attrs._WithUserAttrs, _StreamClassConst):
     def _set_user_attributes_ptr(obj_ptr, value_ptr):
         native_bt.stream_class_set_user_attributes(obj_ptr, value_ptr)
 
-    def _name(self, name):
+    def _set_name(self, name):
         status = native_bt.stream_class_set_name(self._ptr, name)
         bt2_utils._handle_func_status(status, "cannot set stream class object's name")
 
-    _name = property(fset=_name)
-
-    def _assigns_automatic_event_class_id(self, auto_id):
+    def _set_assigns_automatic_event_class_id(self, auto_id):
         native_bt.stream_class_set_assigns_automatic_event_class_id(self._ptr, auto_id)
 
-    _assigns_automatic_event_class_id = property(fset=_assigns_automatic_event_class_id)
-
-    def _assigns_automatic_stream_id(self, auto_id):
+    def _set_assigns_automatic_stream_id(self, auto_id):
         native_bt.stream_class_set_assigns_automatic_stream_id(self._ptr, auto_id)
-
-    _assigns_automatic_stream_id = property(fset=_assigns_automatic_stream_id)
 
     def _set_supports_packets(self, supports, with_begin_cs=False, with_end_cs=False):
         native_bt.stream_class_set_supports_packets(
@@ -295,16 +289,12 @@ class _StreamClass(bt2_user_attrs._WithUserAttrs, _StreamClassConst):
             self._ptr, supports, with_cs
         )
 
-    _supports_discarded_events = property(fset=_set_supports_discarded_events)
-
     def _set_supports_discarded_packets(self, supports, with_cs):
         native_bt.stream_class_set_supports_discarded_packets(
             self._ptr, supports, with_cs
         )
 
-    _supports_discarded_packets = property(fset=_set_supports_discarded_packets)
-
-    def _packet_context_field_class(self, packet_context_field_class):
+    def _set_packet_context_field_class(self, packet_context_field_class):
         status = native_bt.stream_class_set_packet_context_field_class(
             self._ptr, packet_context_field_class._ptr
         )
@@ -312,21 +302,15 @@ class _StreamClass(bt2_user_attrs._WithUserAttrs, _StreamClassConst):
             status, "cannot set stream class' packet context field class"
         )
 
-    _packet_context_field_class = property(fset=_packet_context_field_class)
-
-    def _event_common_context_field_class(self, event_common_context_field_class):
+    def _set_event_common_context_field_class(self, event_common_context_field_class):
         set_context_fn = native_bt.stream_class_set_event_common_context_field_class
         status = set_context_fn(self._ptr, event_common_context_field_class._ptr)
         bt2_utils._handle_func_status(
             status, "cannot set stream class' event context field type"
         )
 
-    _event_common_context_field_class = property(fset=_event_common_context_field_class)
-
-    def _default_clock_class(self, clock_class):
+    def _set_default_clock_class(self, clock_class):
         native_bt.stream_class_set_default_clock_class(self._ptr, clock_class._ptr)
-
-    _default_clock_class = property(fset=_default_clock_class)
 
     @classmethod
     def _validate_create_params(

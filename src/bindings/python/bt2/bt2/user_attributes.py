@@ -42,9 +42,7 @@ class _WithUserAttrs(_WithUserAttrsBase, abc.ABC):
     def _set_user_attributes_ptr(obj_ptr, value_ptr):
         raise NotImplementedError
 
-    def _user_attributes(self, user_attributes):
+    def _set_user_attributes(self, user_attributes):
         value = bt2_value.create_value(user_attributes)
         bt2_utils._check_type(value, bt2_value.MapValue)
         self._set_user_attributes_ptr(self._ptr, value._ptr)
-
-    _user_attributes = property(fset=_user_attributes)

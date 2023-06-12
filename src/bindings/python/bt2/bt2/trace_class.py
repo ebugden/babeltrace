@@ -151,13 +151,13 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         trace = bt2_trace._Trace._create_from_ptr(trace_ptr)
 
         if name is not None:
-            trace._name = name
+            trace._set_name(name)
 
         if user_attributes is not None:
-            trace._user_attributes = user_attributes
+            trace._set_user_attributes(user_attributes)
 
         if uuid is not None:
-            trace._uuid = uuid
+            trace._set_uuid(uuid)
 
         if environment is not None:
             for key, value in environment.items():
@@ -220,16 +220,16 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         sc = bt2_stream_class._StreamClass._create_from_ptr(sc_ptr)
 
         if name is not None:
-            sc._name = name
+            sc._set_name(name)
 
         if user_attributes is not None:
-            sc._user_attributes = user_attributes
+            sc._set_user_attributes(user_attributes)
 
         if event_common_context_field_class is not None:
-            sc._event_common_context_field_class = event_common_context_field_class
+            sc._set_event_common_context_field_class(event_common_context_field_class)
 
         if default_clock_class is not None:
-            sc._default_clock_class = default_clock_class
+            sc._set_default_clock_class(default_clock_class)
 
         # call after `sc._default_clock_class` because, if
         # `packets_have_beginning_default_clock_snapshot` or
@@ -245,10 +245,10 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         # `packet_context_field_class` is not `None`, then this stream
         # class needs to support packets already.
         if packet_context_field_class is not None:
-            sc._packet_context_field_class = packet_context_field_class
+            sc._set_packet_context_field_class(packet_context_field_class)
 
-        sc._assigns_automatic_event_class_id = assigns_automatic_event_class_id
-        sc._assigns_automatic_stream_id = assigns_automatic_stream_id
+        sc._set_assigns_automatic_event_class_id(assigns_automatic_event_class_id)
+        sc._set_assigns_automatic_stream_id(assigns_automatic_stream_id)
         sc._set_supports_discarded_events(
             supports_discarded_events, discarded_events_have_default_clock_snapshots
         )
@@ -261,15 +261,11 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
     def _set_user_attributes_ptr(obj_ptr, value_ptr):
         native_bt.trace_class_set_user_attributes(obj_ptr, value_ptr)
 
-    def _assigns_automatic_stream_class_id(self, auto_id):
+    def _set_assigns_automatic_stream_class_id(self, auto_id):
         bt2_utils._check_bool(auto_id)
         return native_bt.trace_class_set_assigns_automatic_stream_class_id(
             self._ptr, auto_id
         )
-
-    _assigns_automatic_stream_class_id = property(
-        fset=_assigns_automatic_stream_class_id
-    )
 
     # Field class creation methods.
 
@@ -282,7 +278,7 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
     @staticmethod
     def _set_field_class_user_attrs(fc, user_attributes):
         if user_attributes is not None:
-            fc._user_attributes = user_attributes
+            fc._set_user_attributes(user_attributes)
 
     def create_bool_field_class(self, user_attributes=None):
         field_class_ptr = native_bt.field_class_bool_create(self._ptr)
@@ -322,10 +318,10 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         field_class = py_cls._create_from_ptr(field_class_ptr)
 
         if field_value_range is not None:
-            field_class._field_value_range = field_value_range
+            field_class._set_field_value_range(field_value_range)
 
         if preferred_display_base is not None:
-            field_class._preferred_display_base = preferred_display_base
+            field_class._set_preferred_display_base(preferred_display_base)
 
         self._set_field_class_user_attrs(field_class, user_attributes)
         return field_class
@@ -467,7 +463,7 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         self._check_field_class_create_status(ptr, "option")
         fc = bt2_field_class._obj_type_from_field_class_ptr(ptr)._create_from_ptr(ptr)
         self._set_field_class_user_attrs(fc, user_attributes)
-        fc._selector_is_reversed = selector_is_reversed
+        fc._set_selector_is_reversed(selector_is_reversed)
         return fc
 
     def create_option_with_integer_selector_field_class(

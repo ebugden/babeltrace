@@ -796,10 +796,10 @@ class _UserComponent(metaclass=_UserComponentType):
             raise bt2_error._MemoryError("could not create trace class")
 
         tc = bt2_trace_class._TraceClass._create_from_ptr(tc_ptr)
-        tc._assigns_automatic_stream_class_id = assigns_automatic_stream_class_id
+        tc._set_assigns_automatic_stream_class_id(assigns_automatic_stream_class_id)
 
         if user_attributes is not None:
-            tc._user_attributes = user_attributes
+            tc._set_user_attributes(user_attributes)
 
         return tc
 
@@ -823,27 +823,27 @@ class _UserComponent(metaclass=_UserComponentType):
         cc = bt2_clock_class._ClockClass._create_from_ptr(cc_ptr)
 
         if frequency is not None:
-            cc._frequency = frequency
+            cc._set_frequency(frequency)
 
         if name is not None:
-            cc._name = name
+            cc._set_name(name)
 
         if user_attributes is not None:
-            cc._user_attributes = user_attributes
+            cc._set_user_attributes(user_attributes)
 
         if description is not None:
-            cc._description = description
+            cc._set_description(description)
 
         if precision is not None:
-            cc._precision = precision
+            cc._set_precision(precision)
 
         if offset is not None:
-            cc._offset = offset
+            cc._set_offset(offset)
 
-        cc._origin_is_unix_epoch = origin_is_unix_epoch
+        cc._set_origin_is_unix_epoch(origin_is_unix_epoch)
 
         if uuid is not None:
-            cc._uuid = uuid
+            cc._set_uuid(uuid)
 
         return cc
 
