@@ -7,20 +7,24 @@ import abc
 
 
 class _BaseObject:
-    # Ensure that the object always has _ptr set, even if it throws during
+    # Ensure that the object always has _ptr_internal set, even if it throws during
     # construction.
 
     def __new__(cls, *args, **kwargs):
         obj = super().__new__(cls)
-        obj._ptr = None
+        obj._ptr_internal = None
         return obj
 
     def __init__(self, ptr):
-        self._ptr = ptr
+        self._ptr_internal = ptr
+
+    @property
+    def _ptr(self):
+        return self._ptr_internal
 
     @property
     def addr(self):
-        return int(self._ptr)
+        return int(self._ptr_internal)
 
     def __repr__(self):
         return "<{}.{} object @ {}>".format(
@@ -57,7 +61,7 @@ class _UniqueObject(_BaseObject):
     def _create_from_ptr_and_get_ref(cls, ptr, owner_ptr, owner_get_ref, owner_put_ref):
         obj = cls.__new__(cls)
 
-        obj._ptr = ptr
+        obj._ptr_internal = ptr
         obj._owner_ptr = owner_ptr
         obj._owner_get_ref = owner_get_ref
         obj._owner_put_ref = owner_put_ref
@@ -100,7 +104,7 @@ class _SharedObject(_BaseObject, abc.ABC):
     @classmethod
     def _create_from_ptr(cls, ptr_owned):
         obj = cls.__new__(cls)
-        obj._ptr = ptr_owned
+        obj._ptr_internal = ptr_owned
         return obj
 
     # Like _create_from_ptr, but acquire a new reference rather than
@@ -109,8 +113,8 @@ class _SharedObject(_BaseObject, abc.ABC):
     @classmethod
     def _create_from_ptr_and_get_ref(cls, ptr):
         obj = cls._create_from_ptr(ptr)
-        cls._get_ref(obj._ptr)
+        cls._get_ref(obj._ptr_internal)
         return obj
 
     def __del__(self):
-        self._put_ref(self._ptr)
+        self._put_ref(self._ptr_internal)
