@@ -113,8 +113,12 @@ def _get_all_message_types(with_packet=True):
 
     class MySrc(bt2._UserSourceComponent, message_iterator_class=MyIter):
         def __init__(self, config, params, obj):
-            tc = self._create_trace_class()
-            clock_class = self._create_clock_class(frequency=1000)
+            tc = self._create_trace_class(
+                user_attributes={"a-trace-class-attribute": 1}
+            )
+            clock_class = self._create_clock_class(
+                frequency=1000, user_attributes={"a-clock-class-attribute": 1}
+            )
 
             # event common context (stream-class-defined)
             cc = tc.create_structure_field_class()
@@ -132,6 +136,7 @@ def _get_all_message_types(with_packet=True):
                 event_common_context_field_class=cc,
                 packet_context_field_class=pc,
                 supports_packets=with_packet,
+                user_attributes={"a-stream-class-attribute": 1},
             )
 
             # specific context (event-class-defined)
@@ -143,11 +148,18 @@ def _get_all_message_types(with_packet=True):
             ep += [("giraffe", tc.create_signed_integer_field_class(32))]
 
             event_class = stream_class.create_event_class(
-                name="garou", specific_context_field_class=sc, payload_field_class=ep
+                name="garou",
+                specific_context_field_class=sc,
+                payload_field_class=ep,
+                user_attributes={"an-event-class-attribute": 1},
             )
 
-            trace = tc(environment={"patate": 12})
-            stream = trace.create_stream(stream_class, user_attributes={"salut": 23})
+            trace = tc(
+                environment={"patate": 12}, user_attributes={"a-trace-attribute": 1}
+            )
+            stream = trace.create_stream(
+                stream_class, user_attributes={"a-stream-attribute": 1}
+            )
 
             if with_packet:
                 packet = stream.create_packet()

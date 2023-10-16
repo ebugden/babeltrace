@@ -12,7 +12,7 @@ from bt2 import utils as bt2_utils
 from bt2 import value as bt2_value
 from bt2 import stream as bt2_stream
 from bt2 import trace_class as bt2_trace_class
-from utils import get_default_trace_class
+from utils import get_default_trace_class, get_const_stream_beginning_message
 
 
 class TraceTestCase(unittest.TestCase):
@@ -34,6 +34,11 @@ class TraceTestCase(unittest.TestCase):
         trace = self._tc(user_attributes={"salut": 23})
         self.assertEqual(trace.user_attributes, {"salut": 23})
         self.assertIs(type(trace.user_attributes), bt2_value.MapValue)
+
+    def test_const_user_attributes(self):
+        trace = get_const_stream_beginning_message().stream.trace
+        self.assertEqual(trace.user_attributes, {"a-trace-attribute": 1})
+        self.assertIs(type(trace.user_attributes), bt2_value._MapValueConst)
 
     def test_create_invalid_user_attributes(self):
         with self.assertRaises(TypeError):

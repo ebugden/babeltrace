@@ -7,10 +7,13 @@ import uuid
 import unittest
 
 import bt2
-import utils
 from bt2 import value as bt2_value
 from bt2 import clock_class as bt2_clock_class
-from utils import TestOutputPortMessageIterator, run_in_component_init
+from utils import (
+    TestOutputPortMessageIterator,
+    run_in_component_init,
+    get_const_event_message,
+)
 
 
 class ClockClassOffsetTestCase(unittest.TestCase):
@@ -198,6 +201,11 @@ class ClockClassTestCase(unittest.TestCase):
         self.assertEqual(cc.user_attributes, {"salut": 23})
         self.assertIs(type(cc.user_attributes), bt2_value.MapValue)
 
+    def test_const_user_attributes(self):
+        cc = get_const_event_message().default_clock_snapshot.clock_class
+        self.assertEqual(cc.user_attributes, {"a-clock-class-attribute": 1})
+        self.assertIs(type(cc.user_attributes), bt2._MapValueConst)
+
     def test_create_invalid_user_attributes(self):
         def f(comp_self):
             return comp_self._create_clock_class(user_attributes=object())
@@ -209,10 +217,6 @@ class ClockClassTestCase(unittest.TestCase):
             return comp_self._create_clock_class(user_attributes=23)
 
         self.assertRaisesInComponentInit(TypeError, f)
-
-    def test_const_user_attributes(self):
-        cc = utils.get_const_event_message().default_clock_snapshot.clock_class
-        self.assertIs(type(cc.user_attributes), bt2_value._MapValueConst)
 
 
 class ClockSnapshotTestCase(unittest.TestCase):

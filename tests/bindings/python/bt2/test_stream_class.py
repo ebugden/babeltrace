@@ -5,12 +5,13 @@
 
 import unittest
 
+from bt2 import value as bt2_value
 from bt2 import clock_class as bt2_clock_class
 from bt2 import event_class as bt2_event_class
 from bt2 import field_class as bt2_field_class
 from bt2 import trace_class as bt2_trace_class
 from bt2 import stream_class as bt2_stream_class
-from utils import run_in_component_init
+from utils import run_in_component_init, get_const_stream_beginning_message
 
 
 class StreamClassTestCase(unittest.TestCase):
@@ -118,6 +119,12 @@ class StreamClassTestCase(unittest.TestCase):
     def test_create_user_attributes(self):
         sc = self._tc.create_stream_class(user_attributes={"salut": 23})
         self.assertEqual(sc.user_attributes, {"salut": 23})
+        self.assertIs(type(sc.user_attributes), bt2_value.MapValue)
+
+    def test_const_user_attributes(self):
+        sc = get_const_stream_beginning_message().stream.cls
+        self.assertEqual(sc.user_attributes, {"a-stream-class-attribute": 1})
+        self.assertIs(type(sc.user_attributes), bt2_value._MapValueConst)
 
     def test_create_invalid_user_attributes(self):
         with self.assertRaisesRegex(

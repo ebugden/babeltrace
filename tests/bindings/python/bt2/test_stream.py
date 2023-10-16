@@ -43,7 +43,7 @@ class StreamTestCase(unittest.TestCase):
 
     def test_const_user_attributes(self):
         stream = utils.get_const_stream_beginning_message().stream
-        self.assertEqual(stream.user_attributes, {"salut": 23})
+        self.assertEqual(stream.user_attributes, {"a-stream-attribute": 1})
         self.assertIs(type(stream.user_attributes), bt2_value._MapValueConst)
 
     def test_create_invalid_user_attributes(self):

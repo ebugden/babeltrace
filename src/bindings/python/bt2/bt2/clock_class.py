@@ -5,9 +5,9 @@
 import uuid as uuidp
 
 from bt2 import utils as bt2_utils
-from bt2 import value as bt2_value
 from bt2 import object as bt2_object
 from bt2 import native_bt
+from bt2 import user_attributes as bt2_user_attrs
 
 
 class ClockClassOffset:
@@ -33,7 +33,7 @@ class ClockClassOffset:
         return (self.seconds, self.cycles) == (other.seconds, other.cycles)
 
 
-class _ClockClassConst(bt2_object._SharedObject):
+class _ClockClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsConst):
     @staticmethod
     def _get_ref(ptr):
         native_bt.clock_class_get_ref(ptr)
@@ -42,18 +42,9 @@ class _ClockClassConst(bt2_object._SharedObject):
     def _put_ref(ptr):
         native_bt.clock_class_put_ref(ptr)
 
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_const_ptr_and_get_ref
-    )
-    _borrow_user_attributes_ptr = staticmethod(
-        native_bt.clock_class_borrow_user_attributes_const
-    )
-
-    @property
-    def user_attributes(self):
-        ptr = self._borrow_user_attributes_ptr(self._ptr)
-        assert ptr is not None
-        return self._create_value_from_ptr_and_get_ref(ptr)
+    @staticmethod
+    def _borrow_user_attributes_ptr(ptr):
+        return native_bt.clock_class_borrow_user_attributes_const(ptr)
 
     @property
     def name(self):
@@ -98,20 +89,14 @@ class _ClockClassConst(bt2_object._SharedObject):
         return ns
 
 
-class _ClockClass(_ClockClassConst):
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_ptr_and_get_ref
-    )
-    _borrow_user_attributes_ptr = staticmethod(
-        native_bt.clock_class_borrow_user_attributes
-    )
+class _ClockClass(bt2_user_attrs._WithUserAttrs, _ClockClassConst):
+    @staticmethod
+    def _borrow_user_attributes_ptr(ptr):
+        return native_bt.clock_class_borrow_user_attributes(ptr)
 
-    def _user_attributes(self, user_attributes):
-        value = bt2_value.create_value(user_attributes)
-        bt2_utils._check_type(value, bt2_value.MapValue)
-        native_bt.clock_class_set_user_attributes(self._ptr, value._ptr)
-
-    _user_attributes = property(fset=_user_attributes)
+    @staticmethod
+    def _set_user_attributes_ptr(obj_ptr, value_ptr):
+        native_bt.clock_class_set_user_attributes(obj_ptr, value_ptr)
 
     def _name(self, name):
         bt2_utils._check_str(name)

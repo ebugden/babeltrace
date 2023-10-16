@@ -10,11 +10,11 @@ import collections.abc
 from bt2 import error as bt2_error
 from bt2 import trace as bt2_trace
 from bt2 import utils as bt2_utils
-from bt2 import value as bt2_value
 from bt2 import object as bt2_object
 from bt2 import native_bt
 from bt2 import field_class as bt2_field_class
 from bt2 import stream_class as bt2_stream_class
+from bt2 import user_attributes as bt2_user_attrs
 from bt2 import integer_range_set as bt2_integer_range_set
 
 
@@ -26,7 +26,11 @@ def _trace_class_destruction_listener_from_native(
     handle._invalidate()
 
 
-class _TraceClassConst(bt2_object._SharedObject, collections.abc.Mapping):
+class _TraceClassConst(
+    bt2_object._SharedObject,
+    bt2_user_attrs._WithUserAttrsConst,
+    collections.abc.Mapping,
+):
     @staticmethod
     def _get_ref(ptr):
         native_bt.trace_class_get_ref(ptr)
@@ -41,19 +45,12 @@ class _TraceClassConst(bt2_object._SharedObject, collections.abc.Mapping):
     _borrow_stream_class_ptr_by_id = staticmethod(
         native_bt.trace_class_borrow_stream_class_by_id_const
     )
-    _borrow_user_attributes_ptr = staticmethod(
-        native_bt.trace_class_borrow_user_attributes_const
-    )
-    _stream_class_pycls = bt2_stream_class._StreamClassConst
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_const_ptr_and_get_ref
-    )
 
-    @property
-    def user_attributes(self):
-        ptr = self._borrow_user_attributes_ptr(self._ptr)
-        assert ptr is not None
-        return self._create_value_from_ptr_and_get_ref(ptr)
+    @staticmethod
+    def _borrow_user_attributes_ptr(ptr):
+        return native_bt.trace_class_borrow_user_attributes_const(ptr)
+
+    _stream_class_pycls = bt2_stream_class._StreamClassConst
 
     # Number of stream classes in this trace class.
 
@@ -129,20 +126,19 @@ class _TraceClassConst(bt2_object._SharedObject, collections.abc.Mapping):
         listener_handle._invalidate()
 
 
-class _TraceClass(_TraceClassConst):
+class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
     _borrow_stream_class_ptr_by_index = staticmethod(
         native_bt.trace_class_borrow_stream_class_by_index
     )
     _borrow_stream_class_ptr_by_id = staticmethod(
         native_bt.trace_class_borrow_stream_class_by_id
     )
-    _borrow_user_attributes_ptr = staticmethod(
-        native_bt.trace_class_borrow_user_attributes
-    )
+
+    @staticmethod
+    def _borrow_user_attributes_ptr(ptr):
+        return native_bt.trace_class_borrow_user_attributes(ptr)
+
     _stream_class_pycls = bt2_stream_class._StreamClass
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_ptr_and_get_ref
-    )
 
     # Instantiate a trace of this class.
 
@@ -261,12 +257,9 @@ class _TraceClass(_TraceClassConst):
         )
         return sc
 
-    def _user_attributes(self, user_attributes):
-        value = bt2_value.create_value(user_attributes)
-        bt2_utils._check_type(value, bt2_value.MapValue)
-        native_bt.trace_class_set_user_attributes(self._ptr, value._ptr)
-
-    _user_attributes = property(fset=_user_attributes)
+    @staticmethod
+    def _set_user_attributes_ptr(obj_ptr, value_ptr):
+        native_bt.trace_class_set_user_attributes(obj_ptr, value_ptr)
 
     def _assigns_automatic_stream_class_id(self, auto_id):
         bt2_utils._check_bool(auto_id)

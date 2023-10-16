@@ -7,6 +7,7 @@ from bt2 import value as bt2_value
 from bt2 import object as bt2_object
 from bt2 import native_bt
 from bt2 import field_class as bt2_field_class
+from bt2 import user_attributes as bt2_user_attrs
 
 
 def _bt2_stream_class():
@@ -33,7 +34,7 @@ class EventClassLogLevel:
     DEBUG = native_bt.EVENT_CLASS_LOG_LEVEL_DEBUG
 
 
-class _EventClassConst(bt2_object._SharedObject):
+class _EventClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsConst):
     @staticmethod
     def _get_ref(ptr):
         native_bt.event_class_get_ref(ptr)
@@ -57,9 +58,6 @@ class _EventClassConst(bt2_object._SharedObject):
     _create_field_class_from_ptr_and_get_ref = staticmethod(
         bt2_field_class._create_field_class_from_const_ptr_and_get_ref
     )
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_const_ptr_and_get_ref
-    )
     _stream_class_pycls = property(lambda s: _bt2_stream_class()._StreamClassConst)
 
     @property
@@ -68,12 +66,6 @@ class _EventClassConst(bt2_object._SharedObject):
 
         if sc_ptr is not None:
             return self._stream_class_pycls._create_from_ptr_and_get_ref(sc_ptr)
-
-    @property
-    def user_attributes(self):
-        ptr = self._borrow_user_attributes_ptr(self._ptr)
-        assert ptr is not None
-        return self._create_value_from_ptr_and_get_ref(ptr)
 
     @property
     def name(self):
@@ -116,7 +108,7 @@ class _EventClassConst(bt2_object._SharedObject):
         return self._create_field_class_from_ptr_and_get_ref(fc_ptr)
 
 
-class _EventClass(_EventClassConst):
+class _EventClass(bt2_user_attrs._WithUserAttrs, _EventClassConst):
     _borrow_stream_class_ptr = staticmethod(native_bt.event_class_borrow_stream_class)
     _borrow_specific_context_field_class_ptr = staticmethod(
         native_bt.event_class_borrow_specific_context_field_class
@@ -130,16 +122,11 @@ class _EventClass(_EventClassConst):
     _create_field_class_from_ptr_and_get_ref = staticmethod(
         bt2_field_class._create_field_class_from_ptr_and_get_ref
     )
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_ptr_and_get_ref
-    )
     _stream_class_pycls = property(lambda s: _bt2_stream_class()._StreamClass)
 
-    def _user_attributes(self, user_attributes):
-        value = bt2_value.create_value(user_attributes)
-        native_bt.event_class_set_user_attributes(self._ptr, value._ptr)
-
-    _user_attributes = property(fset=_user_attributes)
+    @staticmethod
+    def _set_user_attributes_ptr(obj_ptr, value_ptr):
+        native_bt.event_class_set_user_attributes(obj_ptr, value_ptr)
 
     def _name(self, name):
         return native_bt.event_class_set_name(self._ptr, name)

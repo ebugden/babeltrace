@@ -6,6 +6,7 @@
 import unittest
 
 from bt2 import utils as bt2_utils
+from bt2 import value as bt2_value
 from bt2 import trace_class as bt2_trace_class
 from bt2 import stream_class as bt2_stream_class
 from utils import (
@@ -44,6 +45,12 @@ class TraceClassTestCase(unittest.TestCase):
 
         tc = run_in_component_init(f)
         self.assertEqual(tc.user_attributes, {"salut": 23})
+        self.assertIs(type(tc.user_attributes), bt2_value.MapValue)
+
+    def test_const_user_attributes(self):
+        tc = get_const_stream_beginning_message().stream.trace.cls
+        self.assertEqual(tc.user_attributes, {"a-trace-class-attribute": 1})
+        self.assertIs(type(tc.user_attributes), bt2_value._MapValueConst)
 
     def test_create_invalid_user_attributes(self):
         def f(comp_self):

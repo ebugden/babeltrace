@@ -10,6 +10,7 @@ from bt2 import value as bt2_value
 from bt2 import object as bt2_object
 from bt2 import native_bt
 from bt2 import field_path as bt2_field_path
+from bt2 import user_attributes as bt2_user_attrs
 from bt2 import integer_range_set as bt2_integer_range_set
 
 
@@ -47,7 +48,7 @@ class IntegerDisplayBase:
     HEXADECIMAL = native_bt.FIELD_CLASS_INTEGER_PREFERRED_DISPLAY_BASE_HEXADECIMAL
 
 
-class _FieldClassConst(bt2_object._SharedObject):
+class _FieldClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsConst):
     @staticmethod
     def _get_ref(ptr):
         native_bt.field_class_get_ref(ptr)
@@ -56,12 +57,9 @@ class _FieldClassConst(bt2_object._SharedObject):
     def _put_ref(ptr):
         native_bt.field_class_put_ref(ptr)
 
-    _borrow_user_attributes_ptr = staticmethod(
-        native_bt.field_class_borrow_user_attributes_const
-    )
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_const_ptr_and_get_ref
-    )
+    @staticmethod
+    def _borrow_user_attributes_ptr(ptr):
+        return native_bt.field_class_borrow_user_attributes_const(ptr)
 
     def _check_create_status(self, ptr):
         if ptr is None:
@@ -69,27 +67,15 @@ class _FieldClassConst(bt2_object._SharedObject):
                 "cannot create {} field class object".format(self._NAME.lower())
             )
 
-    @property
-    def user_attributes(self):
-        ptr = self._borrow_user_attributes_ptr(self._ptr)
-        assert ptr is not None
-        return self._create_value_from_ptr_and_get_ref(ptr)
 
+class _FieldClass(bt2_user_attrs._WithUserAttrs, _FieldClassConst):
+    @staticmethod
+    def _borrow_user_attributes_ptr(ptr):
+        return native_bt.field_class_borrow_user_attributes(ptr)
 
-class _FieldClass(_FieldClassConst):
-    _borrow_user_attributes_ptr = staticmethod(
-        native_bt.field_class_borrow_user_attributes
-    )
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_ptr_and_get_ref
-    )
-
-    def _user_attributes(self, user_attributes):
-        value = bt2_value.create_value(user_attributes)
-        bt2_utils._check_type(value, bt2_value.MapValue)
-        native_bt.field_class_set_user_attributes(self._ptr, value._ptr)
-
-    _user_attributes = property(fset=_user_attributes)
+    @staticmethod
+    def _set_user_attributes_ptr(obj_ptr, value_ptr):
+        native_bt.field_class_set_user_attributes(obj_ptr, value_ptr)
 
 
 class _BoolFieldClassConst(_FieldClassConst):
@@ -348,67 +334,59 @@ class _StringFieldClass(_StringFieldClassConst, _FieldClass):
     _NAME = "String"
 
 
-class _StructureFieldClassMemberConst:
+class _StructureFieldClassMemberConst(bt2_user_attrs._WithUserAttrsConst):
+    @property
+    def _ptr(self):
+        return self._member_ptr
+
     _create_field_class_from_ptr_and_get_ref = staticmethod(
         _create_field_class_from_const_ptr_and_get_ref
     )
     _borrow_field_class_ptr = staticmethod(
         native_bt.field_class_structure_member_borrow_field_class_const
     )
-    _borrow_user_attributes_ptr = staticmethod(
-        native_bt.field_class_structure_member_borrow_user_attributes_const
-    )
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_const_ptr_and_get_ref
-    )
+
+    @staticmethod
+    def _borrow_user_attributes_ptr(ptr):
+        return native_bt.field_class_structure_member_borrow_user_attributes_const(ptr)
 
     def __init__(self, owning_struct_fc, member_ptr):
         # this field class owns the member; keeping it here maintains
         # the member alive as members are not shared objects
         self._owning_struct_fc = owning_struct_fc
-        self._ptr = member_ptr
+        self._member_ptr = member_ptr
 
     @property
     def name(self):
-        name = native_bt.field_class_structure_member_get_name(self._ptr)
+        name = native_bt.field_class_structure_member_get_name(self._member_ptr)
         assert name is not None
         return name
 
     @property
     def field_class(self):
-        fc_ptr = self._borrow_field_class_ptr(self._ptr)
+        fc_ptr = self._borrow_field_class_ptr(self._member_ptr)
         assert fc_ptr is not None
         return self._create_field_class_from_ptr_and_get_ref(fc_ptr)
 
-    @property
-    def user_attributes(self):
-        ptr = self._borrow_user_attributes_ptr(self._ptr)
-        assert ptr is not None
-        return self._create_value_from_ptr_and_get_ref(ptr)
 
-
-class _StructureFieldClassMember(_StructureFieldClassMemberConst):
+class _StructureFieldClassMember(
+    bt2_user_attrs._WithUserAttrs, _StructureFieldClassMemberConst
+):
     _borrow_field_class_ptr = staticmethod(
         native_bt.field_class_structure_member_borrow_field_class
     )
-    _borrow_user_attributes_ptr = staticmethod(
-        native_bt.field_class_structure_member_borrow_user_attributes
-    )
+
+    @staticmethod
+    def _borrow_user_attributes_ptr(ptr):
+        return native_bt.field_class_structure_member_borrow_user_attributes(ptr)
+
     _create_field_class_from_ptr_and_get_ref = staticmethod(
         _create_field_class_from_ptr_and_get_ref
     )
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_ptr_and_get_ref
-    )
 
-    def _user_attributes(self, user_attributes):
-        value = bt2_value.create_value(user_attributes)
-        bt2_utils._check_type(value, bt2_value.MapValue)
-        native_bt.field_class_structure_member_set_user_attributes(
-            self._ptr, value._ptr
-        )
-
-    _user_attributes = property(fset=_user_attributes)
+    @staticmethod
+    def _set_user_attributes_ptr(obj_ptr, value_ptr):
+        native_bt.field_class_structure_member_set_user_attributes(obj_ptr, value_ptr)
 
 
 class _StructureFieldClassConst(_FieldClassConst, collections.abc.Mapping):
@@ -619,65 +597,58 @@ class _OptionWithSignedIntegerSelectorFieldClass(
     _NAME = "Option (with signed integer selector)"
 
 
-class _VariantFieldClassOptionConst:
+class _VariantFieldClassOptionConst(bt2_user_attrs._WithUserAttrsConst):
+    @property
+    def _ptr(self):
+        return self._opt_ptr
+
     _create_field_class_from_ptr_and_get_ref = staticmethod(
         _create_field_class_from_const_ptr_and_get_ref
     )
     _borrow_field_class_ptr = staticmethod(
         native_bt.field_class_variant_option_borrow_field_class_const
     )
-    _borrow_user_attributes_ptr = staticmethod(
-        native_bt.field_class_variant_option_borrow_user_attributes_const
-    )
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_const_ptr_and_get_ref
-    )
+
+    @staticmethod
+    def _borrow_user_attributes_ptr(ptr):
+        return native_bt.field_class_variant_option_borrow_user_attributes_const(ptr)
 
     def __init__(self, owning_var_fc, option_ptr):
         # this field class owns the option; keeping it here maintains
         # the option alive as options are not shared objects
         self._owning_var_fc = owning_var_fc
-        self._ptr = option_ptr
+        self._opt_ptr = option_ptr
 
     @property
     def name(self):
-        name = native_bt.field_class_variant_option_get_name(self._ptr)
+        name = native_bt.field_class_variant_option_get_name(self._opt_ptr)
         assert name is not None
         return name
 
     @property
     def field_class(self):
-        fc_ptr = self._borrow_field_class_ptr(self._ptr)
+        fc_ptr = self._borrow_field_class_ptr(self._opt_ptr)
         assert fc_ptr is not None
         return self._create_field_class_from_ptr_and_get_ref(fc_ptr)
 
-    @property
-    def user_attributes(self):
-        ptr = self._borrow_user_attributes_ptr(self._ptr)
-        assert ptr is not None
-        return self._create_value_from_ptr_and_get_ref(ptr)
 
-
-class _VariantFieldClassOption(_VariantFieldClassOptionConst):
+class _VariantFieldClassOption(
+    bt2_user_attrs._WithUserAttrs, _VariantFieldClassOptionConst
+):
     _create_field_class_from_ptr_and_get_ref = staticmethod(
         _create_field_class_from_ptr_and_get_ref
     )
     _borrow_field_class_ptr = staticmethod(
         native_bt.field_class_variant_option_borrow_field_class
     )
-    _borrow_user_attributes_ptr = staticmethod(
-        native_bt.field_class_variant_option_borrow_user_attributes
-    )
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_ptr_and_get_ref
-    )
 
-    def _user_attributes(self, user_attributes):
-        value = bt2_value.create_value(user_attributes)
-        bt2_utils._check_type(value, bt2_value.MapValue)
-        native_bt.field_class_variant_option_set_user_attributes(self._ptr, value._ptr)
+    @staticmethod
+    def _borrow_user_attributes_ptr(ptr):
+        return native_bt.field_class_variant_option_borrow_user_attributes(ptr)
 
-    _user_attributes = property(fset=_user_attributes)
+    @staticmethod
+    def _set_user_attributes_ptr(obj_ptr, value_ptr):
+        native_bt.field_class_variant_option_set_user_attributes(obj_ptr, value_ptr)
 
 
 class _VariantFieldClassWithIntegerSelectorOptionConst(_VariantFieldClassOptionConst):

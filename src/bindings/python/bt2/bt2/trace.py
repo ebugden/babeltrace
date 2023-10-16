@@ -13,6 +13,7 @@ from bt2 import object as bt2_object
 from bt2 import stream as bt2_stream
 from bt2 import native_bt
 from bt2 import stream_class as bt2_stream_class
+from bt2 import user_attributes as bt2_user_attrs
 
 
 def _bt2_trace_class():
@@ -77,7 +78,11 @@ class _TraceEnvironment(_TraceEnvironmentConst, collections.abc.MutableMapping):
         raise NotImplementedError
 
 
-class _TraceConst(bt2_object._SharedObject, collections.abc.Mapping):
+class _TraceConst(
+    bt2_object._SharedObject,
+    bt2_user_attrs._WithUserAttrsConst,
+    collections.abc.Mapping,
+):
     @staticmethod
     def _get_ref(ptr):
         native_bt.trace_get_ref(ptr)
@@ -91,12 +96,11 @@ class _TraceConst(bt2_object._SharedObject, collections.abc.Mapping):
         native_bt.trace_borrow_stream_by_index_const
     )
     _borrow_class_ptr = staticmethod(native_bt.trace_borrow_class_const)
-    _borrow_user_attributes_ptr = staticmethod(
-        native_bt.trace_borrow_user_attributes_const
-    )
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_const_ptr_and_get_ref
-    )
+
+    @staticmethod
+    def _borrow_user_attributes_ptr(ptr):
+        return native_bt.trace_borrow_user_attributes_const(ptr)
+
     _stream_pycls = property(lambda _: bt2_stream._StreamConst)
     _trace_class_pycls = property(lambda _: _bt2_trace_class()._TraceClassConst)
     _trace_env_pycls = property(lambda _: _TraceEnvironmentConst)
@@ -131,12 +135,6 @@ class _TraceConst(bt2_object._SharedObject, collections.abc.Mapping):
         trace_class_ptr = self._borrow_class_ptr(self._ptr)
         assert trace_class_ptr is not None
         return self._trace_class_pycls._create_from_ptr_and_get_ref(trace_class_ptr)
-
-    @property
-    def user_attributes(self):
-        ptr = self._borrow_user_attributes_ptr(self._ptr)
-        assert ptr is not None
-        return self._create_value_from_ptr_and_get_ref(ptr)
 
     @property
     def name(self):
@@ -193,14 +191,15 @@ class _TraceConst(bt2_object._SharedObject, collections.abc.Mapping):
         listener_handle._invalidate()
 
 
-class _Trace(_TraceConst):
+class _Trace(bt2_user_attrs._WithUserAttrs, _TraceConst):
     _borrow_stream_ptr_by_id = staticmethod(native_bt.trace_borrow_stream_by_id)
     _borrow_stream_ptr_by_index = staticmethod(native_bt.trace_borrow_stream_by_index)
     _borrow_class_ptr = staticmethod(native_bt.trace_borrow_class)
-    _borrow_user_attributes_ptr = staticmethod(native_bt.trace_borrow_user_attributes)
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_ptr_and_get_ref
-    )
+
+    @staticmethod
+    def _borrow_user_attributes_ptr(ptr):
+        return native_bt.trace_borrow_user_attributes(ptr)
+
     _stream_pycls = property(lambda _: bt2_stream._Stream)
     _trace_class_pycls = property(lambda _: _bt2_trace_class()._TraceClass)
     _trace_env_pycls = property(lambda _: _TraceEnvironment)
@@ -212,12 +211,9 @@ class _Trace(_TraceConst):
 
     _name = property(fset=_name)
 
-    def _user_attributes(self, user_attributes):
-        value = bt2_value.create_value(user_attributes)
-        bt2_utils._check_type(value, bt2_value.MapValue)
-        native_bt.trace_set_user_attributes(self._ptr, value._ptr)
-
-    _user_attributes = property(fset=_user_attributes)
+    @staticmethod
+    def _set_user_attributes_ptr(obj_ptr, value_ptr):
+        native_bt.trace_set_user_attributes(obj_ptr, value_ptr)
 
     def _uuid(self, uuid):
         bt2_utils._check_type(uuid, uuidp.UUID)

@@ -4,11 +4,11 @@
 
 from bt2 import error as bt2_error
 from bt2 import utils as bt2_utils
-from bt2 import value as bt2_value
 from bt2 import object as bt2_object
 from bt2 import packet as bt2_packet
 from bt2 import native_bt
 from bt2 import stream_class as bt2_stream_class
+from bt2 import user_attributes as bt2_user_attrs
 
 
 def _bt2_trace():
@@ -17,7 +17,7 @@ def _bt2_trace():
     return bt2_trace
 
 
-class _StreamConst(bt2_object._SharedObject):
+class _StreamConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsConst):
     @staticmethod
     def _get_ref(ptr):
         native_bt.stream_get_ref(ptr)
@@ -27,12 +27,11 @@ class _StreamConst(bt2_object._SharedObject):
         native_bt.stream_put_ref(ptr)
 
     _borrow_class_ptr = staticmethod(native_bt.stream_borrow_class_const)
-    _borrow_user_attributes_ptr = staticmethod(
-        native_bt.stream_borrow_user_attributes_const
-    )
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_const_ptr_and_get_ref
-    )
+
+    @staticmethod
+    def _borrow_user_attributes_ptr(ptr):
+        return native_bt.stream_borrow_user_attributes_const(ptr)
+
     _borrow_trace_ptr = staticmethod(native_bt.stream_borrow_trace_const)
     _stream_class_pycls = bt2_stream_class._StreamClassConst
     _trace_pycls = property(lambda _: _bt2_trace()._TraceConst)
@@ -48,12 +47,6 @@ class _StreamConst(bt2_object._SharedObject):
         return native_bt.stream_get_name(self._ptr)
 
     @property
-    def user_attributes(self):
-        ptr = self._borrow_user_attributes_ptr(self._ptr)
-        assert ptr is not None
-        return self._create_value_from_ptr_and_get_ref(ptr)
-
-    @property
     def id(self):
         id = native_bt.stream_get_id(self._ptr)
         return id if id >= 0 else None
@@ -65,12 +58,13 @@ class _StreamConst(bt2_object._SharedObject):
         return self._trace_pycls._create_from_ptr_and_get_ref(trace_ptr)
 
 
-class _Stream(_StreamConst):
+class _Stream(bt2_user_attrs._WithUserAttrs, _StreamConst):
     _borrow_class_ptr = staticmethod(native_bt.stream_borrow_class)
-    _borrow_user_attributes_ptr = staticmethod(native_bt.stream_borrow_user_attributes)
-    _create_value_from_ptr_and_get_ref = staticmethod(
-        bt2_value._create_from_ptr_and_get_ref
-    )
+
+    @staticmethod
+    def _borrow_user_attributes_ptr(ptr):
+        return native_bt.stream_borrow_user_attributes(ptr)
+
     _borrow_trace_ptr = staticmethod(native_bt.stream_borrow_trace)
     _stream_class_pycls = bt2_stream_class._StreamClass
     _trace_pycls = property(lambda _: _bt2_trace()._Trace)
@@ -88,14 +82,9 @@ class _Stream(_StreamConst):
 
         return bt2_packet._Packet._create_from_ptr(packet_ptr)
 
-    def _user_attributes(self, user_attributes):
-        value = bt2_value.create_value(user_attributes)
-        bt2_utils._check_type(value, bt2_value.MapValue)
-        native_bt.stream_set_user_attributes(self._ptr, value._ptr)
-
-    _user_attributes = property(
-        fget=_StreamConst.user_attributes.fget, fset=_user_attributes
-    )
+    @staticmethod
+    def _set_user_attributes_ptr(obj_ptr, value_ptr):
+        native_bt.stream_set_user_attributes(obj_ptr, value_ptr)
 
     def _name(self, name):
         bt2_utils._check_str(name)
