@@ -9,6 +9,7 @@
   (
        src/bindings/python/bt2/build/
      | src/bindings/python/bt2/setup\.py$
+     | src/bindings/python/bt2/bt2/local_typing\.py$
      | src/bindings/python/bt2/bt2/native_bt\.py$
      | src/bindings/python/bt2/bt2/version\.py$
      | tests/utils/python/normand\.py$
@@ -21,6 +22,7 @@
 [tool.isort]
 profile = "black"
 extend_skip_glob = [
+    "src/bindings/python/bt2/bt2/local_typing.py",
     "tests/utils/python/tap",
     "tests/utils/python/normand.py",
     "tests/utils/python/typing/typing.py",

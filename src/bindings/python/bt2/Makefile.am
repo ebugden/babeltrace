@@ -75,6 +75,7 @@ STATIC_BINDINGS_DEPS =					\
 	bt2/graph.py					\
 	bt2/integer_range_set.py			\
 	bt2/interrupter.py				\
+	bt2/local_typing.py				\
 	bt2/logging.py					\
 	bt2/message.py					\
 	bt2/message_iterator.py				\
