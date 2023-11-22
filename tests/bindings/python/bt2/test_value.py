@@ -1197,14 +1197,14 @@ _inject_numeric_testing_methods(BoolValueTestCase)
 
 class _TestIntegerValue(_TestNumericValue):
     def setUp(self):
-        self._pv = 23
-        self._ip = self._CLS(self._pv)
-        self._def = self._ip
-        self._def_value = self._pv
+        self._pos_raw_val = 23
+        self._pos_val = self._CLS(self._pos_raw_val)
+        self._def = self._pos_val
+        self._def_value = self._pos_raw_val
         self._def_new_value = 101
 
     def tearDown(self):
-        del self._ip
+        del self._pos_val
         del self._def
         del self._def_value
 
@@ -1226,11 +1226,11 @@ class _TestIntegerValue(_TestNumericValue):
         self.assertEqual(i, 0)
 
     def test_create_pos(self):
-        self.assertEqual(self._ip, self._pv)
+        self.assertEqual(self._pos_val, self._pos_raw_val)
 
     def test_create_from_vint(self):
-        i = self._CLS(self._ip)
-        self.assertEqual(i, self._pv)
+        i = self._CLS(self._pos_val)
+        self.assertEqual(i, self._pos_raw_val)
 
     def test_create_from_false(self):
         i = self._CLS(False)
@@ -1277,16 +1277,16 @@ class SignedIntegerValueTestCase(_TestIntegerValue, unittest.TestCase):
 
     def setUp(self):
         super().setUp()
-        self._nv = -52
-        self._in = self._CLS(self._nv)
+        self._neg_raw_val = -52
+        self._neg_val = self._CLS(self._neg_raw_val)
         self._def_new_value = -101
 
     def tearDown(self):
         super().tearDown()
-        del self._in
+        del self._neg_val
 
     def test_create_neg(self):
-        self.assertEqual(self._in, self._nv)
+        self.assertEqual(self._neg_val, self._neg_raw_val)
 
     def test_create_pos_too_big(self):
         with self._assert_expecting_int64():
@@ -1329,17 +1329,17 @@ _inject_numeric_testing_methods(UnsignedIntegerValueTestCase)
 
 class RealValueTestCase(_TestNumericValue, unittest.TestCase):
     def setUp(self):
-        self._pv = 23.4
-        self._nv = -52.7
-        self._fp = bt2.RealValue(self._pv)
-        self._fn = bt2.RealValue(self._nv)
-        self._def = self._fp
-        self._def_value = self._pv
+        self._pos_raw_val = 23.4
+        self._neg_raw_val = -52.7
+        self._pos_val = bt2.RealValue(self._pos_raw_val)
+        self._neg_val = bt2.RealValue(self._neg_raw_val)
+        self._def = self._pos_val
+        self._def_value = self._pos_raw_val
         self._def_new_value = -101.88
 
     def tearDown(self):
-        del self._fp
-        del self._fn
+        del self._pos_val
+        del self._neg_val
         del self._def
         del self._def_value
 
@@ -1355,10 +1355,10 @@ class RealValueTestCase(_TestNumericValue, unittest.TestCase):
         self.assertEqual(f, 0.0)
 
     def test_create_pos(self):
-        self.assertEqual(self._fp, self._pv)
+        self.assertEqual(self._pos_val, self._pos_raw_val)
 
     def test_create_neg(self):
-        self.assertEqual(self._fn, self._nv)
+        self.assertEqual(self._neg_val, self._neg_raw_val)
 
     def test_create_from_false(self):
         f = bt2.RealValue(False)
