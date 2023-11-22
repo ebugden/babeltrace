@@ -1102,7 +1102,6 @@ class BoolValueTestCase(_TestNumericValue, unittest.TestCase):
         self._t = bt2.BoolValue(True)
         self._def = self._f
         self._def_value = False
-        self._def_new_value = True
 
     def tearDown(self):
         del self._f
@@ -1201,7 +1200,6 @@ class _TestIntegerValue(_TestNumericValue):
         self._pos_val = self._CLS(self._pos_raw_val)
         self._def = self._pos_val
         self._def_value = self._pos_raw_val
-        self._def_new_value = 101
 
     def tearDown(self):
         del self._pos_val
@@ -1279,7 +1277,6 @@ class SignedIntegerValueTestCase(_TestIntegerValue, unittest.TestCase):
         super().setUp()
         self._neg_raw_val = -52
         self._neg_val = self._CLS(self._neg_raw_val)
-        self._def_new_value = -101
 
     def tearDown(self):
         super().tearDown()
@@ -1335,7 +1332,6 @@ class RealValueTestCase(_TestNumericValue, unittest.TestCase):
         self._neg_val = bt2.RealValue(self._neg_raw_val)
         self._def = self._pos_val
         self._def_value = self._pos_raw_val
-        self._def_new_value = -101.88
 
     def tearDown(self):
         del self._pos_val
@@ -1454,7 +1450,6 @@ class StringValueTestCase(_TestCopySimple, unittest.TestCase):
         self._def_value = "Hello, World!"
         self._def = bt2.StringValue(self._def_value)
         self._def_const = _create_const_value(self._def_value)
-        self._def_new_value = "Yes!"
 
     def tearDown(self):
         del self._def
