@@ -1493,12 +1493,12 @@ class StringValueTestCase(_TestCopySimple, unittest.TestCase):
 
     def test_assign_str(self):
         raw = "zorg"
-        self._def = raw
+        self._def.value = raw
         self.assertEqual(self._def, raw)
 
     def test_assign_vstr(self):
         raw = "zorg"
-        self._def = bt2.create_value(raw)
+        self._def.value = bt2.create_value(raw)
         self.assertEqual(self._def, raw)
 
     def test_eq(self):
