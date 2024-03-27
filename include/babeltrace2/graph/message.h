@@ -3200,6 +3200,15 @@ bt_get_greatest_operative_mip_version(
 		bt_logging_level logging_level, uint64_t *mip_version)
 		__BT_NOEXCEPT;
 
+//TODO: document.
+extern enum bt_get_greatest_operative_mip_version_status
+bt_get_greatest_operative_mip_version_with_restriction(
+		const struct bt_component_descriptor_set *comp_descr_set,
+		enum bt_logging_level log_level,
+		const bt_integer_range_set_unsigned *mip_version_restriction,
+		uint64_t *mip_version)
+		__BT_NOEXCEPT;
+
 /*!
 @brief
     Returns the maximal available \bt_mip version as of
