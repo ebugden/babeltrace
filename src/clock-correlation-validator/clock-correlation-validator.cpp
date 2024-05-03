@@ -45,9 +45,9 @@ void ClockCorrelationValidator::_validate(const bt2::ConstMessage msg)
             if (clockCls->origin().isUnixEpoch()) {
                 _mExpectation = PropsExpectation::OriginUnix;
             } else if (const auto uuid = clockCls->uuid()) {
-                _mExpectation = PropsExpectation::OriginOtherUuid;
+                _mExpectation = PropsExpectation::OriginUnknownWithUuid;
             } else {
-                _mExpectation = PropsExpectation::OriginOtherNoUuid;
+                _mExpectation = PropsExpectation::OriginUnknownWithoutUuid;
             }
         } else {
             _mExpectation = PropsExpectation::None;
@@ -73,53 +73,58 @@ void ClockCorrelationValidator::_validate(const bt2::ConstMessage msg)
         }
 
         if (!clockCls->origin().isUnixEpoch()) {
-            throw ClockCorrelationError {ClockCorrelationError::Type::ExpectingOriginUnixGotOther,
+            throw ClockCorrelationError {ClockCorrelationError::Type::ExpectingOriginUnixGotUnknown,
                                          *clockCls, *_mRefClockClass, streamCls};
         }
 
         break;
 
-    case PropsExpectation::OriginOtherUuid:
+    case PropsExpectation::OriginUnknownWithUuid:
     {
         if (!clockCls) {
-            throw ClockCorrelationError {ClockCorrelationError::Type::ExpectingOriginUuidGotNone,
-                                         {},
-                                         *_mRefClockClass,
-                                         streamCls};
+            throw ClockCorrelationError {
+                ClockCorrelationError::Type::ExpectingOriginUnknownWithUuidGotNone,
+                {},
+                *_mRefClockClass,
+                streamCls};
         }
 
         if (clockCls->origin().isUnixEpoch()) {
-            throw ClockCorrelationError {ClockCorrelationError::Type::ExpectingOriginUuidGotUnix,
-                                         *clockCls, *_mRefClockClass, streamCls};
+            throw ClockCorrelationError {
+                ClockCorrelationError::Type::ExpectingOriginUnknownWithUuidGotUnix, *clockCls,
+                *_mRefClockClass, streamCls};
         }
 
         const auto uuid = clockCls->uuid();
 
         if (!uuid) {
-            throw ClockCorrelationError {ClockCorrelationError::Type::ExpectingOriginUuidGotNoUuid,
-                                         *clockCls, *_mRefClockClass, streamCls};
+            throw ClockCorrelationError {
+                ClockCorrelationError::Type::ExpectingOriginUnknownWithUuidGotWithout, *clockCls,
+                *_mRefClockClass, streamCls};
         }
 
         if (*uuid != *_mRefClockClass->uuid()) {
             throw ClockCorrelationError {
-                ClockCorrelationError::Type::ExpectingOriginUuidGotOtherUuid, *clockCls,
+                ClockCorrelationError::Type::ExpectingOriginUnknownWithUuidGotWrong, *clockCls,
                 *_mRefClockClass, streamCls};
         }
 
         break;
     }
 
-    case PropsExpectation::OriginOtherNoUuid:
+    case PropsExpectation::OriginUnknownWithoutUuid:
         if (!clockCls) {
-            throw ClockCorrelationError {ClockCorrelationError::Type::ExpectingOriginNoUuidGotNone,
-                                         {},
-                                         *_mRefClockClass,
-                                         streamCls};
+            throw ClockCorrelationError {
+                ClockCorrelationError::Type::ExpectingOriginUnknownWithoutUuidGotNone,
+                {},
+                *_mRefClockClass,
+                streamCls};
         }
 
         if (clockCls->libObjPtr() != _mRefClockClass->libObjPtr()) {
-            throw ClockCorrelationError {ClockCorrelationError::Type::ExpectingOriginNoUuidGotOther,
-                                         *clockCls, *_mRefClockClass, streamCls};
+            throw ClockCorrelationError {
+                ClockCorrelationError::Type::ExpectingOriginUnknownWithoutUuidGotWrong, *clockCls,
+                *_mRefClockClass, streamCls};
         }
 
         break;
