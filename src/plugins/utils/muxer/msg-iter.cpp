@@ -252,62 +252,98 @@ void MsgIter::_validateMsgClkCls(const bt2::ConstMessage msg)
 
         const auto actualClockCls = error.actualClockCls();
         const auto refClockCls = error.refClockCls();
+        const auto formatClockClsOrigin = [](const bt2::ConstClockClass clockCls,
+                                             const char * const prefix) {
+            return fmt::format("{}clock-class-origin-is-unix-epoch={}", prefix,
+                               clockCls.origin().isUnixEpoch());
+        };
+        const auto formatClockClsUuid = [](const bt2::ConstClockClass clockCls,
+                                           const char * const prefix) {
+            if (const auto uuid = clockCls.uuid()) {
+                return fmt::format("{}clock-clkass-uuid={}", prefix, *uuid);
+            } else {
+                return fmt::format("{}clock-class-uuid=(none)", prefix);
+            }
+        };
+        const auto formatExpClockClsUuid = [&] {
+            return formatClockClsUuid(*refClockCls, "expected-");
+        };
+        const auto formatClockCls = [&](const bt2::ConstClockClass clockCls,
+                                        const char * const prefix) {
+            return fmt::format("{}clock-class-addr={}, {}clock-class-name={}, {}, {}", prefix,
+                               fmt::ptr(clockCls.libObjPtr()), prefix, clockCls.name(),
+                               formatClockClsOrigin(clockCls, prefix),
+                               formatClockClsUuid(clockCls, prefix));
+        };
+        const auto formatActClockCls = [&] {
+            return formatClockCls(*actualClockCls, "");
+        };
+        const auto formatExpClockCls = [&] {
+            return formatClockCls(*refClockCls, "expected-");
+        };
+        const auto formatStreamCls = [&](const bool withTrailingComma) {
+            if (const auto streamCls = error.streamCls()) {
+                return fmt::format(
+                    "stream-class-addr={}, stream-class-name=\"{}\", stream-class-id={}{}",
+                    fmt::ptr(streamCls->libObjPtr()), streamCls->name(), streamCls->id(),
+                    withTrailingComma ? ", " : "");
+            } else {
+                return std::string {};
+            }
+        };
 
         switch (error.type()) {
         case Type::ExpectingNoClockClassGotOne:
-            BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
-                bt2::Error,
-                "Expecting no clock class, but got one: clock-class-addr={}, clock-class-name={}",
-                fmt::ptr(actualClockCls->libObjPtr()), actualClockCls->name());
+            BT_CPPLOGE_APPEND_CAUSE_AND_THROW(bt2::Error, "Expecting no clock class, got one: {}{}",
+                                              formatStreamCls(true), formatActClockCls());
 
         case Type::ExpectingOriginUnixGotNone:
-        case Type::ExpectingOriginUnknownWithUuidGotNone:
-        case Type::ExpectingOriginUnknownWithoutUuidGotNone:
             BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
-                bt2::Error,
-                "Expecting a clock class, but got none: stream-class-addr={}, "
-                "stream-class-name=\"{}\", stream-class-id={}",
-                fmt::ptr(error.streamCls()->libObjPtr()), error.streamCls()->name(),
-                error.streamCls()->id());
+                bt2::Error, "Expecting a clock class with Unix epoch origin, got none: {}",
+                formatStreamCls(false));
 
         case Type::ExpectingOriginUnixGotUnknown:
             BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
                 bt2::Error,
-                "Expecting a clock class having a Unix epoch origin, but got one not having a Unix "
-                "epoch origin: clock-class-addr={}, clock-class-name={}",
-                fmt::ptr(actualClockCls->libObjPtr()), actualClockCls->name());
+                "Expecting a clock class with Unix epoch origin, got one with unknown "
+                "origin: {}{}",
+                formatStreamCls(true), formatActClockCls());
+
+        case Type::ExpectingOriginUnknownWithUuidGotNone:
+            BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
+                bt2::Error,
+                "Expecting a clock class with unknown origin and a specific UUID, got none: {}",
+                formatStreamCls(true), formatExpClockClsUuid());
 
         case Type::ExpectingOriginUnknownWithUuidGotUnix:
             BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
                 bt2::Error,
-                "Expecting a clock class not having a Unix epoch origin, "
-                "but got one having a Unix epoch origin: "
-                "clock-class-addr={}, clock-class-name={}",
-                fmt::ptr(actualClockCls->libObjPtr()), actualClockCls->name());
+                "Expecting a clock class with unknown origin and a specific UUID, got one "
+                "with Unix epoch origin: {}{}, {}",
+                formatStreamCls(true), formatActClockCls(), formatExpClockClsUuid());
 
         case Type::ExpectingOriginUnknownWithUuidGotWithout:
             BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
                 bt2::Error,
-                "Expecting a clock class with a UUID, but got one without a UUID: "
-                "clock-class-addr={}, clock-class-name={}",
-                fmt::ptr(actualClockCls->libObjPtr()), actualClockCls->name());
+                "Expecting a clock class with unknown origin and a specific UUID, got one "
+                "without a UUID: {}{}, {}",
+                formatStreamCls(true), formatActClockCls(), formatExpClockClsUuid());
 
         case Type::ExpectingOriginUnknownWithUuidGotWrong:
             BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
                 bt2::Error,
-                "Expecting a clock class with a specific UUID, but got one with a different UUID: "
-                "clock-class-addr={}, clock-class-name={}, expected-uuid=\"{}\", uuid=\"{}\"",
-                fmt::ptr(actualClockCls->libObjPtr()), actualClockCls->name(), *refClockCls->uuid(),
-                *actualClockCls->uuid());
+                "Expecting a clock class with unknown origin and a specific UUID, got one with "
+                "a different UUID: {}{}, {}",
+                formatStreamCls(true), formatActClockCls(), formatExpClockClsUuid());
+
+        case Type::ExpectingOriginUnknownWithoutUuidGotNone:
+            BT_CPPLOGE_APPEND_CAUSE_AND_THROW(bt2::Error, "Expecting a clock class, got none: {}{}",
+                                              formatStreamCls(true), formatExpClockCls());
 
         case Type::ExpectingOriginUnknownWithoutUuidGotWrong:
-            BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
-                bt2::Error,
-                "Unexpected clock class: "
-                "expected-clock-class-addr={}, expected-clock-class-name={}, "
-                "actual-clock-class-addr={}, actual-clock-class-name={}",
-                fmt::ptr(refClockCls->libObjPtr()), refClockCls->name(),
-                fmt::ptr(actualClockCls->libObjPtr()), actualClockCls->name());
+            BT_CPPLOGE_APPEND_CAUSE_AND_THROW(bt2::Error, "Unexpected clock class: {}{}, {}",
+                                              formatStreamCls(true), formatActClockCls(),
+                                              formatExpClockCls());
         }
     }
 }
