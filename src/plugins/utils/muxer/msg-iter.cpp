@@ -24,7 +24,7 @@ namespace bt2mux {
 MsgIter::MsgIter(const bt2::SelfMessageIterator selfMsgIter,
                  const bt2::SelfMessageIteratorConfiguration cfg, bt2::SelfComponentOutputPort) :
     bt2::UserMessageIterator<MsgIter, Comp> {selfMsgIter, "MSG-ITER"},
-    _mHeap {_HeapComparator {_mLogger}}
+    _mHeap {_HeapComparator {_mLogger, selfMsgIter.component().graphMipVersion()}}
 {
     /*
      * Create one upstream message iterator for each connected
@@ -246,34 +246,58 @@ void MsgIter::_validateMsgClkCls(const bt2::ConstMessage msg)
     BT_CPPLOGD("Validating the clock class of a message: msg-type={}", msg.type());
 
     try {
-        _mClkCorrValidator.validate(msg);
+        _mClkCorrValidator.validate(msg, this->_component()._graphMipVersion());
     } catch (const bt2ccv::ClockCorrelationError& error) {
         using Type = bt2ccv::ClockCorrelationError::Type;
 
         const auto actualClockCls = error.actualClockCls();
         const auto refClockCls = error.refClockCls();
-        const auto formatClockClsOrigin = [](const bt2::ConstClockClass clockCls,
-                                             const char * const prefix) {
-            return fmt::format("{}clock-class-origin-is-unix-epoch={}", prefix,
-                               clockCls.origin().isUnixEpoch());
-        };
-        const auto formatClockClsUuid = [](const bt2::ConstClockClass clockCls,
-                                           const char * const prefix) {
-            if (const auto uuid = clockCls.uuid()) {
-                return fmt::format("{}clock-clkass-uuid={}", prefix, *uuid);
+        const auto graphMipVersion = this->_component()._graphMipVersion();
+        const auto formatClockClsOrigin = [&](const bt2::ClockOriginView clockClsOrigin,
+                                              const char * const prefix) {
+            if (graphMipVersion == 0) {
+                return fmt::format("{}clock-class-origin-is-unix-epoch={}", prefix,
+                                   clockClsOrigin.isUnixEpoch());
             } else {
-                return fmt::format("{}clock-class-uuid=(none)", prefix);
+                return fmt::format("{}clock-class-origin-ns={}, {}clock-class-origin-name={}, "
+                                   "{}clock-class-origin-uid={}",
+                                   prefix, clockClsOrigin.nameSpace(), prefix,
+                                   clockClsOrigin.name(), prefix, clockClsOrigin.uid());
             }
         };
-        const auto formatExpClockClsUuid = [&] {
-            return formatClockClsUuid(*refClockCls, "expected-");
+        const auto formatExpClockClsOrigin = [&] {
+            return formatClockClsOrigin(refClockCls->origin(), "expected-");
+        };
+        const auto formatClockClsId = [&](const bt2::ConstClockClass clockCls,
+                                          const char * const prefix) {
+            if (graphMipVersion == 0) {
+                if (const auto uuid = clockCls.uuid()) {
+                    return fmt::format("{}clock-clkass-uuid={}", prefix, *uuid);
+                } else {
+                    return fmt::format("{}clock-class-uuid=(none)", prefix);
+                }
+            } else {
+                return fmt::format(
+                    "{}clock-class-ns={}, {}clock-class-name={}, {}clock-class-uid={}", prefix,
+                    clockCls.nameSpace(), prefix, clockCls.name(), prefix, clockCls.uid());
+            }
+        };
+        const auto formatExpClockClsId = [&] {
+            return formatClockClsId(*refClockCls, "expected");
         };
         const auto formatClockCls = [&](const bt2::ConstClockClass clockCls,
                                         const char * const prefix) {
-            return fmt::format("{}clock-class-addr={}, {}clock-class-name={}, {}, {}", prefix,
-                               fmt::ptr(clockCls.libObjPtr()), prefix, clockCls.name(),
-                               formatClockClsOrigin(clockCls, prefix),
-                               formatClockClsUuid(clockCls, prefix));
+            if (graphMipVersion == 0) {
+                return fmt::format("{}clock-class-addr={}, {}clock-class-name={}, {}, {}", prefix,
+                                   fmt::ptr(clockCls.libObjPtr()), prefix, clockCls.name(),
+                                   formatClockClsId(clockCls, prefix),
+                                   formatClockClsOrigin(clockCls.origin(), prefix));
+            } else {
+                return fmt::format("{}clock-class-addr={}, {}, {}", prefix,
+                                   fmt::ptr(clockCls.libObjPtr()),
+                                   formatClockClsId(clockCls, prefix),
+                                   formatClockClsOrigin(clockCls.origin(), prefix));
+            }
         };
         const auto formatActClockCls = [&] {
             return formatClockCls(*actualClockCls, "");
@@ -297,50 +321,102 @@ void MsgIter::_validateMsgClkCls(const bt2::ConstMessage msg)
             BT_CPPLOGE_APPEND_CAUSE_AND_THROW(bt2::Error, "Expecting no clock class, got one: {}{}",
                                               formatStreamCls(true), formatActClockCls());
 
-        case Type::ExpectingOriginUnixGotNone:
-            BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
-                bt2::Error, "Expecting a clock class with Unix epoch origin, got none: {}",
-                formatStreamCls(false));
+        case Type::ExpectingOriginKnownGotNone:
+            if (graphMipVersion == 0) {
+                BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
+                    bt2::Error, "Expecting a clock class with Unix epoch origin, got none: {}",
+                    formatStreamCls(false));
+            } else {
+                BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
+                    bt2::Error, "Expecting a clock class with known origin, got none: {}{}",
+                    formatStreamCls(true), formatExpClockClsOrigin());
+            }
 
-        case Type::ExpectingOriginUnixGotUnknown:
-            BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
-                bt2::Error,
-                "Expecting a clock class with Unix epoch origin, got one with unknown "
-                "origin: {}{}",
-                formatStreamCls(true), formatActClockCls());
+        case Type::ExpectingOriginKnownGotUnknown:
+            if (graphMipVersion == 0) {
+                BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
+                    bt2::Error,
+                    "Expecting a clock class with Unix epoch origin, got one with unknown "
+                    "origin: {}{}",
+                    formatStreamCls(true), formatActClockCls());
+            } else {
+                BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
+                    bt2::Error,
+                    "Expecting a clock class with known origin, got one with unknown origin: "
+                    "{}{}, {}",
+                    formatStreamCls(true), formatActClockCls(), formatExpClockClsOrigin());
+            }
 
-        case Type::ExpectingOriginUnknownWithUuidGotNone:
-            BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
-                bt2::Error,
-                "Expecting a clock class with unknown origin and a specific UUID, got none: {}",
-                formatStreamCls(true), formatExpClockClsUuid());
-
-        case Type::ExpectingOriginUnknownWithUuidGotUnix:
-            BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
-                bt2::Error,
-                "Expecting a clock class with unknown origin and a specific UUID, got one "
-                "with Unix epoch origin: {}{}, {}",
-                formatStreamCls(true), formatActClockCls(), formatExpClockClsUuid());
-
-        case Type::ExpectingOriginUnknownWithUuidGotWithout:
-            BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
-                bt2::Error,
-                "Expecting a clock class with unknown origin and a specific UUID, got one "
-                "without a UUID: {}{}, {}",
-                formatStreamCls(true), formatActClockCls(), formatExpClockClsUuid());
-
-        case Type::ExpectingOriginUnknownWithUuidGotWrong:
+        case Type::ExpectingOriginKnownGotWrong:
+            BT_ASSERT(graphMipVersion > 0);
             BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
                 bt2::Error,
-                "Expecting a clock class with unknown origin and a specific UUID, got one with "
-                "a different UUID: {}{}, {}",
-                formatStreamCls(true), formatActClockCls(), formatExpClockClsUuid());
+                "Expecting a clock class with known origin, got one with a wrong origin: {}{}, {}",
+                formatStreamCls(true), formatActClockCls(), formatExpClockClsOrigin());
 
-        case Type::ExpectingOriginUnknownWithoutUuidGotNone:
+        case Type::ExpectingOriginUnknownWithIdGotNone:
+            if (graphMipVersion == 0) {
+                BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
+                    bt2::Error,
+                    "Expecting a clock class with unknown origin and a specific UUID, got none: {}{}",
+                    formatStreamCls(true), formatExpClockClsId());
+            } else {
+                BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
+                    bt2::Error,
+                    "Expecting a clock class with unknown origin and a specific identity, got none: {}{}",
+                    formatStreamCls(true), formatExpClockClsId());
+            }
+
+        case Type::ExpectingOriginUnknownWithIdGotKnown:
+            if (graphMipVersion == 0) {
+                BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
+                    bt2::Error,
+                    "Expecting a clock class with unknown origin and a specific UUID, got one "
+                    "with Unix epoch origin: {}{}, {}",
+                    formatStreamCls(true), formatActClockCls(), formatExpClockClsId());
+            } else {
+                BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
+                    bt2::Error,
+                    "Expecting a clock class with unknown origin and a specific identity, got one "
+                    "with known origin: {}{}, {}",
+                    formatStreamCls(true), formatActClockCls(), formatExpClockClsId());
+            }
+
+        case Type::ExpectingOriginUnknownWithIdGotWithout:
+            if (graphMipVersion == 0) {
+                BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
+                    bt2::Error,
+                    "Expecting a clock class with unknown origin and a specific UUID, got one "
+                    "without a UUID: {}{}, {}",
+                    formatStreamCls(true), formatActClockCls(), formatExpClockClsId());
+            } else {
+                BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
+                    bt2::Error,
+                    "Expecting a clock class with unknown origin and a specific identity, got one "
+                    "without identity: {}{}, {}",
+                    formatStreamCls(true), formatActClockCls(), formatExpClockClsId());
+            }
+
+        case Type::ExpectingOriginUnknownWithIdGotWrong:
+            if (graphMipVersion == 0) {
+                BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
+                    bt2::Error,
+                    "Expecting a clock class with unknown origin and a specific UUID, got one with "
+                    "a different UUID: {}{}, {}",
+                    formatStreamCls(true), formatActClockCls(), formatExpClockClsId());
+            } else {
+                BT_CPPLOGE_APPEND_CAUSE_AND_THROW(
+                    bt2::Error,
+                    "Expecting a clock class with unknown origin and a specific identity, got one with "
+                    "a different identity: {}{}, {}",
+                    formatStreamCls(true), formatActClockCls(), formatExpClockClsId());
+            }
+
+        case Type::ExpectingOriginUnknownWithoutIdGotNone:
             BT_CPPLOGE_APPEND_CAUSE_AND_THROW(bt2::Error, "Expecting a clock class, got none: {}{}",
                                               formatStreamCls(true), formatExpClockCls());
 
-        case Type::ExpectingOriginUnknownWithoutUuidGotWrong:
+        case Type::ExpectingOriginUnknownWithoutIdGotWrong:
             BT_CPPLOGE_APPEND_CAUSE_AND_THROW(bt2::Error, "Unexpected clock class: {}{}, {}",
                                               formatStreamCls(true), formatActClockCls(),
                                               formatExpClockCls());
@@ -348,7 +424,10 @@ void MsgIter::_validateMsgClkCls(const bt2::ConstMessage msg)
     }
 }
 
-MsgIter::_HeapComparator::_HeapComparator(const bt2c::Logger& logger) : _mLogger {logger}
+MsgIter::_HeapComparator::_HeapComparator(const bt2c::Logger& logger,
+                                          const std::uint64_t graphMipVersion) :
+    _mLogger {logger},
+    _mMsgComparator {graphMipVersion}
 {
 }
 

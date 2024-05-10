@@ -21,24 +21,26 @@ public:
         ExpectingNoClockClassGotOne =
             BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_NO_CLOCK_CLASS_GOT_ONE,
 
-        ExpectingOriginUnixGotNone =
-            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_UNIX_GOT_NONE,
-        ExpectingOriginUnixGotUnknown =
-            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_UNIX_GOT_UNKNOWN,
+        ExpectingOriginKnownGotNone =
+            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_KNOWN_GOT_NONE,
+        ExpectingOriginKnownGotUnknown =
+            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_KNOWN_GOT_UNKNOWN,
+        ExpectingOriginKnownGotWrong =
+            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_KNOWN_GOT_WRONG,
 
-        ExpectingOriginUnknownWithUuidGotNone =
-            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_UNKNOWN_WITH_UUID_GOT_NONE,
-        ExpectingOriginUnknownWithUuidGotUnix =
-            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_UNKNOWN_WITH_UUID_GOT_UNIX,
-        ExpectingOriginUnknownWithUuidGotWithout =
-            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_UNKNOWN_WITH_UUID_GOT_WITHOUT,
-        ExpectingOriginUnknownWithUuidGotWrong =
-            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_UNKNOWN_WITH_UUID_GOT_WRONG,
+        ExpectingOriginUnknownWithIdGotNone =
+            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_UNKNOWN_WITH_ID_GOT_NONE,
+        ExpectingOriginUnknownWithIdGotKnown =
+            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_UNKNOWN_WITH_ID_GOT_KNOWN,
+        ExpectingOriginUnknownWithIdGotWithout =
+            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_UNKNOWN_WITH_ID_GOT_WITHOUT,
+        ExpectingOriginUnknownWithIdGotWrong =
+            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_UNKNOWN_WITH_ID_GOT_WRONG,
 
-        ExpectingOriginUnknownWithoutUuidGotNone =
-            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_UNKNOWN_WITHOUT_UUID_GOT_NONE,
-        ExpectingOriginUnknownWithoutUuidGotWrong =
-            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_UNKNOWN_WITHOUT_UUID_GOT_WRONG,
+        ExpectingOriginUnknownWithoutIdGotNone =
+            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_UNKNOWN_WITHOUT_ID_GOT_NONE,
+        ExpectingOriginUnknownWithoutIdGotWrong =
+            BT_CLOCK_CORRELATION_VALIDATOR_ERROR_TYPE_EXPECTING_ORIGIN_UNKNOWN_WITHOUT_ID_GOT_WRONG,
     };
 
     explicit ClockCorrelationError(
@@ -90,28 +92,28 @@ private:
         /* Expect to have no clock. */
         None,
 
-        /* Expect a clock with a Unix epoch origin. */
-        OriginUnix,
+        /* Expect a clock with a known origin. */
+        OriginKnown,
 
-        /* Expect a clock with an unknown origin, but with a UUID. */
-        OriginUnknownWithUuid,
+        /* Expect a clock with an unknown origin, but with an identify. */
+        OriginUnknownWithId,
 
-        /* Expect a clock with an unknown origin and without a UUID. */
-        OriginUnknownWithoutUuid,
+        /* Expect a clock with an unknown origin and without an identify. */
+        OriginUnknownWithoutId,
     };
 
 public:
-    void validate(const bt2::ConstMessage msg)
+    void validate(const bt2::ConstMessage msg, const int graphMipVersion)
     {
         if (!msg.isStreamBeginning() && !msg.isMessageIteratorInactivity()) {
             return;
         }
 
-        this->_validate(msg);
+        this->_validate(msg, graphMipVersion);
     }
 
 private:
-    void _validate(const bt2::ConstMessage msg);
+    void _validate(const bt2::ConstMessage msg, int graphMipVersion);
 
     PropsExpectation _mExpectation = PropsExpectation::Unset;
 

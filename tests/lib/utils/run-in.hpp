@@ -54,9 +54,4 @@ public:
  */
 void runIn(RunIn& runIn, uint64_t graphMipVersion);
 
-/*
- * Calls `fn` for each possible MIP version.
- */
-void forEachMipVersion(const std::function<void(uint64_t)>& fn);
-
 #endif /* BABELTRACE_TESTS_LIB_UTILS_RUN_IN_HPP */

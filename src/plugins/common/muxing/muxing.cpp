@@ -136,6 +136,20 @@ int MessageComparator::compareOptUuids(const bt2s::optional<const bt2c::UuidView
     return compareOptional(left, right, compareUuids);
 }
 
+int MessageComparator::compareIdentities(const bt2::IdentityView& left,
+                                         const bt2::IdentityView& right) noexcept
+{
+    if (const auto ret = compareStrings(left.nameSpace(), right.nameSpace())) {
+        return ret;
+    }
+
+    if (const auto ret = compareStrings(left.name(), right.name())) {
+        return ret;
+    }
+
+    return compareStrings(left.uid(), right.uid());
+}
+
 int MessageComparator::compareEventClasses(const bt2::ConstEventClass left,
                                            const bt2::ConstEventClass right) noexcept
 {
@@ -418,13 +432,20 @@ int MessageComparator::compare(const bt2::ConstMessage left,
 
     if (const auto ret = compareOptional(
             borrowStream(left), borrowStream(right),
-            [](const bt2::ConstStream leftStream, const bt2::ConstStream rightStream) {
+            [&](const bt2::ConstStream leftStream, const bt2::ConstStream rightStream) {
                 const auto leftTrace = leftStream.trace();
                 const auto rightTrace = rightStream.trace();
 
-                /* Compare trace UUIDs. */
-                if (const auto ret = compareOptUuids(leftTrace.uuid(), rightTrace.uuid())) {
-                    return ret;
+                /* Compare trace UUIDs / identities. */
+                if (_mGraphMipVersion == 0) {
+                    if (const auto ret = compareOptUuids(leftTrace.uuid(), rightTrace.uuid())) {
+                        return ret;
+                    }
+                } else {
+                    if (const auto ret =
+                            compareIdentities(leftTrace.identity(), rightTrace.identity())) {
+                        return ret;
+                    }
                 }
 
                 /* Compare trace names. */

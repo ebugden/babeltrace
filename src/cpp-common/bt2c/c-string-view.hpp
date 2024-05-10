@@ -266,4 +266,19 @@ inline void operator+=(std::string& lhs, bt2c::CStringView rhs)
     lhs += rhs.data();
 }
 
+/*
+ * Returns true if:
+ *
+ *  - `a` and `b` are both non-nullptr and equal
+ *  - `a` and `b` are both nullptr
+ */
+inline bool equalsMaybeNullptr(const bt2c::CStringView a, const bt2c::CStringView b)
+{
+    if (a && b) {
+        return a == b;
+    } else {
+        return bool(a) == bool(b);
+    }
+}
+
 #endif /* BABELTRACE_CPP_COMMON_BT2C_C_STRING_VIEW_HPP */
