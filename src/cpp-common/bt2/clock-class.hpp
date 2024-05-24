@@ -417,6 +417,11 @@ public:
         return bt_clock_class_origin_is_unknown(_mClkCls.libObjPtr());
     }
 
+    bool isKnown() const noexcept
+    {
+        return !this->isUnknown();
+    }
+
     bool isUnixEpoch() const noexcept
     {
         return bt_clock_class_origin_is_unix_epoch(_mClkCls.libObjPtr());
@@ -443,7 +448,7 @@ inline bool same(const bt2::ClockOriginView& a, const bt2::ClockOriginView& b,
     if (graphMipVersion == 0) {
         return a.isUnixEpoch() == b.isUnixEpoch();
     } else {
-        return same(a.identity(), b.identity());
+        return a.isKnown() && b.isKnown() && same(a.identity(), b.identity());
     }
 }
 

@@ -258,6 +258,21 @@ bt_diff() {
 	diff -u <(bt_remove_cr_inline "$expected_file") <(bt_remove_cr_inline "$actual_file") 1>&2
 }
 
+bt_diff_overwrite() {
+	local -r expected="$1"
+	local -r actual="$2"
+
+	bt_diff "$expected" "$actual"
+
+	local -r ret=$?
+
+	if [[ ${BT_TESTS_WRITE_EXPECT_FILES:-0} -ne 0 && $ret -ne 0 && -f "$expected"  ]]; then
+		cp "$actual" "$expected"
+	fi
+
+	return $ret
+}
+
 # Checks the difference between:
 #
 # • What the `$BT_TESTS_BT2_BIN` command prints to its standard output
@@ -285,11 +300,11 @@ bt_diff_cli() {
 	local -r temp_stderr_output_file=$(mktemp -t actual-stderr.XXXXXX)
 
 	bt_cli "$temp_stdout_output_file" "$temp_stderr_output_file" "${args[@]}"
-	bt_diff "$expected_stdout_file" "$temp_stdout_output_file" "${args[@]}"
+	bt_diff_overwrite "$expected_stdout_file" "$temp_stdout_output_file"
 
 	local -r ret_stdout=$?
 
-	bt_diff "$expected_stderr_file" "$temp_stderr_output_file" "${args[@]}"
+	bt_diff_overwrite "$expected_stderr_file" "$temp_stderr_output_file"
 
 	local -r ret_stderr=$?
 
@@ -521,4 +536,11 @@ maybe_cygpath_m() {
 	fi
 
 	echo "$path"
+}
+
+valid_ctf_mip_combo() {
+	local ctf="$1"
+	local mip="$2"
+
+	[[ "$ctf" -eq 1 || "$mip" -eq 1 ]]
 }

@@ -28,11 +28,36 @@ expect_dir="$BT_TESTS_DATADIR/$this_dir_relative"
 
 test_ctf_common_details_args=("-p" "with-trace-name=no,with-stream-name=no")
 
+# Print the expected stdout file for test with name `$1`, CTF version `$2`
+# and MIP version `$3`.
+find_expect_file() {
+	local test_name="$1"
+	local ctf="$2"
+	local mip="$3"
+
+	names=(
+		"$expect_dir/trace-$test_name-ctf$ctf-mip$mip.expect"
+		"$expect_dir/trace-$test_name-ctf$ctf.expect"
+		"$expect_dir/trace-$test_name-mip$mip.expect"
+		"$expect_dir/trace-$test_name.expect"
+	)
+
+	for name in "${names[@]}"; do
+		if [[ -f "$name" ]]; then
+			echo "$name"
+			return
+		fi
+	done
+
+	echo "Could not find expect file for test $test_name, CTF $ctf, MIP $mip" >&2
+	exit 1
+}
+
 succeed_trace_path() {
 	name="$1"
-	ctf_version="$2"
+	ctf="$2"
 
-	echo "$BT_CTF_TRACES_PATH/$ctf_version/succeed/$name"
+	echo "$BT_CTF_TRACES_PATH/$ctf/succeed/$name"
 }
 
 test_ctf_gen_single() {
@@ -48,14 +73,28 @@ test_ctf_gen_single() {
 # Parameters: <trace-name> <ctf-version>
 test_ctf_single_version() {
 	local name="$1"
-	local ctf_version="$2"
+	local ctf="$2"
 	local trace_path
 
-	trace_path=$(succeed_trace_path "$name" "$ctf_version")
+	trace_path=$(succeed_trace_path "$name" "$ctf")
 
-	bt_diff_details_ctf_single "$expect_dir/trace-$name.expect" \
-		"$trace_path" "${test_ctf_common_details_args[@]}"
-	ok $? "Trace '$name' gives the expected output - CTF $ctf_version"
+	for mip in 0 1; do
+		if ! valid_ctf_mip_combo "$ctf" $mip; then
+			continue;
+		fi
+
+		local expected_stdout
+
+		expected_stdout=$(find_expect_file "$name" "$ctf" $mip)
+
+		diag "CTF version $ctf, MIP $mip, expect file \"$expected_stdout\""
+		bt_diff_details_ctf_single \
+			"$expected_stdout" \
+			"$trace_path" \
+			--allowed-mip-versions=$mip \
+			"${test_ctf_common_details_args[@]}"
+		ok $? "Trace '$name' gives the expected output - CTF $ctf"
+	done
 }
 
 test_ctf_single() {
@@ -68,47 +107,54 @@ test_ctf_single() {
 test_packet_end() {
 	local name="$1"
 
-	for ctf_version in 1 2; do
-		local expected_stdout="$expect_dir/trace-$name.expect"
-		local trace_path
-		local ret=0
-		local ret_stdout
-		local ret_stderr
-		local details_comp=("-c" "sink.text.details")
-		local details_args=("-p" "with-trace-name=no,with-stream-name=no,with-metadata=no,compact=yes")
-		local temp_stdout_output_file
-		local temp_greped_stdout_output_file
-		local temp_stderr_output_file
+	for ctf in 1 2; do
+		for mip in 0 1; do
+			if ! valid_ctf_mip_combo $ctf $mip; then
+				continue;
+			fi
 
-		trace_path="$(succeed_trace_path "$name" "$ctf_version")"
-		temp_stdout_output_file="$(mktemp -t actual-stdout.XXXXXX)"
-		temp_greped_stdout_output_file="$(mktemp -t greped-stdout.XXXXXX)"
-		temp_stderr_output_file="$(mktemp -t actual-stderr.XXXXXX)"
+			local expected_stdout
+			local trace_path
+			local ret=0
+			local ret_stdout
+			local ret_stderr
+			local details_comp=("-c" "sink.text.details")
+			local details_args=("-p" "with-trace-name=no,with-stream-name=no,with-metadata=no,compact=yes")
+			local temp_stdout_output_file
+			local temp_greped_stdout_output_file
+			local temp_stderr_output_file
 
-		bt_cli "$temp_stdout_output_file" "$temp_stderr_output_file" \
-		  "$trace_path" "${details_comp[@]}" "${details_args[@]}"
+			expected_stdout=$(find_expect_file "$name" $ctf $mip)
+			trace_path="$(succeed_trace_path "$name" "$ctf")"
+			temp_stdout_output_file="$(mktemp -t actual-stdout.XXXXXX)"
+			temp_greped_stdout_output_file="$(mktemp -t greped-stdout.XXXXXX)"
+			temp_stderr_output_file="$(mktemp -t actual-stderr.XXXXXX)"
 
-		bt_grep "Packet end" "$temp_stdout_output_file" > "$temp_greped_stdout_output_file"
+			bt_cli "$temp_stdout_output_file" "$temp_stderr_output_file" \
+			"$trace_path" "${details_comp[@]}" "${details_args[@]}"
 
-		bt_diff "$expected_stdout" "$temp_greped_stdout_output_file"
-		ret_stdout=$?
+			bt_grep "Packet end" "$temp_stdout_output_file" > "$temp_greped_stdout_output_file"
 
-		bt_diff /dev/null "$temp_stderr_output_file"
-		ret_stderr=$?
+			diag "CTF version $ctf, MIP $mip, expected file \"$expected_stdout\""
+			bt_diff "$expected_stdout" "$temp_greped_stdout_output_file"
+			ret_stdout=$?
 
-		if ((ret_stdout != 0 || ret_stderr != 0)); then
-			ret=1
-		fi
+			bt_diff /dev/null "$temp_stderr_output_file"
+			ret_stderr=$?
 
-		ok $ret "Trace '$name' gives the expected output - CTF $ctf_version"
-		rm -f "$temp_stdout_output_file" "$temp_stderr_output_file" "$temp_greped_stdout_output_file"
+			if ((ret_stdout != 0 || ret_stderr != 0)); then
+				ret=1
+			fi
+
+			ok $ret "Trace '$name' gives the expected output - CTF $ctf"
+			rm -f "$temp_stdout_output_file" "$temp_stderr_output_file" "$temp_greped_stdout_output_file"
+		done
 	done
 }
 
 test_force_origin_unix_epoch() {
 	local name1="$1"
 	local name2="$2"
-	local expected_stdout="$expect_dir/trace-$name1-$name2.expect"
 	local src_ctf_fs_args=("-p" "force-clock-class-origin-unix-epoch=true")
 	local details_comp=("-c" "sink.text.details")
 	local details_args=("-p" "with-trace-name=no,with-stream-name=no,with-metadata=yes,compact=yes")
@@ -118,28 +164,38 @@ test_force_origin_unix_epoch() {
 	temp_stdout_output_file="$(mktemp -t actual-stdout.XXXXXX)"
 	temp_stderr_output_file="$(mktemp -t actual-stderr.XXXXXX)"
 
-	for ctf_version in 1 2; do
-		local trace_path
+	for ctf in 1 2; do
+		for mip in 0 1; do
+			if ! valid_ctf_mip_combo $ctf $mip; then
+				continue;
+			fi
 
-		trace_1_path=$(succeed_trace_path "$name1" "$ctf_version")
-		trace_2_path=$(succeed_trace_path "$name2" "$ctf_version")
+			local trace_path
+			local expected_stdout
 
-		bt_cli "$temp_stdout_output_file" "$temp_stderr_output_file" \
-			"$trace_1_path" "${src_ctf_fs_args[@]}" \
-			"$trace_2_path" "${src_ctf_fs_args[@]}" \
-			"${details_comp[@]}" "${details_args[@]}"
+			expected_stdout=$(find_expect_file "$name1-$name2" $ctf $mip)
+			trace_1_path=$(succeed_trace_path "$name1" "$ctf")
+			trace_2_path=$(succeed_trace_path "$name2" "$ctf")
 
-		bt_diff "$expected_stdout" "$temp_stdout_output_file"
-		ok $? "Trace '$name1' and '$name2' give the expected stdout"
+			diag "CTF version $ctf, MIP $mip, expected file \"$expected_stdout\""
+			bt_cli "$temp_stdout_output_file" "$temp_stderr_output_file" \
+				--allowed-mip-versions=$mip \
+				"$trace_1_path" "${src_ctf_fs_args[@]}" \
+				"$trace_2_path" "${src_ctf_fs_args[@]}" \
+				"${details_comp[@]}" "${details_args[@]}"
 
-		bt_diff /dev/null "$temp_stderr_output_file"
-		ok $? "Trace '$name1' and '$name2' give the expected stderr"
+			bt_diff "$expected_stdout" "$temp_stdout_output_file"
+			ok $? "Trace '$name1' and '$name2' give the expected stdout"
 
-		rm -f "$temp_stdout_output_file" "$temp_stderr_output_file"
+			bt_diff /dev/null "$temp_stderr_output_file"
+			ok $? "Trace '$name1' and '$name2' give the expected stderr"
+
+			rm -f "$temp_stdout_output_file" "$temp_stderr_output_file"
+		done
 	done
 }
 
-plan_tests 26
+plan_tests 38
 
 test_force_origin_unix_epoch 2packets barectf-event-before-packet
 test_ctf_gen_single simple

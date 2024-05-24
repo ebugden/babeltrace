@@ -122,6 +122,17 @@ public:
     }
 
     /*
+     * Returns true if the viewed C string has a length of 0.
+     *
+     * data() must not return `nullptr`.
+     */
+    bool empty() const noexcept
+    {
+        BT_ASSERT_DBG(_mStr);
+        return _mStr[0] == '\0';
+    }
+
+    /*
      * Returns an `std::string` instance containing a copy of the viewed
      * C string.
      *

@@ -39,6 +39,27 @@ this_dir_relative="plugins/src.ctf.lttng-live"
 test_data_dir="$BT_TESTS_DATADIR/$this_dir_relative"
 trace_dir="$BT_CTF_TRACES_PATH"
 
+find_expect_file() {
+	local test_name="$1"
+	local ctf="$2"
+
+	names=(
+		"$expect_dir/$test_name-ctf$ctf.expect"
+		"$expect_dir/$test_name.expect"
+	)
+
+	for name in "${names[@]}"; do
+		if [[ -f "$name" ]]; then
+			echo "$name"
+			return
+		fi
+	done
+
+	echo "Could not find expect file for test $test_name, CTF $ctf" >&2
+	exit 1
+}
+
+
 trace_path_prefix() {
 	local ctf_version="$1"
 
@@ -195,13 +216,14 @@ run_test_one() {
 	cli_stdout="$(mktemp -t test-live-stdout.XXXXXX)"
 	port_file="$(mktemp -t test-live-server-port.XXXXXX)"
 
+	diag "Test $test_text, expect stdout file \"$expected_stdout\""
 	get_cli_output_with_lttng_live_server "$cli_args_template" "$cli_stdout" \
 		"$cli_stderr" "$port_file" "$trace_path_prefix" "${server_args[@]}"
 	port=$(<"$port_file")
 
-	bt_diff "$expected_stdout" "$cli_stdout"
+	bt_diff_overwrite "$expected_stdout" "$cli_stdout"
 	ok $? "$test_text - stdout"
-	bt_diff "$expected_stderr" "$cli_stderr"
+	bt_diff_overwrite "$expected_stderr" "$cli_stderr"
 	ok $? "$test_text - stderr"
 
 	rm -f "$cli_stderr"
@@ -210,18 +232,27 @@ run_test_one() {
 }
 
 run_test() {
-	local test_text="$1"
-	local cli_args_template="$2"
-	local expected_stdout="$3"
-	local expected_stderr="$4"
+	local -r test_text="$1"
+	local -r cli_args_template="$2"
+	local -r expected_stdout_template="$3"
+	local -r expected_stderr_template="$4"
 	shift 4
-	local server_args=("$@")
+	local -r server_args=("$@")
 	local trace_path_prefix
+	local specific_expected_stdout
+	local specific_expected_stderr
 
 	for ctf_version in 1 2; do
 		trace_path_prefix=$(trace_path_prefix "$ctf_version")
-		run_test_one "$test_text - CTF $ctf_version" "$cli_args_template" \
-			"$expected_stdout" "$expected_stderr" "$trace_path_prefix" \
+		specific_expected_stdout="${expected_stdout_template//@CTF@/$ctf_version}"
+		specific_expected_stderr="${expected_stderr_template//@CTF@/$ctf_version}"
+
+		run_test_one \
+			"$test_text - CTF $ctf_version" \
+			"$cli_args_template" \
+			"$specific_expected_stdout" \
+			"$specific_expected_stderr" \
+			"$trace_path_prefix" \
 			"${server_args[@]}"
 	done
 }
@@ -278,7 +309,7 @@ test_base() {
 	local test_text="CLI attach and fetch from single-domains session - no discarded events"
 	local cli_args_template="-i lttng-live net://localhost:@PORT@/host/hostname/trace-with-index -c sink.text.details"
 	local server_args=("$test_data_dir/base.json")
-	local expected_stdout="${test_data_dir}/cli-base.expect"
+	local expected_stdout="${test_data_dir}/cli-base-ctf@CTF@.expect"
 	local expected_stderr="/dev/null"
 
 	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
@@ -291,7 +322,7 @@ test_multi_domains() {
 	local test_text="CLI attach and fetch from multi-domains session - discarded events"
 	local cli_args_template="-i lttng-live net://localhost:@PORT@/host/hostname/multi-domains -c sink.text.details"
 	local server_args=("${test_data_dir}/multi-domains.json")
-	local expected_stdout="$test_data_dir/cli-multi-domains.expect"
+	local expected_stdout="$test_data_dir/cli-multi-domains-ctf@CTF@.expect"
 	local expected_stderr="/dev/null"
 
 	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
@@ -307,7 +338,7 @@ test_rate_limited() {
 	local test_text="CLI many requests per packet"
 	local cli_args_template="-i lttng-live net://localhost:@PORT@/host/hostname/trace-with-index -c sink.text.details"
 	local server_args=(--max-query-data-response-size 1024 "$test_data_dir/rate-limited.json")
-	local expected_stdout="${test_data_dir}/cli-base.expect"
+	local expected_stdout="${test_data_dir}/cli-base-ctf@CTF@.expect"
 	local expected_stderr="/dev/null"
 
 	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
@@ -325,23 +356,39 @@ test_compare_to_ctf_fs() {
 	local server_args_inverse=("$test_data_dir/multi-domains-inverse.json")
 	local expected_stdout
 	local expected_stderr
+	local tmp_dir
 
-	expected_stdout="$(mktemp -t test-live-compare-stdout-expected.XXXXXX)"
-	expected_stderr="$(mktemp -t test-live-compare-stderr-expected.XXXXXX)"
+	tmp_dir="$(mktemp -d -t test-live-compare.XXXXXX)"
+	expected_stdout="$tmp_dir/stdout-ctf1.expect"
+	expected_stderr="$tmp_dir/stderr-ctf1.expect"
 
-	bt_cli "$expected_stdout" "$expected_stderr" "${trace_dir}/1/succeed/multi-domains" -c sink.text.details --params "with-trace-name=false,with-stream-name=false"
+	bt_cli "$expected_stdout" \
+		"$expected_stderr" \
+		--allowed-mip-versions=0 \
+		"${trace_dir}/1/succeed/multi-domains" \
+		-c sink.text.details \
+		--params "with-trace-name=false,with-stream-name=false"
 	bt_remove_cr "${expected_stdout}"
 	bt_remove_cr "${expected_stderr}"
 
-	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
-		"$expected_stderr" "${server_args[@]}"
+	run_test_one \
+		"$test_text" \
+		"$cli_args_template" \
+		"$expected_stdout" \
+		"$expected_stderr" \
+		"$(trace_path_prefix 1)" \
+		"${server_args[@]}"
 
 	diag "Inverse session order from lttng-relayd"
-	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
-		"$expected_stderr" "${server_args_inverse[@]}"
+	run_test_one \
+		"$test_text" \
+		"$cli_args_template" \
+		"$expected_stdout" \
+		"$expected_stderr" \
+		"$(trace_path_prefix 1)" \
+		"${server_args_inverse[@]}"
 
-	rm -f "$expected_stdout"
-	rm -f "$expected_stderr"
+	rm -rf "$tmp_dir"
 }
 
 test_inactivity_discarded_packet() {
@@ -448,7 +495,7 @@ test_live_new_stream_during_inactivity() {
 	rm -rf "$tmp_dir"
 }
 
-plan_tests 34
+plan_tests 30
 
 test_list_sessions
 test_base

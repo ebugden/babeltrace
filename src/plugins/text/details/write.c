@@ -2439,7 +2439,7 @@ void write_trace(struct details_write_ctx *ctx, const bt_trace *trace)
 
 				g_string_append(ctx->str, "UID `");
 				write_str_prop_value(ctx, uid);
-				g_string_append(ctx->str, "`, ");
+				g_string_append_c(ctx->str, '`');
 			}
 
 			g_string_append(ctx->str, ")");

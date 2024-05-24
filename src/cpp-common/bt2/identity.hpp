@@ -44,13 +44,10 @@ private:
 
 inline bool same(const IdentityView& a, const IdentityView& b) noexcept
 {
-    /*
-     * If an identity misses a name or a UID, it is never considered same as
-     * another identity.
-     */
-    if (!a.name() || !a.uid() || !b.name() || b.uid()) {
-        return false;
-    }
+    BT_ASSERT_DBG(a.name());
+    BT_ASSERT_DBG(a.uid());
+    BT_ASSERT_DBG(b.name());
+    BT_ASSERT_DBG(b.uid());
 
     return equalsMaybeNullptr(a.nameSpace(), b.nameSpace()) && a.name() == b.name() &&
            a.uid() == b.uid();

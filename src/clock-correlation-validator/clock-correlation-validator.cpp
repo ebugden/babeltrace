@@ -31,7 +31,7 @@ bool clockClassHasKnownAndComparableOrigin(const bt2::ConstClockClass clockCls,
     if (graphMipVersion == 0) {
         return clockCls.origin().isUnixEpoch();
     } else {
-        return clockCls.origin().name() && clockCls.origin().uid();
+        return clockCls.origin().isKnown();
     }
 }
 

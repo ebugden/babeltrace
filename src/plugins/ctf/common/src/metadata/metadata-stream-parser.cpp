@@ -18,6 +18,9 @@ namespace {
 
 using namespace bt2c::literals::datalen;
 
+constexpr const char *btUserAttrsNs = "babeltrace.org,2020";
+constexpr const char *lttngUserAttrsNs = "lttng.org,2009";
+
 /*
  * Map of variant field class to the index of the currently
  * visited option.
@@ -606,11 +609,30 @@ bool pktCtxFcContainsUIntFcWithRole(const DataStreamCls& dataStreamCls,
  * greater than or equal to 1.
  */
 template <typename ObjT>
-void trySetLibUserAttrs(ObjT& obj, const unsigned long long mipVersion) noexcept
+void trySetLibUserAttrs(ObjT& obj) noexcept
 {
-    if (mipVersion >= 1 && obj.attrs()) {
-        BT_ASSERT(obj.libCls());
-        obj.libCls()->userAttributes(*obj.attrs());
+    BT_ASSERT(obj.libCls());
+
+    // Filtre toute ce qui est dans le namespace bt
+    if (obj.attrs()) {
+        bt2::MapValue::Shared userAttrs;
+
+        obj.attrs()->forEach([&](const bt2c::CStringView ns, const bt2::ConstValue v) {
+            if (ns == btUserAttrsNs) {
+                return;
+            }
+
+            if (!userAttrs) {
+                userAttrs = bt2::MapValue::create();
+            }
+
+            userAttrs->insert(ns, *v.copy());
+        });
+
+        if (userAttrs) {
+            const bt2::MapValue yo = *userAttrs;
+            obj.libCls()->userAttributes(yo);
+        }
     }
 }
 
@@ -811,7 +833,7 @@ public:
 
         /* Assign as translation and set user attributes */
         structFc.libCls(*libStructFc);
-        trySetLibUserAttrs(structFc, _mMipVersion);
+        trySetLibUserAttrs(structFc);
 
         /* Translate member classes */
         for (auto& memberCls : structFc) {
@@ -970,7 +992,7 @@ private:
     void _setLibFc(FcT& fc, bt2::FieldClass::Shared libFc) noexcept
     {
         fc.libCls(*libFc);
-        trySetLibUserAttrs(fc, _mMipVersion);
+        trySetLibUserAttrs(fc);
         _mLastTranslatedLibFc = std::move(libFc);
     }
 
@@ -1551,9 +1573,6 @@ private:
         return libFc->asStructure().shared();
     }
 
-    static constexpr const char *_btUserAttrsNs = "babeltrace.org,2020";
-    static constexpr const char *_lttngUserAttrsNs = "lttng.org,2009";
-
     static bt2::OptionalBorrowedObject<bt2::ConstValue>
     _userAttr(const bt2::ConstMapValue userAttrs, const char * const ns,
               const char * const name) noexcept
@@ -1583,15 +1602,14 @@ private:
     static bt2::OptionalBorrowedObject<bt2::ConstStringValue>
     _strUserAttr(const bt2::ConstMapValue userAttrs, const char * const name) noexcept
     {
-        if (const auto val = LibTraceClsFromTraceClsTranslator::_strUserAttr(
-                userAttrs, LibTraceClsFromTraceClsTranslator::_btUserAttrsNs, name)) {
+        if (const auto val =
+                LibTraceClsFromTraceClsTranslator::_strUserAttr(userAttrs, btUserAttrsNs, name)) {
             /* From Babeltrace 2 namespace */
             return val;
         }
 
         /* From LTTng namespace */
-        return LibTraceClsFromTraceClsTranslator::_strUserAttr(
-            userAttrs, LibTraceClsFromTraceClsTranslator::_lttngUserAttrsNs, name);
+        return LibTraceClsFromTraceClsTranslator::_strUserAttr(userAttrs, lttngUserAttrsNs, name);
     }
 
     /*
@@ -1681,7 +1699,7 @@ private:
         }
 
         /* Set user attributes */
-        trySetLibUserAttrs(eventRecordCls, _mMipVersion);
+        trySetLibUserAttrs(eventRecordCls);
 
         /* Translate specific context field class, if any */
         if (eventRecordCls.specCtxFc()) {
@@ -1746,8 +1764,9 @@ private:
                 clkCls.libCls()->setOriginIsUnixEpoch();
             } else if (_mMipVersion >= 1) {
                 /* Custom (MIP 1+) */
-                clkCls.libCls()->origin(clkCls.origin()->ns() ? *clkCls.origin()->ns() : nullptr,
-                                        clkCls.origin()->name(), clkCls.origin()->uid());
+                clkCls.libCls()->origin(
+                    clkCls.origin()->ns() ? bt2c::CStringView {*clkCls.origin()->ns()} : nullptr,
+                    clkCls.origin()->name(), clkCls.origin()->uid());
             }
         } else {
             /* Unknown */
@@ -1770,7 +1789,7 @@ private:
         }
 
         /* Set user attributes */
-        trySetLibUserAttrs(clkCls, _mMipVersion);
+        trySetLibUserAttrs(clkCls);
     }
 
     /*
@@ -1831,7 +1850,7 @@ private:
             }
 
             /* Set user attributes */
-            trySetLibUserAttrs(dataStreamCls, _mMipVersion);
+            trySetLibUserAttrs(dataStreamCls);
 
             /* Translate packet context field class, if any */
             if (dataStreamCls.pktCtxFc()) {
@@ -1871,7 +1890,7 @@ private:
             _mTraceCls->libCls()->assignsAutomaticStreamClassId(false);
 
             /* Set user attributes */
-            trySetLibUserAttrs(*_mTraceCls, _mMipVersion);
+            trySetLibUserAttrs(*_mTraceCls);
         }
 
         /* Translate data stream classes */

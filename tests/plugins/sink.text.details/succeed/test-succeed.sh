@@ -19,18 +19,44 @@ source "$UTILSSH"
 this_dir_relative="plugins/sink.text.details/succeed"
 expect_dir="$BT_TESTS_DATADIR/$this_dir_relative"
 
+find_expect_file() {
+	local test_name="$1"
+	local mip="$2"
+
+	names=(
+		"$expect_dir/$test_name-mip$mip.expect"
+		"$expect_dir/$test_name.expect"
+	)
+
+	for name in "${names[@]}"; do
+		if [[ -f "$name" ]]; then
+			echo "$name"
+			return
+		fi
+	done
+
+	echo "Could not find expect file for test $test_name, MIP $mip" >&2
+	exit 1
+}
+
 test_details() {
 	local test_name="$1"
 	local trace_name="$2"
 	shift 2
 	local details_args=("$@")
 	local trace_dir="$BT_CTF_TRACES_PATH/1/succeed/$trace_name"
-	local expect_path="$expect_dir/$test_name.expect"
+	local expect_path
 
-	bt_diff_cli "$expect_path" /dev/null \
-		"$trace_dir" -p trace-name=the-trace \
-		-c sink.text.details "${details_args[@]+${details_args[@]}}"
-	ok $? "'$test_name' test has the expected output"
+	for mip in 0 1; do
+		expect_path="$(find_expect_file "$test_name" $mip)"
+
+		diag "MIP $mip, expect file \"$expect_path\""
+		bt_diff_cli "$expect_path" /dev/null \
+			--allowed-mip-versions=$mip \
+			"$trace_dir" -p trace-name=the-trace \
+			-c sink.text.details "${details_args[@]+${details_args[@]}}"
+		ok $? "'$test_name' test has the expected output - MIP $mip"
+	done
 }
 
 # This is used for the moment because the source is `src.ctf.fs` and
@@ -45,7 +71,7 @@ test_details_no_stream_name() {
 		"${details_args[@]+${details_args[@]}}" -p with-stream-name=no
 }
 
-plan_tests 12
+plan_tests 24
 
 test_details_no_stream_name default wk-heartbeat-u
 test_details_no_stream_name default-compact wk-heartbeat-u -p compact=yes

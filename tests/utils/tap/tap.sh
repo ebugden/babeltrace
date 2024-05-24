@@ -218,6 +218,7 @@ ok(){
         else
             diag "  Failed ${t}test in $backtrace"
         fi
+	exit 1
     fi
 
     return $result

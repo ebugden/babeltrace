@@ -42,14 +42,14 @@ private:
                                  const bt2::IdentityView& right) noexcept;
     static int compareEventClasses(const bt2::ConstEventClass left,
                                    const bt2::ConstEventClass right) noexcept;
-    static int compareClockClasses(const bt2::ConstClockClass left,
-                                   const bt2::ConstClockClass right) noexcept;
-    static int compareStreamsSameIds(const bt2::ConstStream left,
-                                     const bt2::ConstStream right) noexcept;
+    int compareClockClasses(const bt2::ConstClockClass left,
+                            const bt2::ConstClockClass right) const noexcept;
+    int compareStreamsSameIds(const bt2::ConstStream left,
+                              const bt2::ConstStream right) const noexcept;
     static int compareClockSnapshots(const bt2::ConstClockSnapshot left,
                                      const bt2::ConstClockSnapshot right) noexcept;
-    static int compareMessagesSameType(const bt2::ConstMessage left,
-                                       const bt2::ConstMessage right) noexcept;
+    int compareMessagesSameType(const bt2::ConstMessage left,
+                                const bt2::ConstMessage right) const noexcept;
     static int compareMessages(const bt2::ConstMessage left,
                                const bt2::ConstMessage right) noexcept;
 
