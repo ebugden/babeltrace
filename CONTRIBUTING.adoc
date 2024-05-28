@@ -1,3 +1,4 @@
+
 // Render with Asciidoctor
 
 = Babeltrace{nbsp}2 contributor's guide
