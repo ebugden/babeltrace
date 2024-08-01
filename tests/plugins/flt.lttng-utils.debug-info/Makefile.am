@@ -24,7 +24,7 @@ if !ENABLE_BUILT_IN_PLUGINS
 endif # !ENABLE_BUILT_IN_PLUGINS
 
 if ENABLE_DEBUG_INFO
-noinst_PROGRAMS += test-dwarf test-bin-info
+noinst_PROGRAMS += test-dwarf test-bin-info test-mip1
 
 test_dwarf_LDADD = \
 	$(top_builddir)/src/plugins/lttng-utils/debug-info/libdebug-info.la \
@@ -45,5 +45,12 @@ test_bin_info_LDADD = \
 	$(LIBTAP)
 test_bin_info_SOURCES = test-bin-info.cpp
 nodist_EXTRA_test_bin_info_SOURCES = dummy.cpp
+	$(COMMON_TEST_LDADD)
+
+test_mip1_LDADD = $(top_builddir)/src/lib/libbabeltrace2.la \
+	$(top_builddir)/src/cpp-common/vendor/fmt/libfmt.la \
+	$(top_builddir)/src/logging/liblogging.la \
+	$(top_builddir)/src/common/libcommon.la
+test_mip1_SOURCES = test-mip1.cpp
 
 endif # ENABLE_DEBUG_INFO
