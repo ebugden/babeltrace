@@ -698,6 +698,11 @@ protected:
         return _mSelfMsgIter.component().template data<UserComponentT>();
     }
 
+    SelfComponent _selfComponent() const noexcept
+    {
+        return _mSelfMsgIter.component();
+    }
+
     SelfComponentOutputPort _port() noexcept
     {
         return _mSelfMsgIter.port();
