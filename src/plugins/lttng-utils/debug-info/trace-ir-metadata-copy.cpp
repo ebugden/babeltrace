@@ -70,14 +70,65 @@ end:
 }
 
 static enum debug_info_trace_ir_mapping_status
+copy_clock_class_content_origin(const bt_clock_class *in_clock_class,
+                                bt_clock_class *out_clock_class, bt_logging_level log_level,
+                                bt_self_component *self_comp)
+{
+    uint64_t graph_mip_version = bt_self_component_get_graph_mip_version(self_comp);
+
+    /*
+	 * Calling `bt_clock_class_set_origin_is_unix_epoch` with the
+	 * output of `bt_clock_class_origin_is_unix_epoch` handles both:
+	 *
+	 * • When the origin is Unix epoch (when "is unix epoch" is
+	 *   true)
+	 *
+	 * • When the origin is unknown (when "is unix epoch" is false)
+	 */
+    bt_clock_class_set_origin_is_unix_epoch(out_clock_class,
+                                            bt_clock_class_origin_is_unix_epoch(in_clock_class));
+
+    if (graph_mip_version == 1) {
+        /*
+		 * Check whether the origin is user-defined.
+		 *
+		 * If the copies' clock class origin was incorrectly set
+		 * as "unknown" in the previous call, the following
+		 * section will override it with the correct origin.
+		 */
+        const char *origin_namespace = bt_clock_class_get_origin_namespace(in_clock_class);
+        const char *origin_name = bt_clock_class_get_origin_name(in_clock_class);
+        const char *origin_uid = bt_clock_class_get_origin_uid(in_clock_class);
+
+        if (origin_namespace && origin_name && origin_uid) {
+            enum bt_clock_class_set_origin_status set_origin_status = bt_clock_class_set_origin(
+                out_clock_class, origin_namespace, origin_name, origin_uid);
+
+            if (set_origin_status != BT_CLOCK_CLASS_SET_ORIGIN_STATUS_OK) {
+                BT_COMP_LOGE_APPEND_CAUSE(self_comp,
+                                          "Error setting clock class' origin: cc-addr=%p, "
+                                          "cc-origin-namespace=%s, cc-origin-name=%s, "
+                                          "cc-origin-uid=%s",
+                                          out_clock_class, origin_namespace, origin_name,
+                                          origin_uid);
+                return static_cast<debug_info_trace_ir_mapping_status>(set_origin_status);
+            }
+        }
+    }
+
+    return DEBUG_INFO_TRACE_IR_MAPPING_STATUS_OK;
+}
+
+static enum debug_info_trace_ir_mapping_status
 copy_clock_class_content(const bt_clock_class *in_clock_class, bt_clock_class *out_clock_class,
                          bt_logging_level log_level, bt_self_component *self_comp)
 {
     enum debug_info_trace_ir_mapping_status status;
     const char *clock_class_name, *clock_class_description;
+    uint64_t precision;
     int64_t seconds;
     uint64_t cycles;
-    bt_uuid in_uuid;
+    uint64_t graph_mip_version = bt_self_component_get_graph_mip_version(self_comp);
 
     BT_COMP_LOGD("Copying content of clock class: in-cc-addr=%p, out-cc-addr=%p", in_clock_class,
                  out_clock_class);
@@ -119,17 +170,71 @@ copy_clock_class_content(const bt_clock_class *in_clock_class, bt_clock_class *o
         }
     }
 
-    in_uuid = bt_clock_class_get_uuid(in_clock_class);
-    if (in_uuid) {
-        bt_clock_class_set_uuid(out_clock_class, in_uuid);
+    status = copy_clock_class_content_origin(in_clock_class, out_clock_class, log_level, self_comp);
+    if (status != DEBUG_INFO_TRACE_IR_MAPPING_STATUS_OK) {
+        goto end;
+    }
+
+    if (graph_mip_version == 0) {
+        bt_uuid uuid = bt_clock_class_get_uuid(in_clock_class);
+
+        if (uuid) {
+            bt_clock_class_set_uuid(out_clock_class, uuid);
+        }
+    } else if (graph_mip_version == 1) {
+        /* Copy clock class namespace. */
+        const char *in_namespace = bt_clock_class_get_namespace(in_clock_class);
+
+        if (in_namespace) {
+            enum bt_clock_class_set_namespace_status set_namespace_status =
+                bt_clock_class_set_namespace(out_clock_class, in_namespace);
+
+            if (set_namespace_status != BT_CLOCK_CLASS_SET_NAMESPACE_STATUS_OK) {
+                BT_COMP_LOGE_APPEND_CAUSE(self_comp,
+                                          "Error setting clock class' namespace: "
+                                          "cc-addr=%p, cc-namespace=%s",
+                                          out_clock_class, in_namespace);
+                status = static_cast<debug_info_trace_ir_mapping_status>(set_namespace_status);
+                goto end;
+            }
+        }
+
+        /* Copy clock class UID. */
+        const char *uid = bt_clock_class_get_uid(in_clock_class);
+
+        if (uid) {
+            enum bt_clock_class_set_uid_status set_uid_status =
+                bt_clock_class_set_uid(out_clock_class, uid);
+
+            if (set_uid_status != BT_CLOCK_CLASS_SET_UID_STATUS_OK) {
+                BT_COMP_LOGE_APPEND_CAUSE(self_comp,
+                                          "Error setting clock class' uid: "
+                                          "cc-addr=%p, cc-uid=%s",
+                                          out_clock_class, uid);
+                status = static_cast<debug_info_trace_ir_mapping_status>(set_uid_status);
+                goto end;
+            }
+        }
+
+        /* Copy clock class accuracy. */
+        uint64_t accuracy;
+        if (bt_clock_class_get_accuracy(in_clock_class, &accuracy) ==
+            BT_PROPERTY_AVAILABILITY_AVAILABLE) {
+            bt_clock_class_set_accuracy(out_clock_class, accuracy);
+        }
+    } else {
+        // TODO: Die violently. We should not be here
     }
 
     bt_clock_class_set_frequency(out_clock_class, bt_clock_class_get_frequency(in_clock_class));
-    bt_clock_class_set_precision(out_clock_class, bt_clock_class_get_precision(in_clock_class));
+
+    if (bt_clock_class_get_opt_precision(in_clock_class, &precision) ==
+        BT_PROPERTY_AVAILABILITY_AVAILABLE) {
+        bt_clock_class_set_precision(out_clock_class, precision);
+    }
+
     bt_clock_class_get_offset(in_clock_class, &seconds, &cycles);
     bt_clock_class_set_offset(out_clock_class, seconds, cycles);
-    bt_clock_class_set_origin_is_unix_epoch(out_clock_class,
-                                            bt_clock_class_origin_is_unix_epoch(in_clock_class));
 
     BT_COMP_LOGD("Copied content of clock class: in-cc-addr=%p, out-cc-addr=%p", in_clock_class,
                  out_clock_class);
