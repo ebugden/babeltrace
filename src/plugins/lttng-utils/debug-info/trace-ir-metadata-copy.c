@@ -565,9 +565,10 @@ enum debug_info_trace_ir_mapping_status copy_event_class_content(
 	if (in_event_class_name) {
 		enum bt_event_class_set_name_status set_name_status =
 			bt_event_class_set_name(out_event_class, in_event_class_name);
+
 		if (set_name_status != BT_EVENT_CLASS_SET_NAME_STATUS_OK) {
 			BT_COMP_LOGE_APPEND_CAUSE(self_comp, "Error setting event class' name: ec-addr=%p, "
-				"name=%s", out_event_class, in_event_class_name);
+				"ec-name=%s", out_event_class, in_event_class_name);
 			status = (int) set_name_status;
 			goto end;
 		}
