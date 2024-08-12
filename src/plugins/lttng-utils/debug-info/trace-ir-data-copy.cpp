@@ -429,6 +429,33 @@ enum debug_info_trace_ir_mapping_status copy_field_content(const bt_field *in_fi
                                       out_field, out_option_field);
             goto end;
         }
+    } else if (bt_field_class_type_is(in_fc_type, BT_FIELD_CLASS_TYPE_STATIC_BLOB)) {
+        const uint8_t *in_data = bt_field_blob_get_data_const(in_field);
+        uint8_t *out_data = bt_field_blob_get_data(out_field);
+
+        BT_ASSERT_DBG(bt_field_blob_get_length(out_field) == bt_field_blob_get_length(in_field));
+
+        memcpy(out_data, in_data, bt_field_blob_get_length(in_field));
+    } else if (bt_field_class_type_is(in_fc_type, BT_FIELD_CLASS_TYPE_DYNAMIC_BLOB)) {
+        uint64_t in_length = bt_field_blob_get_length(in_field);
+        enum bt_field_blob_dynamic_set_length_status set_length_status =
+            bt_field_blob_dynamic_set_length(out_field, in_length);
+
+        if (set_length_status != BT_FIELD_DYNAMIC_BLOB_SET_LENGTH_STATUS_OK) {
+            BT_COMP_LOGE_APPEND_CAUSE(self_comp,
+                                      "Cannot set blob field length: "
+                                      "out-blob-f-addr=%p",
+                                      out_field);
+            status = static_cast<debug_info_trace_ir_mapping_status>(set_length_status);
+            goto end;
+        }
+
+        BT_ASSERT_DBG(bt_field_blob_get_length(out_field) == in_length);
+
+        const uint8_t *in_data = bt_field_blob_get_data_const(in_field);
+        uint8_t *out_data = bt_field_blob_get_data(out_field);
+
+        memcpy(out_data, in_data, in_length);
     } else {
         bt_common_abort();
     }
