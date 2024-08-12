@@ -624,6 +624,24 @@ enum debug_info_trace_ir_mapping_status field_class_string_copy(
 	return DEBUG_INFO_TRACE_IR_MAPPING_STATUS_OK;
 }
 
+static inline
+enum debug_info_trace_ir_mapping_status field_class_blob_copy(
+		struct trace_ir_metadata_maps *md_maps,
+		const bt_field_class *in_field_class,
+		bt_field_class *out_field_class)
+{
+	BT_COMP_LOGD("Copying content of blob field class: in-fc-addr=%p, "
+		"out-fc-addr=%p", in_field_class, out_field_class);
+	/*
+	 * There is no content to copy. Keep this function call anyway for
+	 * logging purposes.
+	 */
+	BT_COMP_LOGD("Copied content of blob field class: in-fc-addr=%p, "
+		"out-fc-addr=%p", in_field_class, out_field_class);
+
+	return DEBUG_INFO_TRACE_IR_MAPPING_STATUS_OK;
+}
+
 static
 bt_field_class *copy_field_class_array_element(
 		struct trace_ir_metadata_maps *md_maps,
@@ -725,6 +743,29 @@ bt_field_class *create_field_class_copy_internal(
 		out_field_class = bt_field_class_array_static_create(
 			md_maps->output_trace_class,
 			out_elem_fc, array_len);
+		break;
+	}
+	case BT_FIELD_CLASS_TYPE_STATIC_BLOB:
+	{
+		out_field_class = bt_field_class_blob_static_create(
+			md_maps->output_trace_class,
+			bt_field_class_blob_static_get_length(in_field_class));
+		break;
+	}
+	case BT_FIELD_CLASS_TYPE_DYNAMIC_BLOB_WITHOUT_LENGTH_FIELD:
+	{
+		out_field_class =
+			bt_field_class_blob_dynamic_without_length_field_location_create(
+				md_maps->output_trace_class);
+		break;
+	}
+	case BT_FIELD_CLASS_TYPE_DYNAMIC_BLOB_WITH_LENGTH_FIELD:
+	{
+		out_field_class =
+			bt_field_class_blob_dynamic_with_length_field_location_create(
+				md_maps->output_trace_class,
+				bt_field_class_blob_dynamic_with_length_field_borrow_length_field_location_const(
+					in_field_class));
 		break;
 	}
 	default:
@@ -942,6 +983,10 @@ enum debug_info_trace_ir_mapping_status copy_field_class_content_internal(
 	} else if (bt_field_class_type_is(in_fc_type,
 			BT_FIELD_CLASS_TYPE_VARIANT)) {
 		status = field_class_variant_copy(md_maps,
+			in_field_class, out_field_class);
+	} else if (bt_field_class_type_is(in_fc_type,
+			BT_FIELD_CLASS_TYPE_BLOB)) {
+		status = field_class_blob_copy(md_maps,
 			in_field_class, out_field_class);
 	} else {
 		bt_common_abort();
