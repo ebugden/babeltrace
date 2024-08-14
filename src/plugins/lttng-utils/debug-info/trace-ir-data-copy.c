@@ -27,6 +27,7 @@ enum debug_info_trace_ir_mapping_status copy_trace_content(
 	enum debug_info_trace_ir_mapping_status status;
 	const char *trace_name;
 	uint64_t i, env_field_count;
+	uint64_t graph_mip_version = bt_self_component_get_graph_mip_version(self_comp);
 
 	BT_COMP_LOGD("Copying content of trace: in-t-addr=%p, out-t-addr=%p",
 			in_trace, out_trace);
@@ -46,6 +47,40 @@ enum debug_info_trace_ir_mapping_status copy_trace_content(
 		}
 	}
 
+	if (graph_mip_version == 1) {
+		/* Copy the trace namespace. */
+		const char *trace_namespace = bt_trace_get_namespace(in_trace);
+
+		if (trace_namespace) {
+			bt_trace_set_namespace_status set_namespace_status =
+				bt_trace_set_namespace(out_trace, trace_namespace);
+
+			if (set_namespace_status != BT_TRACE_SET_NAMESPACE_STATUS_OK) {
+				BT_COMP_LOGE_APPEND_CAUSE(self_comp, "Cannot set trace's "
+					"namespace: out-t-addr=%p, namespace=\"%s\"",
+					out_trace, trace_namespace);
+				status = (int) set_namespace_status;
+				goto end;
+			}
+		}
+
+		/* Copy the trace UID. */
+		const char *trace_uid = bt_trace_get_uid(in_trace);
+
+		if (trace_uid) {
+			bt_trace_set_uid_status set_uid_status =
+				bt_trace_set_uid(out_trace, trace_uid);
+
+			if (set_uid_status != BT_TRACE_SET_UID_STATUS_OK) {
+				BT_COMP_LOGE_APPEND_CAUSE(self_comp, "Cannot set trace's "
+					"uid: out-t-addr=%p, uid=\"%s\"",
+					out_trace, trace_uid);
+				status = (int) set_uid_status;
+				goto end;
+			}
+		}
+	}
+
 	/*
 	 * Safe to use the same value object because it's frozen at this
 	 * point.
@@ -54,8 +89,8 @@ enum debug_info_trace_ir_mapping_status copy_trace_content(
 		bt_trace_borrow_user_attributes_const(in_trace));
 
 	/*
-	 * Do not copy the trace UUID as the trace may be modified and should
-	 * no longer have the same UUID.
+	 * MIP 0 graphs: Do not copy the trace UUID as the trace may be
+	 * modified and should no longer have the same UUID.
 	 */
 
 	/*
