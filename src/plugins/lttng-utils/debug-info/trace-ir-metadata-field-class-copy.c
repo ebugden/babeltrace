@@ -889,51 +889,95 @@ bt_field_class *create_field_class_copy_internal(
 		}
 
 		if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITHOUT_SELECTOR_FIELD) {
-			out_field_class =
-				bt_field_class_option_without_selector_create(
-					md_maps->output_trace_class,
-					out_content_fc);
+			if (graph_mip_version == 0) {
+				out_field_class =
+					bt_field_class_option_without_selector_create(
+						md_maps->output_trace_class,
+						out_content_fc);
+			} else if (graph_mip_version == 1) {
+				out_field_class =
+					bt_field_class_option_without_selector_field_location_create(
+						md_maps->output_trace_class,
+						out_content_fc);
+			}
 		} else {
-			const bt_field_path *in_selector_fp =
-				bt_field_class_option_with_selector_field_borrow_selector_field_path_const(
-					in_field_class);
-			const bt_field_class *in_selector_fc;
-
-			BT_ASSERT(in_selector_fp);
-			in_selector_fc = resolve_field_path_to_field_class(
-				in_selector_fp, md_maps);
-			BT_ASSERT(in_selector_fc);
-			out_selector_fc = g_hash_table_lookup(
-				md_maps->field_class_map, in_selector_fc);
-			BT_ASSERT(out_selector_fc);
-
-			if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_BOOL_SELECTOR_FIELD) {
-				out_field_class =
-					bt_field_class_option_with_selector_field_bool_create(
-						md_maps->output_trace_class,
-						out_content_fc, out_selector_fc);
-			} else if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD) {
-				const bt_integer_range_set_unsigned *ranges =
-					bt_field_class_option_with_selector_field_integer_unsigned_borrow_selector_ranges_const(
+			if (graph_mip_version == 0) {
+				const bt_field_path *in_selector_fp =
+					bt_field_class_option_with_selector_field_borrow_selector_field_path_const(
 						in_field_class);
+				const bt_field_class *in_selector_fc;
 
-				BT_ASSERT(ranges);
-				out_field_class =
-					bt_field_class_option_with_selector_field_integer_unsigned_create(
-						md_maps->output_trace_class,
-						out_content_fc, out_selector_fc,
-						ranges);
-			} else if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_SIGNED_INTEGER_SELECTOR_FIELD) {
-				const bt_integer_range_set_signed *ranges =
-					bt_field_class_option_with_selector_field_integer_signed_borrow_selector_ranges_const(
+				BT_ASSERT(in_selector_fp);
+				in_selector_fc = resolve_field_path_to_field_class(
+					in_selector_fp, md_maps);
+				BT_ASSERT(in_selector_fc);
+				out_selector_fc = g_hash_table_lookup(
+					md_maps->field_class_map, in_selector_fc);
+				BT_ASSERT(out_selector_fc);
+
+				if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_BOOL_SELECTOR_FIELD) {
+					out_field_class =
+						bt_field_class_option_with_selector_field_bool_create(
+							md_maps->output_trace_class,
+							out_content_fc, out_selector_fc);
+				} else if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD) {
+					const bt_integer_range_set_unsigned *ranges =
+						bt_field_class_option_with_selector_field_integer_unsigned_borrow_selector_ranges_const(
+							in_field_class);
+
+					BT_ASSERT(ranges);
+					out_field_class =
+						bt_field_class_option_with_selector_field_integer_unsigned_create(
+							md_maps->output_trace_class,
+							out_content_fc, out_selector_fc,
+							ranges);
+				} else if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_SIGNED_INTEGER_SELECTOR_FIELD) {
+					const bt_integer_range_set_signed *ranges =
+						bt_field_class_option_with_selector_field_integer_signed_borrow_selector_ranges_const(
+							in_field_class);
+
+					BT_ASSERT(ranges);
+					out_field_class =
+						bt_field_class_option_with_selector_field_integer_signed_create(
+							md_maps->output_trace_class,
+							out_content_fc, out_selector_fc,
+							ranges);
+				}
+			} else if (graph_mip_version == 1) {
+				const bt_field_location *in_selector_field_location =
+					bt_field_class_option_with_selector_field_borrow_selector_field_location_const(
 						in_field_class);
+				BT_ASSERT(in_selector_field_location);
 
-				BT_ASSERT(ranges);
-				out_field_class =
-					bt_field_class_option_with_selector_field_integer_signed_create(
-						md_maps->output_trace_class,
-						out_content_fc, out_selector_fc,
-						ranges);
+				if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_BOOL_SELECTOR_FIELD) {
+					out_field_class =
+						bt_field_class_option_with_selector_field_location_bool_create(
+							md_maps->output_trace_class,
+							out_content_fc,
+							in_selector_field_location);
+				} else if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD) {
+					const bt_integer_range_set_unsigned *ranges =
+						bt_field_class_option_with_selector_field_integer_unsigned_borrow_selector_ranges_const(
+							in_field_class);
+					BT_ASSERT(ranges);
+
+					out_field_class =
+						bt_field_class_option_with_selector_field_location_integer_unsigned_create(
+							md_maps->output_trace_class,
+							out_content_fc, in_selector_field_location,
+							ranges);
+				} else if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_SIGNED_INTEGER_SELECTOR_FIELD) {
+					const bt_integer_range_set_signed *ranges =
+						bt_field_class_option_with_selector_field_integer_signed_borrow_selector_ranges_const(
+							in_field_class);
+					BT_ASSERT(ranges);
+
+					out_field_class =
+						bt_field_class_option_with_selector_field_location_integer_signed_create(
+							md_maps->output_trace_class,
+							out_content_fc, in_selector_field_location,
+							ranges);
+				}
 			}
 		}
 	} else if (bt_field_class_type_is(fc_type,
