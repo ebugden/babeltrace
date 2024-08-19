@@ -170,7 +170,7 @@ enum debug_info_trace_ir_mapping_status copy_clock_class_content(
 	if (clock_class_description) {
 		enum bt_clock_class_set_description_status set_desc_status =
 			bt_clock_class_set_description(out_clock_class, clock_class_description);
-		if (set_desc_status!= BT_CLOCK_CLASS_SET_DESCRIPTION_STATUS_OK) {
+		if (set_desc_status != BT_CLOCK_CLASS_SET_DESCRIPTION_STATUS_OK) {
 			BT_COMP_LOGE_APPEND_CAUSE(self_comp,
 				"Error setting clock class' description: "
 				"cc-addr=%p, cc-desc=%s", out_clock_class,

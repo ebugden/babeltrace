@@ -468,7 +468,7 @@ enum debug_info_trace_ir_mapping_status copy_field_content(
 				"out-var-f-addr=%p, out-opt-f-addr=%p",
 				out_field, out_option_field);
 			goto end;
-			}
+		}
 	} else if (bt_field_class_type_is(in_fc_type,
 			BT_FIELD_CLASS_TYPE_STATIC_BLOB)) {
 		const uint8_t *in_data = bt_field_blob_get_data_const(in_field);
