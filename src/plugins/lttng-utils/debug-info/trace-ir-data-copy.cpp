@@ -33,9 +33,9 @@ enum debug_info_trace_ir_mapping_status copy_trace_content(const bt_trace *in_tr
 
     BT_COMP_LOGD("Copying content of trace: in-t-addr=%p, out-t-addr=%p", in_trace, out_trace);
 
+    /* Copy the trace name. */
     trace_name = bt_trace_get_name(in_trace);
 
-    /* Copy the trace name. */
     if (trace_name) {
         bt_trace_set_name_status set_name_status = bt_trace_set_name(out_trace, trace_name);
         if (set_name_status != BT_TRACE_SET_NAME_STATUS_OK) {
@@ -124,6 +124,7 @@ enum debug_info_trace_ir_mapping_status copy_trace_content(const bt_trace *in_tr
         }
 
         if (set_env_status != BT_TRACE_SET_ENVIRONMENT_ENTRY_STATUS_OK) {
+            // Will this seg fault if the trace name is not defined? Il me semble que oui. I can check though.
             BT_COMP_LOGE_APPEND_CAUSE(self_comp,
                                       "Cannot copy trace's environment: "
                                       "out-t-addr=%p, name=\"%s\"",
@@ -285,6 +286,7 @@ enum debug_info_trace_ir_mapping_status copy_field_content(const bt_field *in_fi
 
     BT_COMP_LOGT("Copying content of field: in-f-addr=%p, out-f-addr=%p", in_field, out_field);
 
+    // TODO: Replace with switch? Does it not matter because it optimizes to a switch?
     if (in_fc_type == BT_FIELD_CLASS_TYPE_BOOL) {
         bt_field_bool_set_value(out_field, bt_field_bool_get_value(in_field));
     } else if (in_fc_type == BT_FIELD_CLASS_TYPE_BIT_ARRAY) {
@@ -438,11 +440,13 @@ enum debug_info_trace_ir_mapping_status copy_field_content(const bt_field *in_fi
 
         memcpy(out_data, in_data, bt_field_blob_get_length(in_field));
     } else if (bt_field_class_type_is(in_fc_type, BT_FIELD_CLASS_TYPE_DYNAMIC_BLOB)) {
+        // Do set the length in the blob creation instead? Doing it here matches more typical use.
         uint64_t in_length = bt_field_blob_get_length(in_field);
         enum bt_field_blob_dynamic_set_length_status set_length_status =
             bt_field_blob_dynamic_set_length(out_field, in_length);
 
         if (set_length_status != BT_FIELD_DYNAMIC_BLOB_SET_LENGTH_STATUS_OK) {
+            // TODO: Include the length in the error message?
             BT_COMP_LOGE_APPEND_CAUSE(self_comp,
                                       "Cannot set blob field length: "
                                       "out-blob-f-addr=%p",
