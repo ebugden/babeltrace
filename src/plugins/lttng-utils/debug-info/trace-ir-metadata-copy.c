@@ -193,6 +193,7 @@ enum debug_info_trace_ir_mapping_status copy_clock_class_content(
 			bt_clock_class_set_uuid(out_clock_class, uuid);
 		}
 	} else if (graph_mip_version == 1) {
+		// TODO: Make these bits into functions if I can
 		/* Copy clock class namespace. */
 		const char *namespace = bt_clock_class_get_namespace(in_clock_class);
 
@@ -235,6 +236,7 @@ enum debug_info_trace_ir_mapping_status copy_clock_class_content(
 		}
 	} else {
 		// TODO: Die violently. We should not be here
+		// Can I remove this and let an assertion catch it?
 	}
 
 	bt_clock_class_set_frequency(out_clock_class,

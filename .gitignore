@@ -7,6 +7,15 @@
 *.trs
 .deps
 .libs
+doc/*
+src/bindings/*
+src/plugins/ctf/common/metadata/*
+tests/lib/*
+tests/bitfield
+tests/ctf-writer
+tests/param-validation
+tests/plugins/flt.lttng-utils.debug-info/test_bin_info
+tests/plugins/flt.lttng-utils.debug-info/test_dwarf
 
 # Generated Autotools files
 .dirstamp

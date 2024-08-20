@@ -73,12 +73,15 @@ void MaIterateur::_next(bt2::ConstMessageArray& msgs)
                 .uid("le-uid")
                 .payloadFieldClass(
                     (*traceCls->createStructureFieldClass())
+                        /*.appendMember("unsigned-integer",
+                                      *traceCls->createUnsignedIntegerFieldClass())*/
                         .appendMember("static-blob",
                                       traceCls->createStaticBlobFieldClass(1)->mediaType(
                                           "application/vnd.rar"))
                         .appendMember(
                             "dynamic-blob-without-field-location",
                             *traceCls->createDynamicBlobWithoutLengthFieldLocationFieldClass())
+                        // Not sure what the following entry does... since it's not a blob. Commented for now
                         .appendMember("dynamic-blob-with-length-field-location-length",
                                       *traceCls->createUnsignedIntegerFieldClass())
                         .appendMember(
@@ -177,8 +180,10 @@ void MaIterateur::_next(bt2::ConstMessageArray& msgs)
                                     bt2::SignedIntegerRangeSet::create()->addRange(1, 1)))),
             *stream, 123);
         const auto payload = *eventMsg->event().payloadField();
+        //payload["unsigned-integer"]->asUnsignedInteger().value(1);
         payload["static-blob"]->asBlob().data()[0] = 0x11;
         payload["dynamic-blob-without-field-location"]->asDynamicBlob().length(1).data()[0] = 0x22;
+        // Not sure what the following entry does... since it's not a blob. Commented for now
         payload["dynamic-blob-with-length-field-location-length"]->asUnsignedInteger().value(1);
         payload["dynamic-blob-with-length-field-location"]->asDynamicBlob().length(1).data()[0] =
             0x33;
@@ -200,7 +205,9 @@ void MaIterateur::_next(bt2::ConstMessageArray& msgs)
             .field()
             ->asUnsignedInteger()
             .value(111);
+        // Not sure what the utility of the next entry is...
         payload["option-with-bool-selector-field-location-selector"]->asBool().value(1);
+        // Add test for without the selector field location?
         payload["option-with-bool-selector-field-location"]
             ->asOption()
             .hasField(true)
@@ -231,6 +238,7 @@ void MaIterateur::_next(bt2::ConstMessageArray& msgs)
             .selectedOptionField()
             .asUnsignedInteger()
             .value(444);
+        // How is this next guy a variant...?
         payload["variant-with-unsigned-integer-selector-field-location-selector"]
             ->asUnsignedInteger()
             .value(1);
@@ -240,6 +248,7 @@ void MaIterateur::_next(bt2::ConstMessageArray& msgs)
             .selectedOptionField()
             .asUnsignedInteger()
             .value(555);
+        // How is this next guy a variant?
         payload["variant-with-signed-integer-selector-field-location-selector"]
             ->asSignedInteger()
             .value(1);
@@ -271,7 +280,7 @@ int main()
     const auto snk = graph->addComponent(*detailsCompCls, "le-sink");
 
     /* For easy flipping between using the filter and not */
-    const bool runWithFilter = true;
+    const bool runWithFilter = false;
     if (runWithFilter) {
         const auto flt __attribute__((unused)) = graph->addComponent(*debugInfoCompCls, "le-filtre");
 

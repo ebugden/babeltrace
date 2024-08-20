@@ -176,6 +176,11 @@ enum debug_info_trace_ir_mapping_status field_class_bit_array_copy(
 			bt_field_class_bit_array_add_flag(out_field_class, flag_label,
 				flag_index_ranges);
 		if (add_flag_status != BT_FIELD_CLASS_BIT_ARRAY_ADD_FLAG_STATUS_OK) {
+			// TODO: Find a way to include the index_ranges in the error message?
+			// How do I add to the error log? Can I just use BT_COMP_LOGD?
+			/*BT_COMP_LOGE_APPEND_CAUSE(self_comp, "Cannot add bit array flag: "
+				"out-bit-f-addr=%p, label=\"%s\"",
+				out_field_class, label);*/
 			status = (int) add_flag_status;
 			goto end;
 		}
@@ -655,6 +660,7 @@ enum debug_info_trace_ir_mapping_status field_class_blob_copy(
 {
 	BT_COMP_LOGD("Copying content of blob field class: in-fc-addr=%p, "
 		"out-fc-addr=%p", in_field_class, out_field_class);
+	// TODO? Do I need to copy properties? I don't think so?
 	/*
 	 * There is no content to copy. Keep this function call anyway for
 	 * logging purposes.
@@ -665,6 +671,7 @@ enum debug_info_trace_ir_mapping_status field_class_blob_copy(
 	return DEBUG_INFO_TRACE_IR_MAPPING_STATUS_OK;
 }
 
+// Not sure about whether the function name here is appropriate...
 static
 bt_field_class *create_dynamic_array_copy(
 		struct trace_ir_metadata_maps *md_maps,
@@ -700,6 +707,7 @@ bt_field_class *create_dynamic_array_copy(
 			const bt_field_location *length_field_location =
 				bt_field_class_array_dynamic_with_length_field_borrow_length_field_location_const(
 					in_field_class);
+			// Any error checking with the field location to do here? Wondering because they do checks with the length in the previous code chunk
 			BT_ASSERT(length_field_location);
 
 			out_field_class =
@@ -820,6 +828,7 @@ bt_field_class *create_field_class_copy_internal(
 			out_elem_fc, array_len);
 		break;
 	}
+	// Do I need to check that the blob field classes are allowed under the MIP used? Or will the sink already have died if not?
 	case BT_FIELD_CLASS_TYPE_STATIC_BLOB:
 	{
 		out_field_class = bt_field_class_blob_static_create(
@@ -844,9 +853,11 @@ bt_field_class *create_field_class_copy_internal(
 		break;
 	}
 	default:
+		// TODO: Die right away if the type is not defined? No because there's stuff below. Why are there ifs below as well.??
 		break;
 	}
 
+	// Why is this type checking function used instead of the switch cases? (Like above?)
 	if (bt_field_class_type_is(fc_type,
 			BT_FIELD_CLASS_TYPE_DYNAMIC_ARRAY)) {
 		const bt_field_class *in_elem_fc =
@@ -944,6 +955,8 @@ bt_field_class *create_field_class_copy_internal(
 							ranges);
 				}
 			} else if (graph_mip_version == 1) {
+				// Should this be named the in_selector_field_location or the out_selector_field_location?
+				// My gut says `out`, but I can't justify why 
 				const bt_field_location *in_selector_field_location =
 					bt_field_class_option_with_selector_field_borrow_selector_field_location_const(
 						in_field_class);
@@ -1011,6 +1024,8 @@ bt_field_class *create_field_class_copy_internal(
 						md_maps->output_trace_class);
 			} else if (bt_field_class_type_is(fc_type,
 					BT_FIELD_CLASS_TYPE_VARIANT_WITH_SELECTOR_FIELD)) {
+				// Should this be named the in_selector_field_location or the out_selector_field_location?
+				// My gut says `out`, but I can't justify why 
 				const bt_field_location *in_selector_field_location =
 					bt_field_class_variant_with_selector_field_borrow_selector_field_location_const(
 						in_field_class);
@@ -1069,6 +1084,7 @@ enum debug_info_trace_ir_mapping_status copy_field_class_content_internal(
 	bt_field_class_set_user_attributes(out_field_class,
 		bt_field_class_borrow_user_attributes_const(in_field_class));
 
+	// TODO: Replace with switch statement?
 	if (in_fc_type == BT_FIELD_CLASS_TYPE_BOOL) {
 		status = field_class_bool_copy(md_maps,
 			in_field_class, out_field_class);
