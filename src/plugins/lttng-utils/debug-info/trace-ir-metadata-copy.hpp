@@ -13,7 +13,7 @@
 
 #include <babeltrace2/babeltrace.h>
 #include "common/macros.h"
-#include "trace-ir-mapping.h"
+#include "trace-ir-mapping.hpp"
 
 enum debug_info_trace_ir_mapping_status copy_trace_class_content(
 		struct trace_ir_maps *trace_ir_maps,

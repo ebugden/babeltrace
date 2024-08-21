@@ -27,10 +27,10 @@
 
 #include "common/common.h"
 
-#include "bin-info.h"
+#include "bin-info.hpp"
 #include "crc32.h"
-#include "dwarf.h"
-#include "utils.h"
+#include "dwarf.hpp"
+#include "utils.hpp"
 
 /*
  * An address printed in hex is at most 20 bytes (16 for 64-bits +
@@ -216,7 +216,7 @@ int is_build_id_note_section(Elf_Data *note_data)
 	}
 
 	/* Check the note name. */
-	if (memcmp(note_data->d_buf + name_offset, BUILD_ID_NOTE_NAME,
+	if (memcmp(static_cast<char *>(note_data->d_buf) + name_offset, BUILD_ID_NOTE_NAME,
 			note_header.n_namesz) != 0) {
 		goto invalid;
 	}
@@ -258,7 +258,7 @@ int is_build_id_note_section_matching(Elf_Data *note_data,
 	/*
 	 * Compare the binary build id with the supplied build id.
 	 */
-	if (memcmp(build_id, note_data->d_buf + desc_offset,
+	if (memcmp(build_id, static_cast<char *>(note_data->d_buf) + desc_offset,
 			build_id_len) == 0) {
 		return 1;
 	}

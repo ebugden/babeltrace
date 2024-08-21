@@ -20,7 +20,7 @@
 
 #include "common/macros.h"
 #include "common/assert.h"
-#include <lttng-utils/debug-info/bin-info.h>
+#include <lttng-utils/debug-info/bin-info.hpp>
 
 #include "tap/tap.h"
 

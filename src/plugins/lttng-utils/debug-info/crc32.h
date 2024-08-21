@@ -12,6 +12,10 @@
 #include <unistd.h>
 #include "common/macros.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Compute a 32-bit cyclic redundancy checksum for a given file.
  *
@@ -23,5 +27,9 @@
  * @returns	0 on success, -1 on failure.
  */
 int crc32(int fd, uint32_t *crc);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_CRC32_H */
