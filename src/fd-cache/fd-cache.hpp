@@ -9,6 +9,8 @@
 #ifndef BABELTRACE_FD_CACHE_FD_CACHE_H
 #define BABELTRACE_FD_CACHE_FD_CACHE_H
 
+#include <glib.h>
+
 #include "common/macros.h"
 
 struct bt_fd_cache_handle {
