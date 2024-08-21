@@ -15,7 +15,7 @@
 #include <gelf.h>
 #include <elfutils/libdw.h>
 #include "common/macros.h"
-#include "fd-cache/fd-cache.h"
+#include "fd-cache/fd-cache.hpp"
 
 #define DEFAULT_DEBUG_DIR "/usr/lib/debug"
 #define DEBUG_SUBDIR ".debug"

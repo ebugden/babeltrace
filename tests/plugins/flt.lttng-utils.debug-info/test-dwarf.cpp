@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
-#include <lttng-utils/debug-info/dwarf.h>
+#include <lttng-utils/debug-info/dwarf.hpp>
 #include "tap/tap.h"
 
 #define NR_TESTS 17
