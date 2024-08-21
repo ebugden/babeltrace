@@ -25,10 +25,18 @@ Makefile
 Makefile.in
 stamp-h1
 
+# Generated documentation files
+doc/api/libbabeltrace2/Doxyfile
+doc/man/*.1
+doc/man/*.7
+doc/man/asciidoc-attrs.conf
+
 # Generated Python files
 *.egg-info
 __pycache__
 /src/bindings/python/bt2/dist
+/src/bindings/python/bt2/setup.py
+/src/bindings/python/bt2/bt2/version.py
 
 # Generated pkg-config files
 /src/babeltrace2-ctf-writer.pc
