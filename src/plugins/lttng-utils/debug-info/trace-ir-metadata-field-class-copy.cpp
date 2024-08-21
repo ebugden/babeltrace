@@ -684,6 +684,100 @@ static bt_field_class *create_field_class_dynamic_array_copy(struct trace_ir_met
     return out_field_class;
 }
 
+static bt_field_class *create_field_class_option_copy_mip_0(struct trace_ir_metadata_maps *md_maps,
+                                                            const bt_field_class *in_field_class,
+                                                            bt_field_class *out_content_fc)
+{
+    bt_field_class *out_field_class = nullptr;
+    bt_field_class_type fc_type = bt_field_class_get_type(in_field_class);
+
+    if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITHOUT_SELECTOR_FIELD) {
+        out_field_class = bt_field_class_option_without_selector_create(md_maps->output_trace_class,
+                                                                        out_content_fc);
+    } else {
+        const bt_field_path *in_selector_fp =
+            bt_field_class_option_with_selector_field_borrow_selector_field_path_const(
+                in_field_class);
+        const bt_field_class *in_selector_fc;
+        bt_field_class *out_selector_fc = nullptr;
+
+        BT_ASSERT(in_selector_fp);
+        in_selector_fc = resolve_field_path_to_field_class(in_selector_fp, md_maps);
+        BT_ASSERT(in_selector_fc);
+        out_selector_fc = static_cast<bt_field_class *>(
+            g_hash_table_lookup(md_maps->field_class_map, in_selector_fc));
+        BT_ASSERT(out_selector_fc);
+
+        if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_BOOL_SELECTOR_FIELD) {
+            out_field_class = bt_field_class_option_with_selector_field_bool_create(
+                md_maps->output_trace_class, out_content_fc, out_selector_fc);
+        } else if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD) {
+            const bt_integer_range_set_unsigned *ranges =
+                bt_field_class_option_with_selector_field_integer_unsigned_borrow_selector_ranges_const(
+                    in_field_class);
+
+            BT_ASSERT(ranges);
+            out_field_class = bt_field_class_option_with_selector_field_integer_unsigned_create(
+                md_maps->output_trace_class, out_content_fc, out_selector_fc, ranges);
+        } else if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_SIGNED_INTEGER_SELECTOR_FIELD) {
+            const bt_integer_range_set_signed *ranges =
+                bt_field_class_option_with_selector_field_integer_signed_borrow_selector_ranges_const(
+                    in_field_class);
+
+            BT_ASSERT(ranges);
+            out_field_class = bt_field_class_option_with_selector_field_integer_signed_create(
+                md_maps->output_trace_class, out_content_fc, out_selector_fc, ranges);
+        }
+    }
+
+    return out_field_class;
+}
+
+static bt_field_class *create_field_class_option_copy_mip_1(struct trace_ir_metadata_maps *md_maps,
+                                                            const bt_field_class *in_field_class,
+                                                            bt_field_class *out_content_fc)
+{
+    bt_field_class *out_field_class = nullptr;
+    bt_field_class_type fc_type = bt_field_class_get_type(in_field_class);
+
+    if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITHOUT_SELECTOR_FIELD) {
+        out_field_class = bt_field_class_option_without_selector_field_location_create(
+            md_maps->output_trace_class, out_content_fc);
+    } else {
+        const bt_field_location *in_selector_field_location =
+            bt_field_class_option_with_selector_field_borrow_selector_field_location_const(
+                in_field_class);
+        BT_ASSERT(in_selector_field_location);
+
+        if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_BOOL_SELECTOR_FIELD) {
+            out_field_class = bt_field_class_option_with_selector_field_location_bool_create(
+                md_maps->output_trace_class, out_content_fc, in_selector_field_location);
+        } else if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD) {
+            const bt_integer_range_set_unsigned *ranges =
+                bt_field_class_option_with_selector_field_integer_unsigned_borrow_selector_ranges_const(
+                    in_field_class);
+            BT_ASSERT(ranges);
+
+            out_field_class =
+                bt_field_class_option_with_selector_field_location_integer_unsigned_create(
+                    md_maps->output_trace_class, out_content_fc, in_selector_field_location,
+                    ranges);
+        } else if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_SIGNED_INTEGER_SELECTOR_FIELD) {
+            const bt_integer_range_set_signed *ranges =
+                bt_field_class_option_with_selector_field_integer_signed_borrow_selector_ranges_const(
+                    in_field_class);
+            BT_ASSERT(ranges);
+
+            out_field_class =
+                bt_field_class_option_with_selector_field_location_integer_signed_create(
+                    md_maps->output_trace_class, out_content_fc, in_selector_field_location,
+                    ranges);
+        }
+    }
+
+    return out_field_class;
+}
+
 static bt_field_class *copy_field_class_array_element(struct trace_ir_metadata_maps *md_maps,
                                                       const bt_field_class *in_elem_fc)
 {
@@ -811,7 +905,6 @@ bt_field_class *create_field_class_copy_internal(struct trace_ir_metadata_maps *
     } else if (bt_field_class_type_is(fc_type, BT_FIELD_CLASS_TYPE_OPTION)) {
         const bt_field_class *in_content_fc =
             bt_field_class_option_borrow_field_class_const(in_field_class);
-        bt_field_class *out_selector_fc = NULL;
         bt_field_class *out_content_fc;
 
         out_content_fc = create_field_class_copy_internal(md_maps, in_content_fc);
@@ -833,42 +926,12 @@ bt_field_class *create_field_class_copy_internal(struct trace_ir_metadata_maps *
             goto error;
         }
 
-        if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITHOUT_SELECTOR_FIELD) {
-            out_field_class = bt_field_class_option_without_selector_create(
-                md_maps->output_trace_class, out_content_fc);
-        } else {
-            const bt_field_path *in_selector_fp =
-                bt_field_class_option_with_selector_field_borrow_selector_field_path_const(
-                    in_field_class);
-            const bt_field_class *in_selector_fc;
-
-            BT_ASSERT(in_selector_fp);
-            in_selector_fc = resolve_field_path_to_field_class(in_selector_fp, md_maps);
-            BT_ASSERT(in_selector_fc);
-            out_selector_fc = static_cast<bt_field_class *>(
-                g_hash_table_lookup(md_maps->field_class_map, in_selector_fc));
-            BT_ASSERT(out_selector_fc);
-
-            if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_BOOL_SELECTOR_FIELD) {
-                out_field_class = bt_field_class_option_with_selector_field_bool_create(
-                    md_maps->output_trace_class, out_content_fc, out_selector_fc);
-            } else if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD) {
-                const bt_integer_range_set_unsigned *ranges =
-                    bt_field_class_option_with_selector_field_integer_unsigned_borrow_selector_ranges_const(
-                        in_field_class);
-
-                BT_ASSERT(ranges);
-                out_field_class = bt_field_class_option_with_selector_field_integer_unsigned_create(
-                    md_maps->output_trace_class, out_content_fc, out_selector_fc, ranges);
-            } else if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_SIGNED_INTEGER_SELECTOR_FIELD) {
-                const bt_integer_range_set_signed *ranges =
-                    bt_field_class_option_with_selector_field_integer_signed_borrow_selector_ranges_const(
-                        in_field_class);
-
-                BT_ASSERT(ranges);
-                out_field_class = bt_field_class_option_with_selector_field_integer_signed_create(
-                    md_maps->output_trace_class, out_content_fc, out_selector_fc, ranges);
-            }
+        if (graph_mip_version == 0) {
+            out_field_class =
+                create_field_class_option_copy_mip_0(md_maps, in_field_class, out_content_fc);
+        } else if (graph_mip_version == 1) {
+            out_field_class =
+                create_field_class_option_copy_mip_1(md_maps, in_field_class, out_content_fc);
         }
     } else if (bt_field_class_type_is(fc_type, BT_FIELD_CLASS_TYPE_VARIANT)) {
         bt_field_class *out_sel_fc = nullptr;
