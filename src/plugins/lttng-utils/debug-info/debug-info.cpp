@@ -10,6 +10,7 @@
  * Babeltrace - Debug Information State Tracker
  */
 
+#include <babeltrace2/babeltrace.h>
 #define BT_COMP_LOG_SELF_COMP self_comp
 #define BT_LOG_OUTPUT_LEVEL log_level
 #define BT_LOG_TAG "PLUGIN/FLT.LTTNG-UTILS.DEBUG-INFO"
@@ -21,14 +22,14 @@
 
 #include "common/assert.h"
 #include "common/common.h"
-#include "fd-cache/fd-cache.h"
+#include "fd-cache/fd-cache.hpp"
 
-#include "bin-info.h"
-#include "debug-info.h"
-#include "trace-ir-data-copy.h"
-#include "trace-ir-mapping.h"
-#include "trace-ir-metadata-copy.h"
-#include "utils.h"
+#include "bin-info.hpp"
+#include "debug-info.hpp"
+#include "trace-ir-data-copy.hpp"
+#include "trace-ir-mapping.hpp"
+#include "trace-ir-metadata-copy.hpp"
+#include "utils.hpp"
 #include "plugins/common/param-validation/param-validation.h"
 
 #define DEFAULT_DEBUG_INFO_FIELD_NAME	"debug_info"
@@ -185,7 +186,7 @@ struct debug_info_source *debug_info_source_create_from_bin(
 
 	if (src_loc) {
 		debug_info_src->line_no =
-			g_strdup_printf("%"PRId64, src_loc->line_no);
+			g_strdup_printf("%" PRId64, src_loc->line_no);
 		if (!debug_info_src->line_no) {
 			BT_COMP_LOGE_APPEND_CAUSE(self_comp,
 				"Error occurred when setting `line_no` field.");
@@ -292,7 +293,7 @@ struct proc_debug_info_sources *proc_debug_info_sources_ht_get_entry(
 	*((int64_t *) key) = vpid;
 
 	/* Exists? Return it */
-	proc_dbg_info_src = g_hash_table_lookup(ht, key);
+	proc_dbg_info_src = static_cast<proc_debug_info_sources *>(g_hash_table_lookup(ht, key));
 	if (proc_dbg_info_src) {
 		goto end;
 	}
@@ -443,8 +444,8 @@ struct debug_info_source *proc_debug_info_sources_get_entry(
 	*((uint64_t *) key) = ip;
 
 	/* Look in IP to debug infos hash table first. */
-	debug_info_src = g_hash_table_lookup(
-		proc_dbg_info_src->ip_to_debug_info_src, key);
+	debug_info_src = static_cast<debug_info_source *>(g_hash_table_lookup(
+		proc_dbg_info_src->ip_to_debug_info_src, key));
 	if (debug_info_src) {
 		goto end;
 	}
@@ -454,9 +455,9 @@ struct debug_info_source *proc_debug_info_sources_get_entry(
 
 	while (g_hash_table_iter_next(&iter, &baddr, &value))
 	{
-		struct bin_info *bin = value;
+		struct bin_info *bin = static_cast<bin_info *>(value);
 
-		if (!bin_info_has_address(value, ip)) {
+		if (!bin_info_has_address(bin, ip)) {
 			continue;
 		}
 
@@ -597,8 +598,8 @@ void handle_event_statedump_build_id(struct debug_info *debug_info,
 		goto end;
 	}
 
-	bin = g_hash_table_lookup(proc_dbg_info_src->baddr_to_bin_info,
-		(gpointer) &baddr);
+	bin = static_cast<bin_info *>(g_hash_table_lookup(proc_dbg_info_src->baddr_to_bin_info,
+		(gpointer) &baddr));
 	if (!bin) {
 		/*
 		 * The build_id event comes after the bin has been
@@ -666,8 +667,8 @@ void handle_event_statedump_debug_link(struct debug_info *debug_info,
 		goto end;
 	}
 
-	bin = g_hash_table_lookup(proc_dbg_info_src->baddr_to_bin_info,
-		(gpointer) &baddr);
+	bin = static_cast<bin_info *>(g_hash_table_lookup(proc_dbg_info_src->baddr_to_bin_info,
+		(gpointer) &baddr));
 	if (!bin) {
 		/*
 		 * The debug_link event comes after the bin has been
@@ -743,7 +744,7 @@ void handle_bin_info_event(struct debug_info *debug_info,
 
 	*((uint64_t *) key) = baddr;
 
-	bin = g_hash_table_lookup(proc_dbg_info_src->baddr_to_bin_info, key);
+	bin = static_cast<bin_info *>(g_hash_table_lookup(proc_dbg_info_src->baddr_to_bin_info, key));
 	if (bin) {
 		goto end;
 	}
@@ -837,7 +838,7 @@ end:
 static
 void trace_debug_info_remove_func(const bt_trace *in_trace, void *data)
 {
-	struct debug_info_msg_iter *debug_it = data;
+	struct debug_info_msg_iter *debug_it = static_cast<debug_info_msg_iter *>(data);
 	if (debug_it->debug_info_map) {
 		gboolean ret;
 		ret = g_hash_table_remove(debug_it->debug_info_map,
@@ -866,7 +867,7 @@ void handle_event_statedump(struct debug_info_msg_iter *debug_it,
 	trace = bt_stream_borrow_trace_const(
 		bt_event_borrow_stream_const(event));
 
-	debug_info = g_hash_table_lookup(debug_it->debug_info_map, trace);
+	debug_info = static_cast<struct debug_info *>(g_hash_table_lookup(debug_it->debug_info_map, trace));
 	if (!debug_info) {
 		bt_trace_add_listener_status add_listener_status;
 
@@ -1179,9 +1180,9 @@ void fill_debug_info_event_if_needed(struct debug_info_msg_iter *debug_it,
 	 * Borrow the debug_info structure needed for the source
 	 * resolving.
 	 */
-	debug_info = g_hash_table_lookup(debug_it->debug_info_map,
+	debug_info = static_cast<struct debug_info *>(g_hash_table_lookup(debug_it->debug_info_map,
 		bt_stream_borrow_trace_const(
-			bt_event_borrow_stream_const(in_event)));
+			bt_event_borrow_stream_const(in_event))));
 
 	if (debug_info) {
 		/*
@@ -1681,10 +1682,10 @@ const bt_message *handle_message(struct debug_info_msg_iter *debug_it,
 
 static
 struct bt_param_validation_map_value_entry_descr debug_info_params[] = {
-	{ "debug-info-field-name", BT_PARAM_VALIDATION_MAP_VALUE_ENTRY_OPTIONAL, { .type = BT_VALUE_TYPE_STRING } },
-	{ "debug-info-dir", BT_PARAM_VALIDATION_MAP_VALUE_ENTRY_OPTIONAL, { .type = BT_VALUE_TYPE_STRING } },
-	{ "target-prefix", BT_PARAM_VALIDATION_MAP_VALUE_ENTRY_OPTIONAL, { .type = BT_VALUE_TYPE_STRING } },
-	{ "full-path", BT_PARAM_VALIDATION_MAP_VALUE_ENTRY_OPTIONAL, { .type = BT_VALUE_TYPE_BOOL } },
+	{ "debug-info-field-name", BT_PARAM_VALIDATION_MAP_VALUE_ENTRY_OPTIONAL, bt_param_validation_value_descr::makeString() },
+	{ "debug-info-dir", BT_PARAM_VALIDATION_MAP_VALUE_ENTRY_OPTIONAL, bt_param_validation_value_descr::makeString() },
+	{ "target-prefix", BT_PARAM_VALIDATION_MAP_VALUE_ENTRY_OPTIONAL, bt_param_validation_value_descr::makeString() },
+	{ "full-path", BT_PARAM_VALIDATION_MAP_VALUE_ENTRY_OPTIONAL, bt_param_validation_value_descr::makeBool() },
 	BT_PARAM_VALIDATION_MAP_VALUE_ENTRY_END
 };
 
@@ -1787,14 +1788,14 @@ bt_component_class_initialize_method_status debug_info_comp_init(
 	add_port_status = bt_self_component_filter_add_input_port(
 		self_comp_flt, "in", NULL, NULL);
 	if (add_port_status != BT_SELF_COMPONENT_ADD_PORT_STATUS_OK) {
-		status = (int) add_port_status;
+		status = static_cast<bt_component_class_initialize_method_status>(add_port_status);
 		goto error;
 	}
 
 	add_port_status = bt_self_component_filter_add_output_port(
 			self_comp_flt, "out", NULL, NULL);
 	if (add_port_status != BT_SELF_COMPONENT_ADD_PORT_STATUS_OK) {
-		status = (int) add_port_status;
+		status = static_cast<bt_component_class_initialize_method_status>(add_port_status);
 		goto error;
 	}
 
@@ -1823,9 +1824,9 @@ end:
 void debug_info_comp_finalize(bt_self_component_filter *self_comp_flt)
 {
 	struct debug_info_component *debug_info =
-		bt_self_component_get_data(
+		static_cast<debug_info_component *>(bt_self_component_get_data(
 			bt_self_component_filter_as_self_component(
-				self_comp_flt));
+				self_comp_flt)));
 	bt_logging_level log_level = debug_info->log_level;
 	bt_self_component *self_comp = debug_info->self_comp;
 
@@ -1855,10 +1856,10 @@ bt_message_iterator_class_next_method_status debug_info_msg_iter_next(
 	self_comp = bt_self_message_iterator_borrow_component(self_msg_iter);
 	BT_ASSERT_DBG(self_comp);
 
-	debug_info = bt_self_component_get_data(self_comp);
+	debug_info = static_cast<debug_info_component *>(bt_self_component_get_data(self_comp));
 	BT_ASSERT_DBG(debug_info);
 
-	debug_info_msg_iter = bt_self_message_iterator_get_data(self_msg_iter);
+	debug_info_msg_iter = static_cast<struct debug_info_msg_iter *>(bt_self_message_iterator_get_data(self_msg_iter));
 	BT_ASSERT_DBG(debug_info_msg_iter);
 
 	upstream_iterator = debug_info_msg_iter->msg_iter;
@@ -1874,7 +1875,7 @@ bt_message_iterator_class_next_method_status debug_info_msg_iter_next(
 		 * Convert the upstream message iterator status to a
 		 * self status.
 		 */
-		status = (int) upstream_iterator_ret_status;
+		status = static_cast<bt_message_iterator_class_next_method_status>(upstream_iterator_ret_status);
 		goto end;
 	}
 
@@ -1979,7 +1980,7 @@ bt_message_iterator_class_initialize_method_status debug_info_msg_iter_init(
 	debug_info_msg_iter->self_comp = self_comp;
 
 	debug_info_msg_iter->debug_info_component =
-		bt_self_component_get_data(self_comp);
+		static_cast<debug_info_component *>(bt_self_component_get_data(self_comp));
 
 	/* Borrow the upstream input port. */
 	input_port = bt_self_component_filter_borrow_input_port_by_name(
@@ -1994,7 +1995,7 @@ bt_message_iterator_class_initialize_method_status debug_info_msg_iter_init(
 	msg_iter_status = bt_message_iterator_create_from_message_iterator(
 		self_msg_iter, input_port, &upstream_iterator);
 	if (msg_iter_status != BT_MESSAGE_ITERATOR_CREATE_FROM_MESSAGE_ITERATOR_STATUS_OK) {
-		status = (int) msg_iter_status;
+		status = static_cast<bt_message_iterator_class_initialize_method_status>(msg_iter_status);
 		goto error;
 	}
 
@@ -2048,18 +2049,18 @@ debug_info_msg_iter_can_seek_beginning(bt_self_message_iterator *self_msg_iter,
 		bt_bool *can_seek)
 {
 	struct debug_info_msg_iter *debug_info_msg_iter =
-		bt_self_message_iterator_get_data(self_msg_iter);
+		static_cast<struct debug_info_msg_iter *>(bt_self_message_iterator_get_data(self_msg_iter));
 	BT_ASSERT(debug_info_msg_iter);
 
-	return (int) bt_message_iterator_can_seek_beginning(
-		debug_info_msg_iter->msg_iter, can_seek);
+	return static_cast<bt_message_iterator_class_can_seek_beginning_method_status>(bt_message_iterator_can_seek_beginning(
+		debug_info_msg_iter->msg_iter, can_seek));
 }
 
 bt_message_iterator_class_seek_beginning_method_status
 debug_info_msg_iter_seek_beginning(bt_self_message_iterator *self_msg_iter)
 {
 	struct debug_info_msg_iter *debug_info_msg_iter =
-		bt_self_message_iterator_get_data(self_msg_iter);
+		static_cast<struct debug_info_msg_iter *>(bt_self_message_iterator_get_data(self_msg_iter));
 	bt_message_iterator_class_seek_beginning_method_status status =
 		BT_MESSAGE_ITERATOR_CLASS_SEEK_BEGINNING_METHOD_STATUS_OK;
 	bt_message_iterator_seek_beginning_status seek_beg_status;
@@ -2070,7 +2071,7 @@ debug_info_msg_iter_seek_beginning(bt_self_message_iterator *self_msg_iter)
 	seek_beg_status = bt_message_iterator_seek_beginning(
 		debug_info_msg_iter->msg_iter);
 	if (seek_beg_status != BT_MESSAGE_ITERATOR_SEEK_BEGINNING_STATUS_OK) {
-		status = (int) seek_beg_status;
+		status = static_cast<bt_message_iterator_class_seek_beginning_method_status>(seek_beg_status);
 		goto end;
 	}
 
@@ -2086,7 +2087,7 @@ void debug_info_msg_iter_finalize(bt_self_message_iterator *it)
 {
 	struct debug_info_msg_iter *debug_info_msg_iter;
 
-	debug_info_msg_iter = bt_self_message_iterator_get_data(it);
+	debug_info_msg_iter = static_cast<struct debug_info_msg_iter *>(bt_self_message_iterator_get_data(it));
 	BT_ASSERT(debug_info_msg_iter);
 
 	debug_info_msg_iter_destroy(debug_info_msg_iter);

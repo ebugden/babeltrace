@@ -7,6 +7,7 @@
  * Babeltrace - Trace IR data object copy
  */
 
+#include "plugins/lttng-utils/debug-info/trace-ir-mapping.hpp"
 #define BT_COMP_LOG_SELF_COMP self_comp
 #define BT_LOG_OUTPUT_LEVEL log_level
 #define BT_LOG_TAG "PLUGIN/FLT.LTTNG-UTILS.DEBUG-INFO/TRACE-IR-DATA-COPY"
@@ -18,7 +19,7 @@
 #include "common/assert.h"
 #include "common/common.h"
 
-#include "trace-ir-data-copy.h"
+#include "trace-ir-data-copy.hpp"
 
 enum debug_info_trace_ir_mapping_status copy_trace_content(
 		const bt_trace *in_trace, bt_trace *out_trace,
@@ -41,7 +42,7 @@ enum debug_info_trace_ir_mapping_status copy_trace_content(
 			BT_COMP_LOGE_APPEND_CAUSE(self_comp, "Cannot set trace's name: "
 				"out-t-addr=%p, name=\"%s\"", out_trace,
 				trace_name);
-			status = (int) set_name_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(set_name_status);
 			goto end;
 		}
 	}
@@ -94,7 +95,7 @@ enum debug_info_trace_ir_mapping_status copy_trace_content(
 			BT_COMP_LOGE_APPEND_CAUSE(self_comp, "Cannot copy trace's environment: "
 				"out-t-addr=%p, name=\"%s\"",
 				out_trace, trace_name);
-			status = (int) set_env_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(set_env_status);
 			goto end;
 		}
 	}
@@ -126,7 +127,7 @@ enum debug_info_trace_ir_mapping_status copy_stream_content(
 			BT_COMP_LOGE_APPEND_CAUSE(self_comp, "Cannot set stream's name: "
 				"stream-addr=%p, name=\"%s\"", out_stream,
 				stream_name);
-			status = (int) set_name_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(set_name_status);
 			goto end;
 		}
 	}
@@ -288,7 +289,7 @@ enum debug_info_trace_ir_mapping_status copy_field_content(
 			BT_COMP_LOGE_APPEND_CAUSE(self_comp, "Cannot set string field's value: "
 				"out-str-f-addr=%p, str=\"%s\"" PRId64,
 				out_field, str);
-			status = (int) set_value_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(set_value_status);
 			goto end;
 		}
 	} else if (in_fc_type == BT_FIELD_CLASS_TYPE_STRUCTURE) {
@@ -354,7 +355,7 @@ enum debug_info_trace_ir_mapping_status copy_field_content(
 					"Cannot set dynamic array field's length field: "
 					"out-arr-f-addr=%p, arr-length=%" PRIu64,
 					out_field, array_len);
-				status = (int) set_len_status;
+				status = static_cast<debug_info_trace_ir_mapping_status>(set_len_status);
 				goto end;
 			}
 		}
@@ -418,7 +419,7 @@ enum debug_info_trace_ir_mapping_status copy_field_content(
 				"Cannot select variant field's option field: "
 				"out-var-f-addr=%p, opt-index=%" PRId64,
 				out_field, in_selected_option_idx);
-			status = (int) sel_opt_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(sel_opt_status);
 			goto end;
 		}
 

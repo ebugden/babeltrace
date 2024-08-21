@@ -31,7 +31,7 @@ test_dwarf_LDADD = \
 	$(top_builddir)/src/common/libcommon.la \
 	$(ELFUTILS_LIBS) \
 	$(LIBTAP)
-test_dwarf_SOURCES = test-dwarf.c
+test_dwarf_SOURCES = test-dwarf.cpp
 
 test_bin_info_LDADD = \
 	$(top_builddir)/src/plugins/lttng-utils/debug-info/libdebug-info.la \
@@ -41,7 +41,7 @@ test_bin_info_LDADD = \
 	$(top_builddir)/src/lib/libbabeltrace2.la \
 	$(ELFUTILS_LIBS) \
 	$(LIBTAP)
-test_bin_info_SOURCES = test-bin-info.c
+test_bin_info_SOURCES = test-bin-info.cpp
 nodist_EXTRA_test_bin_info_SOURCES = dummy.cpp
 
 endif # ENABLE_DEBUG_INFO

@@ -241,8 +241,8 @@ ctfser_libctfser_la_SOURCES = \
 	ctfser/ctfser.h
 
 fd_cache_libfd_cache_la_SOURCES = \
-	fd-cache/fd-cache.c \
-	fd-cache/fd-cache.h
+	fd-cache/fd-cache.cpp \
+	fd-cache/fd-cache.hpp
 
 logging_liblogging_la_SOURCES = \
 	logging/comp-logging.h \
@@ -379,24 +379,24 @@ if ENABLE_DEBUG_INFO
 noinst_LTLIBRARIES += plugins/lttng-utils/debug-info/libdebug-info.la
 
 plugins_lttng_utils_debug_info_libdebug_info_la_SOURCES = \
-	plugins/lttng-utils/debug-info/bin-info.c \
-	plugins/lttng-utils/debug-info/bin-info.h \
+	plugins/lttng-utils/debug-info/bin-info.cpp \
+	plugins/lttng-utils/debug-info/bin-info.hpp \
 	plugins/lttng-utils/debug-info/crc32.c \
 	plugins/lttng-utils/debug-info/crc32.h \
-	plugins/lttng-utils/debug-info/debug-info.c \
-	plugins/lttng-utils/debug-info/debug-info.h \
-	plugins/lttng-utils/debug-info/dwarf.c \
-	plugins/lttng-utils/debug-info/dwarf.h \
-	plugins/lttng-utils/debug-info/trace-ir-data-copy.c \
-	plugins/lttng-utils/debug-info/trace-ir-data-copy.h \
-	plugins/lttng-utils/debug-info/trace-ir-mapping.c \
-	plugins/lttng-utils/debug-info/trace-ir-mapping.h \
-	plugins/lttng-utils/debug-info/trace-ir-metadata-copy.c \
-	plugins/lttng-utils/debug-info/trace-ir-metadata-copy.h \
-	plugins/lttng-utils/debug-info/trace-ir-metadata-field-class-copy.c \
-	plugins/lttng-utils/debug-info/trace-ir-metadata-field-class-copy.h \
-	plugins/lttng-utils/debug-info/utils.c \
-	plugins/lttng-utils/debug-info/utils.h
+	plugins/lttng-utils/debug-info/debug-info.cpp \
+	plugins/lttng-utils/debug-info/debug-info.hpp \
+	plugins/lttng-utils/debug-info/dwarf.cpp \
+	plugins/lttng-utils/debug-info/dwarf.hpp \
+	plugins/lttng-utils/debug-info/trace-ir-data-copy.cpp \
+	plugins/lttng-utils/debug-info/trace-ir-data-copy.hpp \
+	plugins/lttng-utils/debug-info/trace-ir-mapping.cpp \
+	plugins/lttng-utils/debug-info/trace-ir-mapping.hpp \
+	plugins/lttng-utils/debug-info/trace-ir-metadata-copy.cpp \
+	plugins/lttng-utils/debug-info/trace-ir-metadata-copy.hpp \
+	plugins/lttng-utils/debug-info/trace-ir-metadata-field-class-copy.cpp \
+	plugins/lttng-utils/debug-info/trace-ir-metadata-field-class-copy.hpp \
+	plugins/lttng-utils/debug-info/utils.cpp \
+	plugins/lttng-utils/debug-info/utils.hpp
 
 plugins_lttng_utils_debug_info_libdebug_info_la_LIBADD = \
 	fd-cache/libfd-cache.la
