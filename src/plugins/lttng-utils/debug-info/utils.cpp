@@ -6,13 +6,15 @@
  * Babeltrace - Debug info utilities
  */
 
+/* clang-format off */
+
 #include <stdbool.h>
 #include <string.h>
 
 #include <babeltrace2/babeltrace.h>
 
-#include "debug-info.h"
-#include "utils.h"
+#include "debug-info.hpp"
+#include "utils.hpp"
 
 const char *get_filename_from_path(const char *path)
 {

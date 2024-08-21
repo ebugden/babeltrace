@@ -6,8 +6,10 @@
  * Babeltrace - File descriptor cache
  */
 
-#ifndef BABELTRACE_FD_CACHE_FD_CACHE_H
-#define BABELTRACE_FD_CACHE_FD_CACHE_H
+/* clang-format off */
+
+#ifndef BABELTRACE_FD_CACHE_FD_CACHE_HPP
+#define BABELTRACE_FD_CACHE_FD_CACHE_HPP
 
 #include <glib.h>
 
@@ -36,4 +38,4 @@ struct bt_fd_cache_handle *bt_fd_cache_get_handle(struct bt_fd_cache *fdc,
 void bt_fd_cache_put_handle(struct bt_fd_cache *fdc,
 		struct bt_fd_cache_handle *handle);
 
-#endif /* BABELTRACE_FD_CACHE_FD_CACHE_H */
+#endif /* BABELTRACE_FD_CACHE_FD_CACHE_HPP */

@@ -6,8 +6,10 @@
  * Babeltrace Debug Info Plug-in
  */
 
+/* clang-format off */
+
 #include <babeltrace2/babeltrace.h>
-#include "debug-info/debug-info.h"
+#include "debug-info/debug-info.hpp"
 
 #ifndef BT_BUILT_IN_PLUGINS
 BT_PLUGIN_MODULE();

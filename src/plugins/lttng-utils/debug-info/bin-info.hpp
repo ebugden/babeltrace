@@ -6,8 +6,10 @@
  * Babeltrace - Executable and Shared Object Debug Info Reader
  */
 
-#ifndef BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_BIN_INFO_H
-#define BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_BIN_INFO_H
+/* clang-format off */
+
+#ifndef BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_BIN_INFO_HPP
+#define BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_BIN_INFO_HPP
 
 #include <babeltrace2/babeltrace.h>
 #include <stdint.h>
@@ -15,7 +17,7 @@
 #include <gelf.h>
 #include <elfutils/libdw.h>
 #include "common/macros.h"
-#include "fd-cache/fd-cache.h"
+#include "fd-cache/fd-cache.hpp"
 
 #define DEFAULT_DEBUG_DIR "/usr/lib/debug"
 #define DEBUG_SUBDIR ".debug"
@@ -218,4 +220,4 @@ int bin_info_get_bin_loc(struct bin_info *bin, uint64_t addr, char **bin_loc);
  */
 void source_location_destroy(struct source_location *src_loc);
 
-#endif /* BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_BIN_INFO_H */
+#endif /* BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_BIN_INFO_HPP */

@@ -6,6 +6,8 @@
  * Babeltrace - File descriptor cache
  */
 
+/* clang-format off */
+
 #define BT_LOG_OUTPUT_LEVEL (fdc->log_level)
 #define BT_LOG_TAG "FD-CACHE"
 #include "logging/log.h"
@@ -17,7 +19,7 @@
 #include <glib.h>
 
 #include "common/assert.h"
-#include "fd-cache.h"
+#include "fd-cache.hpp"
 
 struct file_key {
 	uint64_t dev;
@@ -62,15 +64,15 @@ uint64_t hash_uint64_t(uint64_t x) {
 static
 guint file_key_hash(gconstpointer v)
 {
-	const struct file_key *fk = v;
+	const struct file_key *fk = static_cast<const file_key *>(v);
 	return hash_uint64_t(fk->dev) ^ hash_uint64_t(fk->ino);
 }
 
 static
 gboolean file_key_equal(gconstpointer v1, gconstpointer v2)
 {
-	const struct file_key *fk1 = v1;
-	const struct file_key *fk2 = v2;
+	const struct file_key *fk1 = static_cast<const file_key *>(v1);
+	const struct file_key *fk2 = static_cast<const file_key *>(v2);
 
 	return (fk1->dev == fk2->dev) && (fk1->ino == fk2->ino);
 }
@@ -78,7 +80,7 @@ gboolean file_key_equal(gconstpointer v1, gconstpointer v2)
 static
 void file_key_destroy(gpointer data)
 {
-	struct file_key *fk = data;
+	struct file_key *fk = static_cast<file_key *>(data);
 	g_free(fk);
 }
 
@@ -140,7 +142,7 @@ struct bt_fd_cache_handle *bt_fd_cache_get_handle(struct bt_fd_cache *fdc,
 	fk.dev = statbuf.st_dev;
 	fk.ino = statbuf.st_ino;
 
-	fd_internal = g_hash_table_lookup(fdc->cache, &fk);
+	fd_internal = static_cast<fd_handle_internal *>(g_hash_table_lookup(fdc->cache, &fk));
 	if (!fd_internal) {
 		struct file_key *file_key;
 

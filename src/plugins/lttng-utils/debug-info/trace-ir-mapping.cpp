@@ -9,6 +9,8 @@
  *		trace
  */
 
+/* clang-format off */
+
 #define BT_COMP_LOG_SELF_COMP (ir_maps->self_comp)
 #define BT_LOG_OUTPUT_LEVEL (ir_maps->log_level)
 #define BT_LOG_TAG "PLUGIN/FLT.LTTNG-UTILS.DEBUG-INFO/TRACE-IR-MAPPING"
@@ -17,10 +19,10 @@
 #include "common/assert.h"
 #include <babeltrace2/babeltrace.h>
 
-#include "debug-info.h"
-#include "trace-ir-data-copy.h"
-#include "trace-ir-mapping.h"
-#include "trace-ir-metadata-copy.h"
+#include "debug-info.hpp"
+#include "trace-ir-data-copy.hpp"
+#include "trace-ir-mapping.hpp"
+#include "trace-ir-metadata-copy.hpp"
 
 static
 bt_trace_class *create_new_mapped_trace_class(struct trace_ir_maps *ir_maps,
@@ -143,8 +145,8 @@ bt_stream_class *trace_ir_mapping_borrow_mapped_stream_class(
 	struct trace_ir_metadata_maps *md_maps =
 		borrow_metadata_maps_from_input_stream_class(ir_maps,
 			in_stream_class);
-	return g_hash_table_lookup(md_maps->stream_class_map,
-		(gpointer) in_stream_class);
+	return static_cast<bt_stream_class *>(g_hash_table_lookup(md_maps->stream_class_map,
+		(gpointer) in_stream_class));
 }
 
 bt_stream_class *trace_ir_mapping_create_new_mapped_stream_class(
@@ -212,7 +214,7 @@ bt_stream *borrow_mapped_stream(struct trace_ir_data_maps *d_maps,
 	BT_ASSERT_DBG(d_maps);
 	BT_ASSERT_DBG(in_stream);
 
-	return g_hash_table_lookup(d_maps->stream_map, (gpointer) in_stream);
+	return static_cast<bt_stream *>(g_hash_table_lookup(d_maps->stream_map, (gpointer) in_stream));
 }
 
 bt_stream *trace_ir_mapping_create_new_mapped_stream(
@@ -312,8 +314,8 @@ static inline
 bt_event_class *borrow_mapped_event_class(struct trace_ir_metadata_maps *md_maps,
 		const bt_event_class *in_event_class)
 {
-	return g_hash_table_lookup(md_maps->event_class_map,
-		(gpointer) in_event_class);
+	return static_cast<bt_event_class *>(g_hash_table_lookup(md_maps->event_class_map,
+		(gpointer) in_event_class));
 }
 
 bt_event_class *trace_ir_mapping_create_new_mapped_event_class(
@@ -405,7 +407,7 @@ bt_packet *borrow_mapped_packet(struct trace_ir_data_maps *d_maps,
 	BT_ASSERT_DBG(d_maps);
 	BT_ASSERT_DBG(in_packet);
 
-	return g_hash_table_lookup(d_maps->packet_map, (gpointer) in_packet);
+	return static_cast<bt_packet *>(g_hash_table_lookup(d_maps->packet_map, (gpointer) in_packet));
 }
 
 bt_packet *trace_ir_mapping_create_new_mapped_packet(
