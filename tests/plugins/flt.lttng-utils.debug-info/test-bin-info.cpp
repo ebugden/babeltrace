@@ -8,6 +8,8 @@
  * Babeltrace SO info tests
  */
 
+/* clang-format off */
+
 #define BT_LOG_OUTPUT_LEVEL ((bt_logging_level) BT_LOG_WARNING)
 #define BT_LOG_TAG "TEST/BIN-INFO"
 #include "logging/log.h"
@@ -20,7 +22,7 @@
 
 #include "common/macros.h"
 #include "common/assert.h"
-#include <lttng-utils/debug-info/bin-info.h>
+#include <lttng-utils/debug-info/bin-info.hpp>
 
 #include "tap/tap.h"
 

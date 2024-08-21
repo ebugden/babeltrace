@@ -8,6 +8,8 @@
  * Babeltrace - Trace IR field copy
  */
 
+/* clang-format off */
+
 #define BT_COMP_LOG_SELF_COMP (md_maps->self_comp)
 #define BT_LOG_OUTPUT_LEVEL (md_maps->log_level)
 #define BT_LOG_TAG "PLUGIN/FLT.LTTNG-UTILS.DEBUG-INFO/TRACE-IR-META-FC-COPY"
@@ -18,8 +20,8 @@
 #include "compat/compiler.h"
 #include <babeltrace2/babeltrace.h>
 
-#include "trace-ir-metadata-copy.h"
-#include "trace-ir-metadata-field-class-copy.h"
+#include "trace-ir-metadata-copy.hpp"
+#include "trace-ir-metadata-field-class-copy.hpp"
 
 /*
  * This function walks through the nested structures field class to resolve a
@@ -233,7 +235,7 @@ enum debug_info_trace_ir_mapping_status field_class_unsigned_enumeration_copy(
 		add_mapping_status = bt_field_class_enumeration_unsigned_add_mapping(
 			out_field_class, label, range_set);
 		if (add_mapping_status != BT_FIELD_CLASS_ENUMERATION_ADD_MAPPING_STATUS_OK) {
-			status = (int) add_mapping_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(add_mapping_status);
 			goto end;
 		}
 	}
@@ -281,7 +283,7 @@ enum debug_info_trace_ir_mapping_status field_class_signed_enumeration_copy(
 		add_mapping_status = bt_field_class_enumeration_signed_add_mapping(
 			out_field_class, label, range_set);
 		if (add_mapping_status != BT_FIELD_CLASS_ENUMERATION_ADD_MAPPING_STATUS_OK) {
-			status = (int) add_mapping_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(add_mapping_status);
 			goto end;
 		}
 	}
@@ -388,7 +390,7 @@ enum debug_info_trace_ir_mapping_status field_class_structure_copy(
 				"field-name=\"%s\"", i, in_member_fc,
 				member_name);
 			BT_FIELD_CLASS_PUT_REF_AND_RESET(out_member_fc);
-			status = (int) append_member_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(append_member_status);
 			goto end;
 		}
 
@@ -482,7 +484,7 @@ enum debug_info_trace_ir_mapping_status field_class_variant_copy(
 					"out-option-name=\"%s\"", out_field_class,
 					out_option_fc, option_name);
 				BT_FIELD_CLASS_PUT_REF_AND_RESET(out_tag_field_class);
-				status = (int) append_opt_status;
+				status = static_cast<debug_info_trace_ir_mapping_status>(append_opt_status);
 				goto end;
 			}
 		} else if (fc_type == BT_FIELD_CLASS_TYPE_VARIANT_WITH_SIGNED_INTEGER_SELECTOR_FIELD) {
@@ -504,7 +506,7 @@ enum debug_info_trace_ir_mapping_status field_class_variant_copy(
 					"out-option-name=\"%s\"", out_field_class,
 					out_option_fc, option_name);
 				BT_FIELD_CLASS_PUT_REF_AND_RESET(out_tag_field_class);
-				status = (int) append_opt_status;
+				status = static_cast<debug_info_trace_ir_mapping_status>(append_opt_status);
 				goto end;
 			}
 		} else {
@@ -521,7 +523,7 @@ enum debug_info_trace_ir_mapping_status field_class_variant_copy(
 					"out-option-name=\"%s\"", out_field_class,
 					out_option_fc, option_name);
 				BT_FIELD_CLASS_PUT_REF_AND_RESET(out_tag_field_class);
-				status = (int) append_opt_status;
+				status = static_cast<debug_info_trace_ir_mapping_status>(append_opt_status);
 				goto end;
 			}
 		}
@@ -754,8 +756,8 @@ bt_field_class *create_field_class_copy_internal(
 					md_maps);
 
 			BT_ASSERT(in_length_fc);
-			out_length_fc = g_hash_table_lookup(md_maps->field_class_map,
-				in_length_fc);
+			out_length_fc = static_cast<bt_field_class *>(g_hash_table_lookup(md_maps->field_class_map,
+				in_length_fc));
 			BT_ASSERT(out_length_fc);
 		}
 
@@ -803,8 +805,8 @@ bt_field_class *create_field_class_copy_internal(
 			in_selector_fc = resolve_field_path_to_field_class(
 				in_selector_fp, md_maps);
 			BT_ASSERT(in_selector_fc);
-			out_selector_fc = g_hash_table_lookup(
-				md_maps->field_class_map, in_selector_fc);
+			out_selector_fc = static_cast<bt_field_class *>(g_hash_table_lookup(
+				md_maps->field_class_map, in_selector_fc));
 			BT_ASSERT(out_selector_fc);
 
 			if (fc_type == BT_FIELD_CLASS_TYPE_OPTION_WITH_BOOL_SELECTOR_FIELD) {
@@ -851,8 +853,8 @@ bt_field_class *create_field_class_copy_internal(
 			in_sel_fc = resolve_field_path_to_field_class(sel_fp,
 				md_maps);
 			BT_ASSERT(in_sel_fc);
-			out_sel_fc = g_hash_table_lookup(
-				md_maps->field_class_map, in_sel_fc);
+			out_sel_fc = static_cast<bt_field_class *>(g_hash_table_lookup(
+				md_maps->field_class_map, in_sel_fc));
 			BT_ASSERT(out_sel_fc);
 		}
 

@@ -6,11 +6,13 @@
  * Babeltrace - DWARF Information Reader
  */
 
+/* clang-format off */
+
 #include <stdbool.h>
 
 #include <glib.h>
 
-#include "dwarf.h"
+#include "dwarf.hpp"
 
 struct bt_dwarf_cu *bt_dwarf_cu_create(Dwarf *dwarf_info)
 {

@@ -7,13 +7,15 @@
  * Babeltrace bt_dwarf (DWARF utilities) tests
  */
 
+/* clang-format off */
+
 #include <fcntl.h>
 #include <glib.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
-#include <lttng-utils/debug-info/dwarf.h>
+#include <lttng-utils/debug-info/dwarf.hpp>
 #include "tap/tap.h"
 
 #define NR_TESTS 17

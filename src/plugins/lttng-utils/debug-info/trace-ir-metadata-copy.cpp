@@ -8,6 +8,8 @@
  * Babeltrace - Trace IR metadata object copy
  */
 
+/* clang-format off */
+
 #define BT_COMP_LOG_SELF_COMP self_comp
 #define BT_LOG_OUTPUT_LEVEL log_level
 #define BT_LOG_TAG "PLUGIN/FLT.LTTNG-UTILS.DEBUG-INFO/TRACE-IR-META-COPY"
@@ -18,9 +20,9 @@
 
 #include "common/assert.h"
 
-#include "trace-ir-metadata-copy.h"
-#include "trace-ir-metadata-field-class-copy.h"
-#include "utils.h"
+#include "trace-ir-metadata-copy.hpp"
+#include "trace-ir-metadata-field-class-copy.hpp"
+#include "utils.hpp"
 
 enum debug_info_trace_ir_mapping_status copy_trace_class_content(
 		struct trace_ir_maps *ir_maps,
@@ -98,7 +100,7 @@ enum debug_info_trace_ir_mapping_status copy_clock_class_content(
 				"Error setting clock class' name: "
 				"cc-addr=%p, name=%s", out_clock_class,
 				clock_class_name);
-			status = (int) set_name_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(set_name_status);
 			goto end;
 		}
 	}
@@ -120,7 +122,7 @@ enum debug_info_trace_ir_mapping_status copy_clock_class_content(
 				"Error setting clock class' description: "
 				"cc-addr=%p, cc-desc=%s", out_clock_class,
 				clock_class_description);
-			status = (int) set_desc_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(set_desc_status);
 			goto end;
 		}
 	}
@@ -155,8 +157,8 @@ bt_clock_class *borrow_mapped_clock_class(
 	BT_ASSERT_DBG(md_maps);
 	BT_ASSERT_DBG(in_clock_class);
 
-	return g_hash_table_lookup(md_maps->clock_class_map,
-		(gpointer) in_clock_class);
+	return static_cast<bt_clock_class *>(g_hash_table_lookup(md_maps->clock_class_map,
+		(gpointer) in_clock_class));
 }
 
 static
@@ -240,7 +242,7 @@ enum debug_info_trace_ir_mapping_status copy_stream_class_content(
 		set_def_cc_status = bt_stream_class_set_default_clock_class(
 			out_stream_class, out_clock_class);
 		if (set_def_cc_status != BT_STREAM_CLASS_SET_DEFAULT_CLOCK_CLASS_STATUS_OK) {
-			status = (int) set_def_cc_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(set_def_cc_status);
 			goto end;
 		}
 	}
@@ -279,7 +281,7 @@ enum debug_info_trace_ir_mapping_status copy_stream_class_content(
 				"Error set stream class name: "
 				"out-sc-addr=%p, name=%s", out_stream_class,
 				in_name);
-			status = (int) set_name_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(set_name_status);
 			goto end;
 		}
 	}
@@ -322,7 +324,7 @@ enum debug_info_trace_ir_mapping_status copy_stream_class_content(
 				"Error setting stream class' packet context field class: "
 				"out-sc-addr=%p, out-packet-ctx-fc-addr=%p",
 				out_stream_class, out_packet_context_fc);
-			status = (int) set_fc_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(set_fc_status);
 			goto end;
 		}
 	}
@@ -362,7 +364,7 @@ enum debug_info_trace_ir_mapping_status copy_stream_class_content(
 				"Error setting stream class' common context field class: "
 				"out-sc-addr=%p, out-comm-ctx-fc-addr=%p",
 				out_stream_class, out_common_context_fc);
-			status = (int) set_fc_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(set_fc_status);
 			goto end;
 		}
 	}
@@ -424,7 +426,7 @@ enum debug_info_trace_ir_mapping_status copy_event_class_content(
 		if (set_name_status != BT_EVENT_CLASS_SET_NAME_STATUS_OK) {
 			BT_COMP_LOGE_APPEND_CAUSE(self_comp, "Error setting event class' name: ec-addr=%p, "
 				"name=%s", out_event_class, in_event_class_name);
-			status = (int) set_name_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(set_name_status);
 			goto end;
 		}
 	}
@@ -453,7 +455,7 @@ enum debug_info_trace_ir_mapping_status copy_event_class_content(
 				"Error setting event class' emf uri: "
 				"out-ec-addr=%p, emf-uri=\"%s\"",
 				out_event_class, in_emf_uri);
-			status = (int) set_emf_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(set_emf_status);
 			goto end;
 		}
 	}
@@ -497,7 +499,7 @@ enum debug_info_trace_ir_mapping_status copy_event_class_content(
 				"Error setting event class' specific context field class:"
 				"out-ec-addr=%p, out-spec-ctx-fc-addr=%p",
 				out_event_class, out_specific_context_fc);
-			status = (int) set_fc_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(set_fc_status);
 			goto end;
 		}
 	}
@@ -533,7 +535,7 @@ enum debug_info_trace_ir_mapping_status copy_event_class_content(
 			BT_COMP_LOGE_APPEND_CAUSE(self_comp, "Error setting event class' payload field class: "
 				"out-ec-addr=%p, out-payload-fc-addr=%p",
 				out_event_class, out_payload_fc);
-			status = (int) set_fc_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(set_fc_status);
 			goto end;
 		}
 	}
@@ -629,7 +631,7 @@ copy_event_common_context_field_class_content(
 			BT_COMP_LOGE_APPEND_CAUSE(self_comp,
 				"Failed to add a field to debug_info struct: "
 				"field=\"bin\".");
-			status = (int) append_member_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(append_member_status);
 			goto error;
 		}
 		BT_FIELD_CLASS_PUT_REF_AND_RESET(bin_field_class);
@@ -641,7 +643,7 @@ copy_event_common_context_field_class_content(
 			BT_COMP_LOGE_APPEND_CAUSE(self_comp,
 				"Failed to add a field to debug_info struct: "
 				"field=\"func\".");
-			status = (int) append_member_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(append_member_status);
 			goto error;
 		}
 		BT_FIELD_CLASS_PUT_REF_AND_RESET(func_field_class);
@@ -653,7 +655,7 @@ copy_event_common_context_field_class_content(
 			BT_COMP_LOGE_APPEND_CAUSE(self_comp,
 				"Failed to add a field to debug_info struct: "
 				"field=\"src\".");
-			status = (int) append_member_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(append_member_status);
 			goto error;
 		}
 		BT_FIELD_CLASS_PUT_REF_AND_RESET(src_field_class);
@@ -665,7 +667,7 @@ copy_event_common_context_field_class_content(
 				BT_FIELD_CLASS_STRUCTURE_APPEND_MEMBER_STATUS_OK) {
 			BT_COMP_LOGE_APPEND_CAUSE(self_comp,
 				"Failed to add debug_info field to event common context.");
-			status = (int) append_member_status;
+			status = static_cast<debug_info_trace_ir_mapping_status>(append_member_status);
 			goto error;
 		}
 		BT_FIELD_CLASS_PUT_REF_AND_RESET(debug_field_class);

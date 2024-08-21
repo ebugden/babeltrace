@@ -4,8 +4,10 @@
  * Copyright 2019 Francis Deslauriers francis.deslauriers@efficios.com>
  */
 
-#ifndef BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_TRACE_IR_MAPPING_H
-#define BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_TRACE_IR_MAPPING_H
+/* clang-format off */
+
+#ifndef BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_TRACE_IR_MAPPING_HPP
+#define BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_TRACE_IR_MAPPING_HPP
 
 #include <glib.h>
 
@@ -13,7 +15,7 @@
 #include "common/macros.h"
 #include <babeltrace2/babeltrace.h>
 
-#include "debug-info.h"
+#include "debug-info.hpp"
 
 enum debug_info_trace_ir_mapping_status {
 	DEBUG_INFO_TRACE_IR_MAPPING_STATUS_OK = 0,
@@ -188,7 +190,7 @@ struct trace_ir_data_maps *borrow_data_maps_from_input_trace(
 	BT_ASSERT(in_trace);
 
 	struct trace_ir_data_maps *d_maps =
-		g_hash_table_lookup(ir_maps->data_maps, (gpointer) in_trace);
+		static_cast<trace_ir_data_maps *>(g_hash_table_lookup(ir_maps->data_maps, (gpointer) in_trace));
 	if (!d_maps) {
 		d_maps = trace_ir_data_maps_create(ir_maps, in_trace);
 		g_hash_table_insert(ir_maps->data_maps, (gpointer) in_trace, d_maps);
@@ -228,8 +230,8 @@ struct trace_ir_metadata_maps *borrow_metadata_maps_from_input_trace_class(
 	BT_ASSERT(in_trace_class);
 
 	struct trace_ir_metadata_maps *md_maps =
-		g_hash_table_lookup(ir_maps->metadata_maps,
-				(gpointer) in_trace_class);
+		static_cast<trace_ir_metadata_maps *>(g_hash_table_lookup(ir_maps->metadata_maps,
+				(gpointer) in_trace_class));
 	if (!md_maps) {
 		md_maps = trace_ir_metadata_maps_create(ir_maps, in_trace_class);
 		g_hash_table_insert(ir_maps->metadata_maps,
@@ -261,4 +263,4 @@ struct trace_ir_metadata_maps *borrow_metadata_maps_from_input_event_class(
 			bt_event_class_borrow_stream_class_const(in_event_class));
 }
 
-#endif /* BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_TRACE_IR_MAPPING_H */
+#endif /* BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_TRACE_IR_MAPPING_HPP */
