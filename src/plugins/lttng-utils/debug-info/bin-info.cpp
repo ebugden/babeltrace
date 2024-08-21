@@ -7,12 +7,11 @@
  */
 
 #define BT_COMP_LOG_SELF_COMP (bin->self_comp)
-#define BT_LOG_OUTPUT_LEVEL (bin->log_level)
-#define BT_LOG_TAG "PLUGIN/FLT.LTTNG-UTILS.DEBUG-INFO/BIN-INFO"
-#include "logging/comp-logging.h"
-
+#define BT_LOG_OUTPUT_LEVEL   (bin->log_level)
+#define BT_LOG_TAG            "PLUGIN/FLT.LTTNG-UTILS.DEBUG-INFO/BIN-INFO"
 #include <errno.h>
 #include <fcntl.h>
+#include <glib.h>
 #include <inttypes.h>
 #include <libgen.h>
 #include <math.h>
@@ -22,7 +21,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <glib.h>
+#include "logging/comp-logging.h"
 
 #include "common/common.h"
 
@@ -36,96 +35,95 @@
  * leading 0x + optional leading '+' if addr is an offset + null
  * character).
  */
-#define ADDR_STR_LEN 20
+#define ADDR_STR_LEN       20
 #define BUILD_ID_NOTE_NAME "GNU"
 
 int bin_info_init(bt_logging_level log_level, bt_self_component *self_comp)
 {
-	int ret = 0;
+    int ret = 0;
 
-	if (elf_version(EV_CURRENT) == EV_NONE) {
-		BT_COMP_LOG_CUR_LVL(BT_LOG_INFO, log_level, self_comp,
-			"ELF library initialization failed: %s.",
-			elf_errmsg(-1));
-		ret = -1;
-	}
+    if (elf_version(EV_CURRENT) == EV_NONE) {
+        BT_COMP_LOG_CUR_LVL(BT_LOG_INFO, log_level, self_comp,
+                            "ELF library initialization failed: %s.", elf_errmsg(-1));
+        ret = -1;
+    }
 
-	return ret;
+    return ret;
 }
 
-struct bin_info *bin_info_create(struct bt_fd_cache *fdc, const char *path,
-		uint64_t low_addr, uint64_t memsz, bool is_pic,
-		const char *debug_info_dir, const char *target_prefix,
-		bt_logging_level log_level, bt_self_component *self_comp)
+struct bin_info *bin_info_create(struct bt_fd_cache *fdc, const char *path, uint64_t low_addr,
+                                 uint64_t memsz, bool is_pic, const char *debug_info_dir,
+                                 const char *target_prefix, bt_logging_level log_level,
+                                 bt_self_component *self_comp)
 {
-	struct bin_info *bin = NULL;
+    struct bin_info *bin = NULL;
 
-	BT_ASSERT(fdc);
+    BT_ASSERT(fdc);
 
-	if (!path) {
-		goto error;
-	}
+    if (!path) {
+        goto error;
+    }
 
-	bin = g_new0(struct bin_info, 1);
-	if (!bin) {
-		goto error;
-	}
+    bin = g_new0(struct bin_info, 1);
+    if (!bin) {
+        goto error;
+    }
 
-	bin->log_level = log_level;
-	bin->self_comp = self_comp;
-	if (target_prefix) {
-		bin->elf_path = g_build_filename(target_prefix,	path, NULL);
-	} else {
-		bin->elf_path = g_strdup(path);
-	}
+    bin->log_level = log_level;
+    bin->self_comp = self_comp;
+    if (target_prefix) {
+        bin->elf_path = g_build_filename(target_prefix, path, NULL);
+    } else {
+        bin->elf_path = g_strdup(path);
+    }
 
-	if (!bin->elf_path) {
-		goto error;
-	}
+    if (!bin->elf_path) {
+        goto error;
+    }
 
-	if (debug_info_dir) {
-		bin->debug_info_dir = g_strdup(debug_info_dir);
-		if (!bin->debug_info_dir) {
-			goto error;
-		}
-	}
+    if (debug_info_dir) {
+        bin->debug_info_dir = g_strdup(debug_info_dir);
+        if (!bin->debug_info_dir) {
+            goto error;
+        }
+    }
 
-	bin->is_pic = is_pic;
-	bin->memsz = memsz;
-	bin->low_addr = low_addr;
-	bin->high_addr = bin->low_addr + bin->memsz;
-	bin->build_id = NULL;
-	bin->build_id_len = 0;
-	bin->file_build_id_matches = false;
-	bin->fd_cache = fdc;
+    bin->is_pic = is_pic;
+    bin->memsz = memsz;
+    bin->low_addr = low_addr;
+    bin->high_addr = bin->low_addr + bin->memsz;
+    bin->build_id = NULL;
+    bin->build_id_len = 0;
+    bin->file_build_id_matches = false;
+    bin->fd_cache = fdc;
 
-	return bin;
+    return bin;
 
 error:
-	bin_info_destroy(bin);
-	return NULL;
+    bin_info_destroy(bin);
+    return NULL;
 }
 
 void bin_info_destroy(struct bin_info *bin)
 {
-	if (!bin) {
-		return;
-	}
+    if (!bin) {
+        return;
+    }
 
-	dwarf_end(bin->dwarf_info);
+    dwarf_end(bin->dwarf_info);
 
-	g_free(bin->debug_info_dir);
-	g_free(bin->elf_path);
-	g_free(bin->dwarf_path);
-	g_free(bin->build_id);
-	g_free(bin->dbg_link_filename);
+    g_free(bin->debug_info_dir);
+    g_free(bin->elf_path);
+    g_free(bin->dwarf_path);
+    g_free(bin->build_id);
+    g_free(bin->dbg_link_filename);
 
-	elf_end(bin->elf_file);
+    elf_end(bin->elf_file);
 
-	bt_fd_cache_put_handle(bin->fd_cache, bin->elf_handle);
-	bt_fd_cache_put_handle(bin->fd_cache, bin->dwarf_handle);
+    bt_fd_cache_put_handle(bin->fd_cache, bin->elf_handle);
+    bt_fd_cache_put_handle(bin->fd_cache, bin->dwarf_handle);
 
-	g_free(bin);
+    g_free(bin);
 }
 
 /**
@@ -134,49 +132,44 @@ void bin_info_destroy(struct bin_info *bin)
  * @param bin	bin_info instance
  * @returns	0 on success, negative value on error.
  */
-static
-int bin_info_set_elf_file(struct bin_info *bin)
+static int bin_info_set_elf_file(struct bin_info *bin)
 {
-	struct bt_fd_cache_handle *elf_handle = NULL;
-	Elf *elf_file = NULL;
-	int ret;
+    struct bt_fd_cache_handle *elf_handle = NULL;
+    Elf *elf_file = NULL;
+    int ret;
 
-	BT_ASSERT(bin);
+    BT_ASSERT(bin);
 
-	elf_handle = bt_fd_cache_get_handle(bin->fd_cache, bin->elf_path);
-	if (!elf_handle) {
-		BT_COMP_LOGI("Failed to open %s", bin->elf_path);
-		goto error;
-	}
-	bin->elf_handle = elf_handle;
+    elf_handle = bt_fd_cache_get_handle(bin->fd_cache, bin->elf_path);
+    if (!elf_handle) {
+        BT_COMP_LOGI("Failed to open %s", bin->elf_path);
+        goto error;
+    }
+    bin->elf_handle = elf_handle;
 
-	elf_file = elf_begin(bt_fd_cache_handle_get_fd(bin->elf_handle),
-		ELF_C_READ, NULL);
-	if (!elf_file) {
-		BT_COMP_LOGE_APPEND_CAUSE(bin->self_comp,
-			"elf_begin failed: %s", elf_errmsg(-1));
-		goto error;
-	}
+    elf_file = elf_begin(bt_fd_cache_handle_get_fd(bin->elf_handle), ELF_C_READ, NULL);
+    if (!elf_file) {
+        BT_COMP_LOGE_APPEND_CAUSE(bin->self_comp, "elf_begin failed: %s", elf_errmsg(-1));
+        goto error;
+    }
 
-	bin->elf_file = elf_file;
+    bin->elf_file = elf_file;
 
-	if (elf_kind(elf_file) != ELF_K_ELF) {
-		BT_COMP_LOGE_APPEND_CAUSE(bin->self_comp,
-			"Error: %s is not an ELF object", bin->elf_path);
-		goto error;
-	}
+    if (elf_kind(elf_file) != ELF_K_ELF) {
+        BT_COMP_LOGE_APPEND_CAUSE(bin->self_comp, "Error: %s is not an ELF object", bin->elf_path);
+        goto error;
+    }
 
-
-	ret = 0;
-	goto end;
+    ret = 0;
+    goto end;
 
 error:
-	bt_fd_cache_put_handle(bin->fd_cache, elf_handle);
-	elf_end(elf_file);
-	ret = -1;
+    bt_fd_cache_put_handle(bin->fd_cache, elf_handle);
+    elf_end(elf_file);
+    ret = -1;
 
 end:
-	return ret;
+    return ret;
 }
 
 /**
@@ -187,43 +180,41 @@ end:
  * @returns			1 on match, 0 if `buf` does not contain a
  *				valid build id note
  */
-static
-int is_build_id_note_section(Elf_Data *note_data)
+static int is_build_id_note_section(Elf_Data *note_data)
 {
-	size_t name_offset, desc_offset;
-	GElf_Nhdr note_header;
-	int ret = 0;
+    size_t name_offset, desc_offset;
+    GElf_Nhdr note_header;
+    int ret = 0;
 
-	/*
+    /*
 	 * Discard the return value as it contains the size of the note section
 	 * and we don't need it.
 	 */
-	(void) gelf_getnote(note_data, 0, &note_header, &name_offset,
-		&desc_offset);
+    (void) gelf_getnote(note_data, 0, &note_header, &name_offset, &desc_offset);
 
-	/*
+    /*
 	 * Check the note name length. The name_sz field includes the
 	 * terminating null byte.
 	 */
-	if (note_header.n_namesz != sizeof(BUILD_ID_NOTE_NAME)) {
-		goto invalid;
-	}
+    if (note_header.n_namesz != sizeof(BUILD_ID_NOTE_NAME)) {
+        goto invalid;
+    }
 
-	/* Check the note type. */
-	if (note_header.n_type != NT_GNU_BUILD_ID) {
-		goto invalid;
-	}
+    /* Check the note type. */
+    if (note_header.n_type != NT_GNU_BUILD_ID) {
+        goto invalid;
+    }
 
-	/* Check the note name. */
-	if (memcmp(static_cast<char *>(note_data->d_buf) + name_offset, BUILD_ID_NOTE_NAME,
-			note_header.n_namesz) != 0) {
-		goto invalid;
-	}
+    /* Check the note name. */
+    if (memcmp(static_cast<char *>(note_data->d_buf) + name_offset, BUILD_ID_NOTE_NAME,
+               note_header.n_namesz) != 0) {
+        goto invalid;
+    }
 
-	ret = 1;
+    ret = 1;
 
 invalid:
-	return ret;
+    return ret;
 }
 
 /**
@@ -236,33 +227,30 @@ invalid:
  *
  * @returns			1 on match, 0 otherwise.
  */
-static
-int is_build_id_note_section_matching(Elf_Data *note_data,
-		uint8_t *build_id, size_t build_id_len)
+static int is_build_id_note_section_matching(Elf_Data *note_data, uint8_t *build_id,
+                                             size_t build_id_len)
 {
-	size_t name_offset, desc_offset;
-	GElf_Nhdr note_header;
+    size_t name_offset, desc_offset;
+    GElf_Nhdr note_header;
 
-	if (build_id_len <= 0) {
-		goto end;
-	}
+    if (build_id_len <= 0) {
+        goto end;
+    }
 
-	/*
+    /*
 	 * Discard the return value as it contains the size of the note section
 	 * and we don't need it.
 	 */
-	(void) gelf_getnote(note_data, 0, &note_header, &name_offset,
-		&desc_offset);
+    (void) gelf_getnote(note_data, 0, &note_header, &name_offset, &desc_offset);
 
-	/*
+    /*
 	 * Compare the binary build id with the supplied build id.
 	 */
-	if (memcmp(build_id, static_cast<char *>(note_data->d_buf) + desc_offset,
-			build_id_len) == 0) {
-		return 1;
-	}
+    if (memcmp(build_id, static_cast<char *>(note_data->d_buf) + desc_offset, build_id_len) == 0) {
+        return 1;
+    }
 end:
-	return 0;
+    return 0;
 }
 
 /**
@@ -277,142 +265,139 @@ end:
  *				the build id of the ondisk file.
  *				0 on if they are different or an error occurred.
  */
-static
-int is_build_id_matching(struct bin_info *bin)
+static int is_build_id_matching(struct bin_info *bin)
 {
-	int ret, is_build_id, is_matching = 0;
-	Elf_Scn *curr_section = NULL, *next_section = NULL;
-	GElf_Shdr curr_section_hdr;
+    int ret, is_build_id, is_matching = 0;
+    Elf_Scn *curr_section = NULL, *next_section = NULL;
+    GElf_Shdr curr_section_hdr;
 
-	if (!bin->build_id) {
-		goto error;
-	}
+    if (!bin->build_id) {
+        goto error;
+    }
 
-	/* Set ELF file if it hasn't been accessed yet. */
-	if (!bin->elf_file) {
-		ret = bin_info_set_elf_file(bin);
-		if (ret) {
-			/* Failed to set ELF file. */
-			goto error;
-		}
-	}
+    /* Set ELF file if it hasn't been accessed yet. */
+    if (!bin->elf_file) {
+        ret = bin_info_set_elf_file(bin);
+        if (ret) {
+            /* Failed to set ELF file. */
+            goto error;
+        }
+    }
 
-	next_section = elf_nextscn(bin->elf_file, curr_section);
-	if (!next_section) {
-		goto error;
-	}
+    next_section = elf_nextscn(bin->elf_file, curr_section);
+    if (!next_section) {
+        goto error;
+    }
 
-	while (next_section) {
-		Elf_Data *note_data = NULL;
+    while (next_section) {
+        Elf_Data *note_data = NULL;
 
-		curr_section = next_section;
-		next_section = elf_nextscn(bin->elf_file, curr_section);
+        curr_section = next_section;
+        next_section = elf_nextscn(bin->elf_file, curr_section);
 
-		if (!gelf_getshdr(curr_section, &curr_section_hdr)) {
-			goto error;
-		}
+        if (!gelf_getshdr(curr_section, &curr_section_hdr)) {
+            goto error;
+        }
 
-		if (curr_section_hdr.sh_type != SHT_NOTE) {
-			continue;
-		}
+        if (curr_section_hdr.sh_type != SHT_NOTE) {
+            continue;
+        }
 
-		/*
+        /*
 		 * elf_getdata() translates the data to native byte order.
 		 */
-		note_data = elf_getdata(curr_section, NULL);
-		if (!note_data) {
-			goto error;
-		}
+        note_data = elf_getdata(curr_section, NULL);
+        if (!note_data) {
+            goto error;
+        }
 
-		/* Check if the note is of the build-id type. */
-		is_build_id = is_build_id_note_section(note_data);
-		if (!is_build_id) {
-			continue;
-		}
+        /* Check if the note is of the build-id type. */
+        is_build_id = is_build_id_note_section(note_data);
+        if (!is_build_id) {
+            continue;
+        }
 
-		/*
+        /*
 		 * Compare the build id of the on-disk file and
 		 * the build id recorded in the trace.
 		 */
-		is_matching = is_build_id_note_section_matching(
-			note_data, bin->build_id, bin->build_id_len);
-		if (!is_matching) {
-			break;
-		}
-	}
+        is_matching =
+            is_build_id_note_section_matching(note_data, bin->build_id, bin->build_id_len);
+        if (!is_matching) {
+            break;
+        }
+    }
 error:
-	return is_matching;
+    return is_matching;
 }
 
-int bin_info_set_build_id(struct bin_info *bin, uint8_t *build_id,
-		size_t build_id_len)
+int bin_info_set_build_id(struct bin_info *bin, uint8_t *build_id, size_t build_id_len)
 {
-	if (!bin || !build_id) {
-		goto error;
-	}
+    if (!bin || !build_id) {
+        goto error;
+    }
 
-	/* Free any previously set build id. */
-	g_free(bin->build_id);
+    /* Free any previously set build id. */
+    g_free(bin->build_id);
 
-	/* Set the build id. */
-	bin->build_id = g_new0(uint8_t, build_id_len);
-	if (!bin->build_id) {
-		goto error;
-	}
+    /* Set the build id. */
+    bin->build_id = g_new0(uint8_t, build_id_len);
+    if (!bin->build_id) {
+        goto error;
+    }
 
-	memcpy(bin->build_id, build_id, build_id_len);
-	bin->build_id_len = build_id_len;
+    memcpy(bin->build_id, build_id, build_id_len);
+    bin->build_id_len = build_id_len;
 
-	/*
+    /*
 	 * Check if the file found on the file system has the same build id
 	 * that what was recorded in the trace.
 	 */
-	bin->file_build_id_matches = is_build_id_matching(bin);
-	if (!bin->file_build_id_matches) {
-		BT_COMP_LOGI_STR("Supplied Build ID does not match Build ID of the "
-			"binary or library found on the file system.");
-		goto error;
-	}
+    bin->file_build_id_matches = is_build_id_matching(bin);
+    if (!bin->file_build_id_matches) {
+        BT_COMP_LOGI_STR("Supplied Build ID does not match Build ID of the "
+                         "binary or library found on the file system.");
+        goto error;
+    }
 
-	/*
+    /*
 	 * Reset the is_elf_only flag in case it had been set
 	 * previously, because we might find separate debug info using
 	 * the new build id information.
 	 */
-	bin->is_elf_only = false;
+    bin->is_elf_only = false;
 
-	return 0;
+    return 0;
 
 error:
-	return -1;
+    return -1;
 }
 
-int bin_info_set_debug_link(struct bin_info *bin, const char *filename,
-		uint32_t crc)
+int bin_info_set_debug_link(struct bin_info *bin, const char *filename, uint32_t crc)
 {
-	if (!bin || !filename) {
-		goto error;
-	}
+    if (!bin || !filename) {
+        goto error;
+    }
 
-	bin->dbg_link_filename = g_strdup(filename);
-	if (!bin->dbg_link_filename) {
-		goto error;
-	}
+    bin->dbg_link_filename = g_strdup(filename);
+    if (!bin->dbg_link_filename) {
+        goto error;
+    }
 
-	bin->dbg_link_crc = crc;
+    bin->dbg_link_crc = crc;
 
-	/*
+    /*
 	 * Reset the is_elf_only flag in case it had been set
 	 * previously, because we might find separate debug info using
 	 * the new build id information.
 	 */
-	bin->is_elf_only = false;
+    bin->is_elf_only = false;
 
-	return 0;
+    return 0;
 
 error:
 
-	return -1;
+    return -1;
 }
 
 /**
@@ -423,62 +408,60 @@ error:
  * @param path	Presumed location of the DWARF info
  * @returns	0 on success, negative value on failure
  */
-static
-int bin_info_set_dwarf_info_from_path(struct bin_info *bin, char *path)
+static int bin_info_set_dwarf_info_from_path(struct bin_info *bin, char *path)
 {
-	int ret = 0;
-	struct bt_fd_cache_handle *dwarf_handle = NULL;
-	struct bt_dwarf_cu *cu = NULL;
-	Dwarf *dwarf_info = NULL;
+    int ret = 0;
+    struct bt_fd_cache_handle *dwarf_handle = NULL;
+    struct bt_dwarf_cu *cu = NULL;
+    Dwarf *dwarf_info = NULL;
 
-	if (!bin || !path) {
-		goto error;
-	}
+    if (!bin || !path) {
+        goto error;
+    }
 
-	dwarf_handle = bt_fd_cache_get_handle(bin->fd_cache, path);
-	if (!dwarf_handle) {
-		goto error;
-	}
+    dwarf_handle = bt_fd_cache_get_handle(bin->fd_cache, path);
+    if (!dwarf_handle) {
+        goto error;
+    }
 
-	dwarf_info = dwarf_begin(bt_fd_cache_handle_get_fd(dwarf_handle),
-		DWARF_C_READ);
-	if (!dwarf_info) {
-		goto error;
-	}
+    dwarf_info = dwarf_begin(bt_fd_cache_handle_get_fd(dwarf_handle), DWARF_C_READ);
+    if (!dwarf_info) {
+        goto error;
+    }
 
-	/*
+    /*
 	 * Check if the dwarf info has any CU. If not, the
 	 * executable's object file contains no DWARF info.
 	 */
-	cu = bt_dwarf_cu_create(dwarf_info);
-	if (!cu) {
-		goto error;
-	}
+    cu = bt_dwarf_cu_create(dwarf_info);
+    if (!cu) {
+        goto error;
+    }
 
-	ret = bt_dwarf_cu_next(cu);
-	if (ret) {
-		goto error;
-	}
+    ret = bt_dwarf_cu_next(cu);
+    if (ret) {
+        goto error;
+    }
 
-	bin->dwarf_handle = dwarf_handle;
-	bin->dwarf_path = g_strdup(path);
-	if (!bin->dwarf_path) {
-		goto error;
-	}
-	bin->dwarf_info = dwarf_info;
-	free(cu);
+    bin->dwarf_handle = dwarf_handle;
+    bin->dwarf_path = g_strdup(path);
+    if (!bin->dwarf_path) {
+        goto error;
+    }
+    bin->dwarf_info = dwarf_info;
+    free(cu);
 
-	return 0;
+    return 0;
 
 error:
-	if (bin) {
-		bt_fd_cache_put_handle(bin->fd_cache, dwarf_handle);
-	}
-	dwarf_end(dwarf_info);
-	g_free(dwarf_info);
-	free(cu);
+    if (bin) {
+        bt_fd_cache_put_handle(bin->fd_cache, dwarf_handle);
+    }
+    dwarf_end(dwarf_info);
+    g_free(dwarf_info);
+    free(cu);
 
-	return -1;
+    return -1;
 }
 
 /**
@@ -489,82 +472,80 @@ error:
  *			DWARF info via build ID
  * @returns		0 on success (i.e. dwarf_info set), -1 on failure
  */
-static
-int bin_info_set_dwarf_info_build_id(struct bin_info *bin)
+static int bin_info_set_dwarf_info_build_id(struct bin_info *bin)
 {
-	int i = 0, ret = 0;
-	char *path = NULL, *build_id_prefix_dir = NULL, *build_id_file = NULL;
-	const char *dbg_dir = NULL;
-	size_t build_id_char_len, build_id_suffix_char_len, build_id_file_len;
+    int i = 0, ret = 0;
+    char *path = NULL, *build_id_prefix_dir = NULL, *build_id_file = NULL;
+    const char *dbg_dir = NULL;
+    size_t build_id_char_len, build_id_suffix_char_len, build_id_file_len;
 
-	if (!bin || !bin->build_id) {
-		goto error;
-	}
+    if (!bin || !bin->build_id) {
+        goto error;
+    }
 
-	dbg_dir = bin->debug_info_dir ? bin->debug_info_dir : DEFAULT_DEBUG_DIR;
+    dbg_dir = bin->debug_info_dir ? bin->debug_info_dir : DEFAULT_DEBUG_DIR;
 
-	/*
+    /*
 	 * The prefix dir is the first byte of the build id, represented in
 	 * lowercase hex as two characters per byte, +1 for '\0'.
 	 */
-	build_id_prefix_dir = g_new0(gchar, BUILD_ID_PREFIX_DIR_LEN + 1);
-	if (!build_id_prefix_dir) {
-		goto error;
-	}
-	g_snprintf(build_id_prefix_dir, BUILD_ID_PREFIX_DIR_LEN + 1, "%02x", bin->build_id[0]);
+    build_id_prefix_dir = g_new0(gchar, BUILD_ID_PREFIX_DIR_LEN + 1);
+    if (!build_id_prefix_dir) {
+        goto error;
+    }
+    g_snprintf(build_id_prefix_dir, BUILD_ID_PREFIX_DIR_LEN + 1, "%02x", bin->build_id[0]);
 
-	/*
+    /*
 	 * The build id file is the remaining bytes of the build id,
 	 * represented in lowercase hex, as two characters per byte.
 	 */
-	build_id_char_len = (2 * (bin->build_id_len - 1));
+    build_id_char_len = (2 * (bin->build_id_len - 1));
 
-	/* To which the build id suffix is added, +1 for '\0'. */
-	build_id_suffix_char_len = strlen(BUILD_ID_SUFFIX) + 1;
+    /* To which the build id suffix is added, +1 for '\0'. */
+    build_id_suffix_char_len = strlen(BUILD_ID_SUFFIX) + 1;
 
-	/*
+    /*
 	 * The resulting filename string is the concatenation of the
 	 * hex build id and the suffix.
 	 */
-	build_id_file_len =  build_id_char_len + build_id_suffix_char_len;
-	build_id_file = g_new0(gchar, build_id_file_len);
-	if (!build_id_file) {
-		goto error;
-	}
+    build_id_file_len = build_id_char_len + build_id_suffix_char_len;
+    build_id_file = g_new0(gchar, build_id_file_len);
+    if (!build_id_file) {
+        goto error;
+    }
 
-	/*
+    /*
 	 * For each byte, starting at offset 1, append two characters
 	 * in lowercase hex.
 	 */
-	for (i = 1; i < bin->build_id_len; ++i) {
-		int path_idx = 2 * (i - 1);
+    for (i = 1; i < bin->build_id_len; ++i) {
+        int path_idx = 2 * (i - 1);
 
-		g_snprintf(&build_id_file[path_idx], 3, "%02x", bin->build_id[i]);
-	}
-	/* Append the suffix to the generated string, including the '\0'. */
-	g_snprintf(&build_id_file[build_id_char_len], build_id_suffix_char_len,
-		BUILD_ID_SUFFIX);
+        g_snprintf(&build_id_file[path_idx], 3, "%02x", bin->build_id[i]);
+    }
+    /* Append the suffix to the generated string, including the '\0'. */
+    g_snprintf(&build_id_file[build_id_char_len], build_id_suffix_char_len, BUILD_ID_SUFFIX);
 
-	path = g_build_filename(dbg_dir, BUILD_ID_SUBDIR, build_id_prefix_dir, build_id_file, NULL);
-	if (!path) {
-		goto error;
-	}
+    path = g_build_filename(dbg_dir, BUILD_ID_SUBDIR, build_id_prefix_dir, build_id_file, NULL);
+    if (!path) {
+        goto error;
+    }
 
-	ret = bin_info_set_dwarf_info_from_path(bin, path);
-	if (ret) {
-		goto error;
-	}
+    ret = bin_info_set_dwarf_info_from_path(bin, path);
+    if (ret) {
+        goto error;
+    }
 
-	goto end;
+    goto end;
 
 error:
-	ret = -1;
+    ret = -1;
 end:
-	g_free(build_id_prefix_dir);
-	g_free(build_id_file);
-	g_free(path);
+    g_free(build_id_prefix_dir);
+    g_free(build_id_file);
+    g_free(path);
 
-	return ret;
+    return ret;
 }
 
 /**
@@ -581,33 +562,32 @@ end:
  * @returns	1 if the file exists and has the correct checksum,
  *		0 otherwise
  */
-static
-int is_valid_debug_file(struct bin_info *bin, char *path, uint32_t crc)
+static int is_valid_debug_file(struct bin_info *bin, char *path, uint32_t crc)
 {
-	int ret = 0;
-	struct bt_fd_cache_handle *debug_handle = NULL;
-	uint32_t _crc = 0;
+    int ret = 0;
+    struct bt_fd_cache_handle *debug_handle = NULL;
+    uint32_t _crc = 0;
 
-	if (!path) {
-		goto end;
-	}
+    if (!path) {
+        goto end;
+    }
 
-	debug_handle = bt_fd_cache_get_handle(bin->fd_cache, path);
-	if (!debug_handle) {
-		goto end;
-	}
+    debug_handle = bt_fd_cache_get_handle(bin->fd_cache, path);
+    if (!debug_handle) {
+        goto end;
+    }
 
-	ret = crc32(bt_fd_cache_handle_get_fd(debug_handle), &_crc);
-	if (ret) {
-		ret = 0;
-		goto end;
-	}
+    ret = crc32(bt_fd_cache_handle_get_fd(debug_handle), &_crc);
+    if (ret) {
+        ret = 0;
+        goto end;
+    }
 
-	ret = (crc == _crc);
+    ret = (crc == _crc);
 
 end:
-	bt_fd_cache_put_handle(bin->fd_cache, debug_handle);
-	return ret;
+    bt_fd_cache_put_handle(bin->fd_cache, debug_handle);
+    return ret;
 }
 
 /**
@@ -618,58 +598,57 @@ end:
  *			DWARF info via debug link
  * @returns		0 on success (i.e. dwarf_info set), -1 on failure
  */
-static
-int bin_info_set_dwarf_info_debug_link(struct bin_info *bin)
+static int bin_info_set_dwarf_info_debug_link(struct bin_info *bin)
 {
-	int ret = 0;
-	const gchar *dbg_dir = NULL;
-	gchar *bin_dir = NULL, *path = NULL;
+    int ret = 0;
+    const gchar *dbg_dir = NULL;
+    gchar *bin_dir = NULL, *path = NULL;
 
-	if (!bin || !bin->dbg_link_filename) {
-		goto error;
-	}
+    if (!bin || !bin->dbg_link_filename) {
+        goto error;
+    }
 
-	dbg_dir = bin->debug_info_dir ? bin->debug_info_dir : DEFAULT_DEBUG_DIR;
-	bin_dir = g_path_get_dirname(bin->elf_path);
+    dbg_dir = bin->debug_info_dir ? bin->debug_info_dir : DEFAULT_DEBUG_DIR;
+    bin_dir = g_path_get_dirname(bin->elf_path);
 
-	/* First look in the executable's dir */
-	path = g_build_filename(bin_dir, bin->dbg_link_filename, NULL);
+    /* First look in the executable's dir */
+    path = g_build_filename(bin_dir, bin->dbg_link_filename, NULL);
 
-	if (is_valid_debug_file(bin, path, bin->dbg_link_crc)) {
-		goto found;
-	}
+    if (is_valid_debug_file(bin, path, bin->dbg_link_crc)) {
+        goto found;
+    }
 
-	/* If not found, look in .debug subdir */
-	g_free(path);
-	path = g_build_filename(bin_dir, DEBUG_SUBDIR, bin->dbg_link_filename, NULL);
+    /* If not found, look in .debug subdir */
+    g_free(path);
+    path = g_build_filename(bin_dir, DEBUG_SUBDIR, bin->dbg_link_filename, NULL);
 
-	if (is_valid_debug_file(bin, path, bin->dbg_link_crc)) {
-		goto found;
-	}
+    if (is_valid_debug_file(bin, path, bin->dbg_link_crc)) {
+        goto found;
+    }
 
-	/* Lastly, look under the global debug directory */
-	g_free(path);
+    /* Lastly, look under the global debug directory */
+    g_free(path);
 
-	path = g_build_filename(dbg_dir, bin_dir, bin->dbg_link_filename, NULL);
-	if (is_valid_debug_file(bin, path, bin->dbg_link_crc)) {
-		goto found;
-	}
+    path = g_build_filename(dbg_dir, bin_dir, bin->dbg_link_filename, NULL);
+    if (is_valid_debug_file(bin, path, bin->dbg_link_crc)) {
+        goto found;
+    }
 
 error:
-	ret = -1;
+    ret = -1;
 end:
-	g_free(bin_dir);
-	g_free(path);
+    g_free(bin_dir);
+    g_free(path);
 
-	return ret;
+    return ret;
 
 found:
-	ret = bin_info_set_dwarf_info_from_path(bin, path);
-	if (ret) {
-		goto error;
-	}
+    ret = bin_info_set_dwarf_info_from_path(bin, path);
+    if (ret) {
+        goto error;
+    }
 
-	goto end;
+    goto end;
 }
 
 /**
@@ -678,48 +657,47 @@ found:
  * @param bin	bin_info instance
  * @returns	0 on success, negative value on failure
  */
-static
-int bin_info_set_dwarf_info(struct bin_info *bin)
+static int bin_info_set_dwarf_info(struct bin_info *bin)
 {
-	int ret = 0;
+    int ret = 0;
 
-	if (!bin) {
-		ret = -1;
-		goto end;
-	}
+    if (!bin) {
+        ret = -1;
+        goto end;
+    }
 
-	/* First try to set the DWARF info from the ELF file */
-	ret = bin_info_set_dwarf_info_from_path(bin, bin->elf_path);
-	if (!ret) {
-		goto end;
-	}
+    /* First try to set the DWARF info from the ELF file */
+    ret = bin_info_set_dwarf_info_from_path(bin, bin->elf_path);
+    if (!ret) {
+        goto end;
+    }
 
-	/*
+    /*
 	 * If that fails, try to find separate debug info via build ID
 	 * and debug link.
 	 */
-	ret = bin_info_set_dwarf_info_build_id(bin);
-	if (!ret) {
-		goto end;
-	}
+    ret = bin_info_set_dwarf_info_build_id(bin);
+    if (!ret) {
+        goto end;
+    }
 
-	ret = bin_info_set_dwarf_info_debug_link(bin);
-	if (!ret) {
-		goto end;
-	}
+    ret = bin_info_set_dwarf_info_debug_link(bin);
+    if (!ret) {
+        goto end;
+    }
 
 end:
-	return ret;
+    return ret;
 }
 
 void source_location_destroy(struct source_location *src_loc)
 {
-	if (!src_loc) {
-		return;
-	}
+    if (!src_loc) {
+        return;
+    }
 
-	free(src_loc->filename);
-	g_free(src_loc);
+    free(src_loc->filename);
+    g_free(src_loc);
 }
 
 /**
@@ -738,30 +716,29 @@ void source_location_destroy(struct source_location *src_loc)
  * 			offset string
  * @returns		0 on success, -1 on failure
  */
-static
-int bin_info_append_offset_str(const char *base_str, uint64_t low_addr,
-				uint64_t high_addr, char **result)
+static int bin_info_append_offset_str(const char *base_str, uint64_t low_addr, uint64_t high_addr,
+                                      char **result)
 {
-	uint64_t offset;
-	char *_result = NULL;
+    uint64_t offset;
+    char *_result = NULL;
 
-	if (!base_str || !result) {
-		goto error;
-	}
+    if (!base_str || !result) {
+        goto error;
+    }
 
-	offset = high_addr - low_addr;
+    offset = high_addr - low_addr;
 
-	_result = g_strdup_printf("%s+%#0" PRIx64, base_str, offset);
-	if (!_result) {
-		goto error;
-	}
-	*result = _result;
+    _result = g_strdup_printf("%s+%#0" PRIx64, base_str, offset);
+    if (!_result) {
+        goto error;
+    }
+    *result = _result;
 
-	return 0;
+    return 0;
 
 error:
-	free(_result);
-	return -1;
+    free(_result);
+    return -1;
 }
 
 /**
@@ -782,86 +759,84 @@ error:
  * @param shdr		Out parameter, the section header for scn
  * @returns		0 on success, -1 on failure
  */
-static
-int bin_info_get_nearest_symbol_from_section(Elf_Scn *scn, uint64_t addr,
-		GElf_Sym **sym, GElf_Shdr **shdr)
+static int bin_info_get_nearest_symbol_from_section(Elf_Scn *scn, uint64_t addr, GElf_Sym **sym,
+                                                    GElf_Shdr **shdr)
 {
-	int i;
-	size_t symbol_count;
-	Elf_Data *data = NULL;
-	GElf_Shdr *_shdr = NULL;
-	GElf_Sym *nearest_sym = NULL;
+    int i;
+    size_t symbol_count;
+    Elf_Data *data = NULL;
+    GElf_Shdr *_shdr = NULL;
+    GElf_Sym *nearest_sym = NULL;
 
-	if (!scn || !sym || !shdr) {
-		goto error;
-	}
+    if (!scn || !sym || !shdr) {
+        goto error;
+    }
 
-	_shdr = g_new0(GElf_Shdr, 1);
-	if (!_shdr) {
-		goto error;
-	}
+    _shdr = g_new0(GElf_Shdr, 1);
+    if (!_shdr) {
+        goto error;
+    }
 
-	_shdr = gelf_getshdr(scn, _shdr);
-	if (!_shdr) {
-		goto error;
-	}
+    _shdr = gelf_getshdr(scn, _shdr);
+    if (!_shdr) {
+        goto error;
+    }
 
-	if (_shdr->sh_type != SHT_SYMTAB) {
-		/*
+    if (_shdr->sh_type != SHT_SYMTAB) {
+        /*
 		 * We are only interested in symbol table (symtab)
 		 * sections, skip this one.
 		 */
-		goto end;
-	}
+        goto end;
+    }
 
-	data = elf_getdata(scn, NULL);
-	if (!data) {
-		goto error;
-	}
+    data = elf_getdata(scn, NULL);
+    if (!data) {
+        goto error;
+    }
 
-	symbol_count = _shdr->sh_size / _shdr->sh_entsize;
+    symbol_count = _shdr->sh_size / _shdr->sh_entsize;
 
-	for (i = 0; i < symbol_count; ++i) {
-		GElf_Sym *cur_sym = NULL;
+    for (i = 0; i < symbol_count; ++i) {
+        GElf_Sym *cur_sym = NULL;
 
-		cur_sym = g_new0(GElf_Sym, 1);
-		if (!cur_sym) {
-			goto error;
-		}
-		cur_sym = gelf_getsym(data, i, cur_sym);
-		if (!cur_sym) {
-			goto error;
-		}
-		if (GELF_ST_TYPE(cur_sym->st_info) != STT_FUNC) {
-			/* We're only interested in the functions. */
-			g_free(cur_sym);
-			continue;
-		}
+        cur_sym = g_new0(GElf_Sym, 1);
+        if (!cur_sym) {
+            goto error;
+        }
+        cur_sym = gelf_getsym(data, i, cur_sym);
+        if (!cur_sym) {
+            goto error;
+        }
+        if (GELF_ST_TYPE(cur_sym->st_info) != STT_FUNC) {
+            /* We're only interested in the functions. */
+            g_free(cur_sym);
+            continue;
+        }
 
-		if (cur_sym->st_value <= addr &&
-				(!nearest_sym ||
-				cur_sym->st_value > nearest_sym->st_value)) {
-			g_free(nearest_sym);
-			nearest_sym = cur_sym;
-		} else {
-			g_free(cur_sym);
-		}
-	}
+        if (cur_sym->st_value <= addr &&
+            (!nearest_sym || cur_sym->st_value > nearest_sym->st_value)) {
+            g_free(nearest_sym);
+            nearest_sym = cur_sym;
+        } else {
+            g_free(cur_sym);
+        }
+    }
 
 end:
-	if (nearest_sym) {
-		*sym = nearest_sym;
-		*shdr = _shdr;
-	} else {
-		g_free(_shdr);
-	}
+    if (nearest_sym) {
+        *sym = nearest_sym;
+        *shdr = _shdr;
+    } else {
+        g_free(_shdr);
+    }
 
-	return 0;
+    return 0;
 
 error:
-	g_free(nearest_sym);
-	g_free(_shdr);
-	return -1;
+    g_free(nearest_sym);
+    g_free(_shdr);
+    return -1;
 }
 
 /**
@@ -882,68 +857,63 @@ error:
  * @param func_name	Out parameter, the function name
  * @returns		0 on success, -1 on failure
  */
-static
-int bin_info_lookup_elf_function_name(struct bin_info *bin, uint64_t addr,
-		char **func_name)
+static int bin_info_lookup_elf_function_name(struct bin_info *bin, uint64_t addr, char **func_name)
 {
-	/*
+    /*
 	 * TODO (possible optimisation): if an ELF has no symtab
 	 * section, it has been stripped. Therefore, it would be wise
 	 * to store a flag indicating the stripped status after the
 	 * first iteration to prevent subsequent ones.
 	 */
-	int ret = 0;
-	Elf_Scn *scn = NULL;
-	GElf_Sym *sym = NULL;
-	GElf_Shdr *shdr = NULL;
-	char *sym_name = NULL;
+    int ret = 0;
+    Elf_Scn *scn = NULL;
+    GElf_Sym *sym = NULL;
+    GElf_Shdr *shdr = NULL;
+    char *sym_name = NULL;
 
-	/* Set ELF file if it hasn't been accessed yet. */
-	if (!bin->elf_file) {
-		ret = bin_info_set_elf_file(bin);
-		if (ret) {
-			/* Failed to set ELF file. */
-			goto error;
-		}
-	}
+    /* Set ELF file if it hasn't been accessed yet. */
+    if (!bin->elf_file) {
+        ret = bin_info_set_elf_file(bin);
+        if (ret) {
+            /* Failed to set ELF file. */
+            goto error;
+        }
+    }
 
-	scn = elf_nextscn(bin->elf_file, scn);
-	if (!scn) {
-		goto error;
-	}
+    scn = elf_nextscn(bin->elf_file, scn);
+    if (!scn) {
+        goto error;
+    }
 
-	while (scn && !sym) {
-		ret = bin_info_get_nearest_symbol_from_section(
-			scn, addr, &sym, &shdr);
-		if (ret) {
-			goto error;
-		}
+    while (scn && !sym) {
+        ret = bin_info_get_nearest_symbol_from_section(scn, addr, &sym, &shdr);
+        if (ret) {
+            goto error;
+        }
 
-		scn = elf_nextscn(bin->elf_file, scn);
-	}
+        scn = elf_nextscn(bin->elf_file, scn);
+    }
 
-	if (sym) {
-		sym_name = elf_strptr(bin->elf_file, shdr->sh_link,
-			sym->st_name);
-		if (!sym_name) {
-			goto error;
-		}
+    if (sym) {
+        sym_name = elf_strptr(bin->elf_file, shdr->sh_link, sym->st_name);
+        if (!sym_name) {
+            goto error;
+        }
 
-		ret = bin_info_append_offset_str(sym_name, sym->st_value, addr,
-			func_name);
-		if (ret) {
-			goto error;
-		}
-	}
+        ret = bin_info_append_offset_str(sym_name, sym->st_value, addr, func_name);
+        if (ret) {
+            goto error;
+        }
+    }
 
-	g_free(shdr);
-	g_free(sym);
-	return 0;
+    g_free(shdr);
+    g_free(sym);
+    return 0;
 
 error:
-	g_free(shdr);
-	g_free(sym);
-	return ret;
+    g_free(shdr);
+    g_free(sym);
+    return ret;
 }
 
 /**
@@ -959,72 +929,69 @@ error:
  * @param func_name	Out parameter, the function name
  * @returns		0 on success, -1 on failure
  */
-static
-int bin_info_lookup_cu_function_name(struct bt_dwarf_cu *cu, uint64_t addr,
-		char **func_name)
+static int bin_info_lookup_cu_function_name(struct bt_dwarf_cu *cu, uint64_t addr, char **func_name)
 {
-	int ret = 0;
-	bool found = false;
-	struct bt_dwarf_die *die = NULL;
+    int ret = 0;
+    bool found = false;
+    struct bt_dwarf_die *die = NULL;
 
-	if (!cu || !func_name) {
-		goto error;
-	}
+    if (!cu || !func_name) {
+        goto error;
+    }
 
-	die = bt_dwarf_die_create(cu);
-	if (!die) {
-		goto error;
-	}
+    die = bt_dwarf_die_create(cu);
+    if (!die) {
+        goto error;
+    }
 
-	while (bt_dwarf_die_next(die) == 0) {
-		int tag;
+    while (bt_dwarf_die_next(die) == 0) {
+        int tag;
 
-		ret = bt_dwarf_die_get_tag(die, &tag);
-		if (ret) {
-			goto error;
-		}
+        ret = bt_dwarf_die_get_tag(die, &tag);
+        if (ret) {
+            goto error;
+        }
 
-		if (tag == DW_TAG_subprogram) {
-			ret = bt_dwarf_die_contains_addr(die, addr, &found);
-			if (ret) {
-				goto error;
-			}
+        if (tag == DW_TAG_subprogram) {
+            ret = bt_dwarf_die_contains_addr(die, addr, &found);
+            if (ret) {
+                goto error;
+            }
 
-			if (found) {
-				break;
-			}
-		}
-	}
+            if (found) {
+                break;
+            }
+        }
+    }
 
-	if (found) {
-		uint64_t low_addr = 0;
-		char *die_name = NULL;
+    if (found) {
+        uint64_t low_addr = 0;
+        char *die_name = NULL;
 
-		ret = bt_dwarf_die_get_name(die, &die_name);
-		if (ret) {
-			goto error;
-		}
+        ret = bt_dwarf_die_get_name(die, &die_name);
+        if (ret) {
+            goto error;
+        }
 
-		ret = dwarf_lowpc(die->dwarf_die, &low_addr);
-		if (ret) {
-			free(die_name);
-			goto error;
-		}
+        ret = dwarf_lowpc(die->dwarf_die, &low_addr);
+        if (ret) {
+            free(die_name);
+            goto error;
+        }
 
-		ret = bin_info_append_offset_str(die_name, low_addr, addr,
-			func_name);
-		free(die_name);
-		if (ret) {
-			goto error;
-		}
-	}
+        ret = bin_info_append_offset_str(die_name, low_addr, addr, func_name);
+        free(die_name);
+        if (ret) {
+            goto error;
+        }
+    }
 
-	bt_dwarf_die_destroy(die);
-	return 0;
+    bt_dwarf_die_destroy(die);
+    return 0;
 
 error:
-	bt_dwarf_die_destroy(die);
-	return -1;
+    bt_dwarf_die_destroy(die);
+    return -1;
 }
 
 /**
@@ -1041,144 +1008,142 @@ error:
  * @param func_name	Out parameter, the function name
  * @returns		0 on success, -1 on failure
  */
-static
-int bin_info_lookup_dwarf_function_name(struct bin_info *bin, uint64_t addr,
-		char **func_name)
+static int bin_info_lookup_dwarf_function_name(struct bin_info *bin, uint64_t addr,
+                                               char **func_name)
 {
-	int ret = 0;
-	char *_func_name = NULL;
-	struct bt_dwarf_cu *cu = NULL;
+    int ret = 0;
+    char *_func_name = NULL;
+    struct bt_dwarf_cu *cu = NULL;
 
-	if (!bin || !func_name) {
-		goto error;
-	}
+    if (!bin || !func_name) {
+        goto error;
+    }
 
-	cu = bt_dwarf_cu_create(bin->dwarf_info);
-	if (!cu) {
-		goto error;
-	}
+    cu = bt_dwarf_cu_create(bin->dwarf_info);
+    if (!cu) {
+        goto error;
+    }
 
-	while (bt_dwarf_cu_next(cu) == 0) {
-		ret = bin_info_lookup_cu_function_name(cu, addr, &_func_name);
-		if (ret) {
-			goto error;
-		}
+    while (bt_dwarf_cu_next(cu) == 0) {
+        ret = bin_info_lookup_cu_function_name(cu, addr, &_func_name);
+        if (ret) {
+            goto error;
+        }
 
-		if (_func_name) {
-			break;
-		}
-	}
+        if (_func_name) {
+            break;
+        }
+    }
 
-	if (_func_name) {
-		*func_name = _func_name;
-	} else {
-		goto error;
-	}
+    if (_func_name) {
+        *func_name = _func_name;
+    } else {
+        goto error;
+    }
 
-	bt_dwarf_cu_destroy(cu);
-	return 0;
+    bt_dwarf_cu_destroy(cu);
+    return 0;
 
 error:
-	bt_dwarf_cu_destroy(cu);
-	return -1;
+    bt_dwarf_cu_destroy(cu);
+    return -1;
 }
 
-int bin_info_lookup_function_name(struct bin_info *bin,
-		uint64_t addr, char **func_name)
+int bin_info_lookup_function_name(struct bin_info *bin, uint64_t addr, char **func_name)
 {
-	int ret = 0;
-	char *_func_name = NULL;
+    int ret = 0;
+    char *_func_name = NULL;
 
-	if (!bin || !func_name) {
-		goto error;
-	}
+    if (!bin || !func_name) {
+        goto error;
+    }
 
-	/*
+    /*
 	 * If the bin_info has a build id but it does not match the build id
 	 * that was found on the file system, return an error.
 	 */
-	if (bin->build_id && !bin->file_build_id_matches) {
-		goto error;
-	}
+    if (bin->build_id && !bin->file_build_id_matches) {
+        goto error;
+    }
 
-	/* Set DWARF info if it hasn't been accessed yet. */
-	if (!bin->dwarf_info && !bin->is_elf_only) {
-		ret = bin_info_set_dwarf_info(bin);
-		if (ret) {
-			BT_COMP_LOGI_STR("Failed to set bin dwarf info, falling "
-				"back to ELF lookup.");
-			/* Failed to set DWARF info, fallback to ELF. */
-			bin->is_elf_only = true;
-		}
-	}
+    /* Set DWARF info if it hasn't been accessed yet. */
+    if (!bin->dwarf_info && !bin->is_elf_only) {
+        ret = bin_info_set_dwarf_info(bin);
+        if (ret) {
+            BT_COMP_LOGI_STR("Failed to set bin dwarf info, falling "
+                             "back to ELF lookup.");
+            /* Failed to set DWARF info, fallback to ELF. */
+            bin->is_elf_only = true;
+        }
+    }
 
-	if (!bin_info_has_address(bin, addr)) {
-		goto error;
-	}
+    if (!bin_info_has_address(bin, addr)) {
+        goto error;
+    }
 
-	/*
+    /*
 	 * Addresses in ELF and DWARF are relative to base address for
 	 * PIC, so make the address argument relative too if needed.
 	 */
-	if (bin->is_pic) {
-		addr -= bin->low_addr;
-	}
+    if (bin->is_pic) {
+        addr -= bin->low_addr;
+    }
 
-	if (bin->is_elf_only) {
-		ret = bin_info_lookup_elf_function_name(bin, addr,
-			&_func_name);
-		if (ret) {
-			BT_COMP_LOGI("Failed to lookup function name (ELF): "
-				"ret=%d", ret);
-		}
-	} else {
-		ret = bin_info_lookup_dwarf_function_name(bin, addr,
-			&_func_name);
-		if (ret) {
-			BT_COMP_LOGI("Failed to lookup function name (DWARF): "
-				"ret=%d", ret);
-		}
-	}
+    if (bin->is_elf_only) {
+        ret = bin_info_lookup_elf_function_name(bin, addr, &_func_name);
+        if (ret) {
+            BT_COMP_LOGI("Failed to lookup function name (ELF): "
+                         "ret=%d",
+                         ret);
+        }
+    } else {
+        ret = bin_info_lookup_dwarf_function_name(bin, addr, &_func_name);
+        if (ret) {
+            BT_COMP_LOGI("Failed to lookup function name (DWARF): "
+                         "ret=%d",
+                         ret);
+        }
+    }
 
-	*func_name = _func_name;
-	return 0;
+    *func_name = _func_name;
+    return 0;
 
 error:
-	return -1;
+    return -1;
 }
 
 int bin_info_get_bin_loc(struct bin_info *bin, uint64_t addr, char **bin_loc)
 {
-	gchar *_bin_loc = NULL;
+    gchar *_bin_loc = NULL;
 
-	if (!bin || !bin_loc) {
-		goto error;
-	}
+    if (!bin || !bin_loc) {
+        goto error;
+    }
 
-	/*
+    /*
 	 * If the bin_info has a build id but it does not match the build id
 	 * that was found on the file system, return an error.
 	 */
-	if (bin->build_id && !bin->file_build_id_matches) {
-		goto error;
-	}
+    if (bin->build_id && !bin->file_build_id_matches) {
+        goto error;
+    }
 
-	if (bin->is_pic) {
-		addr -= bin->low_addr;
-		_bin_loc = g_strdup_printf("+%#0" PRIx64, addr);
-	} else {
-		_bin_loc = g_strdup_printf("@%#0" PRIx64, addr);
-	}
+    if (bin->is_pic) {
+        addr -= bin->low_addr;
+        _bin_loc = g_strdup_printf("+%#0" PRIx64, addr);
+    } else {
+        _bin_loc = g_strdup_printf("@%#0" PRIx64, addr);
+    }
 
-	if (!_bin_loc) {
-		goto error;
-	}
+    if (!_bin_loc) {
+        goto error;
+    }
 
-	*bin_loc = _bin_loc;
-	return 0;
+    *bin_loc = _bin_loc;
+    return 0;
 
 error:
-	return -1;
+    return -1;
 }
 
 /**
@@ -1206,62 +1171,61 @@ error:
  *			false if not
  * @returns		Returns 0 on success, -1 on failure
  */
-static
-int bin_info_child_die_has_address(struct bt_dwarf_die *die, uint64_t addr, bool *contains)
+static int bin_info_child_die_has_address(struct bt_dwarf_die *die, uint64_t addr, bool *contains)
 {
-	int ret = 0;
-	bool _contains = false;
+    int ret = 0;
+    bool _contains = false;
 
-	if (!die) {
-		goto error;
-	}
+    if (!die) {
+        goto error;
+    }
 
-	ret = bt_dwarf_die_child(die);
-	if (ret) {
-		goto error;
-	}
+    ret = bt_dwarf_die_child(die);
+    if (ret) {
+        goto error;
+    }
 
-	do {
-		ret = bt_dwarf_die_contains_addr(die, addr, &_contains);
-		if (ret) {
-			goto error;
-		}
+    do {
+        ret = bt_dwarf_die_contains_addr(die, addr, &_contains);
+        if (ret) {
+            goto error;
+        }
 
-		if (_contains) {
-			/*
+        if (_contains) {
+            /*
 			 * The address is within the range of the current DIE
 			 * or its children.
 			 */
-			int tag;
+            int tag;
 
-			ret = bt_dwarf_die_get_tag(die, &tag);
-			if (ret) {
-				goto error;
-			}
+            ret = bt_dwarf_die_get_tag(die, &tag);
+            if (ret) {
+                goto error;
+            }
 
-			if (tag == DW_TAG_inlined_subroutine) {
-				/* Found the tracepoint. */
-				goto end;
-			}
+            if (tag == DW_TAG_inlined_subroutine) {
+                /* Found the tracepoint. */
+                goto end;
+            }
 
-			if (bt_dwarf_die_has_children(die)) {
-				/*
+            if (bt_dwarf_die_has_children(die)) {
+                /*
 				 * Look for the address in the children DIEs.
 				 */
-				ret = bt_dwarf_die_child(die);
-				if (ret) {
-					goto error;
-				}
-			}
-		}
-	} while (bt_dwarf_die_next(die) == 0);
+                ret = bt_dwarf_die_child(die);
+                if (ret) {
+                    goto error;
+                }
+            }
+        }
+    } while (bt_dwarf_die_next(die) == 0);
 
 end:
-	*contains = _contains;
-	return 0;
+    *contains = _contains;
+    return 0;
 
 error:
-	return -1;
+    return -1;
 }
 
 /**
@@ -1275,88 +1239,86 @@ error:
  *			line number) for the address
  * @returns		0 on success, -1 on failure
  */
-static
-int bin_info_lookup_cu_src_loc_inl(struct bt_dwarf_cu *cu, uint64_t addr,
-		struct source_location **src_loc)
+static int bin_info_lookup_cu_src_loc_inl(struct bt_dwarf_cu *cu, uint64_t addr,
+                                          struct source_location **src_loc)
 {
-	int ret = 0;
-	bool found = false;
-	struct bt_dwarf_die *die = NULL;
-	struct source_location *_src_loc = NULL;
+    int ret = 0;
+    bool found = false;
+    struct bt_dwarf_die *die = NULL;
+    struct source_location *_src_loc = NULL;
 
-	if (!cu || !src_loc) {
-		goto error;
-	}
+    if (!cu || !src_loc) {
+        goto error;
+    }
 
-	die = bt_dwarf_die_create(cu);
-	if (!die) {
-		goto error;
-	}
+    die = bt_dwarf_die_create(cu);
+    if (!die) {
+        goto error;
+    }
 
-	while (bt_dwarf_die_next(die) == 0) {
-		int tag;
+    while (bt_dwarf_die_next(die) == 0) {
+        int tag;
 
-		ret = bt_dwarf_die_get_tag(die, &tag);
-		if (ret) {
-			goto error;
-		}
+        ret = bt_dwarf_die_get_tag(die, &tag);
+        if (ret) {
+            goto error;
+        }
 
-		if (tag == DW_TAG_subprogram) {
-			bool contains = false;
+        if (tag == DW_TAG_subprogram) {
+            bool contains = false;
 
-			ret = bt_dwarf_die_contains_addr(die, addr, &contains);
-			if (ret) {
-				goto error;
-			}
+            ret = bt_dwarf_die_contains_addr(die, addr, &contains);
+            if (ret) {
+                goto error;
+            }
 
-			if (contains) {
-				/*
+            if (contains) {
+                /*
 				 * Try to find an inlined subroutine
 				 * child of this DIE containing addr.
 				 */
-				ret = bin_info_child_die_has_address(die, addr,
-						&found);
-				if(ret) {
-					goto error;
-				}
+                ret = bin_info_child_die_has_address(die, addr, &found);
+                if (ret) {
+                    goto error;
+                }
 
-				goto end;
-			}
-		}
-	}
+                goto end;
+            }
+        }
+    }
 
 end:
-	if (found) {
-		char *filename = NULL;
-		uint64_t line_no;
+    if (found) {
+        char *filename = NULL;
+        uint64_t line_no;
 
-		_src_loc = g_new0(struct source_location, 1);
-		if (!_src_loc) {
-			goto error;
-		}
+        _src_loc = g_new0(struct source_location, 1);
+        if (!_src_loc) {
+            goto error;
+        }
 
-		ret = bt_dwarf_die_get_call_file(die, &filename);
-		if (ret) {
-			goto error;
-		}
-		ret = bt_dwarf_die_get_call_line(die, &line_no);
-		if (ret) {
-			free(filename);
-			goto error;
-		}
+        ret = bt_dwarf_die_get_call_file(die, &filename);
+        if (ret) {
+            goto error;
+        }
+        ret = bt_dwarf_die_get_call_line(die, &line_no);
+        if (ret) {
+            free(filename);
+            goto error;
+        }
 
-		_src_loc->filename = filename;
-		_src_loc->line_no = line_no;
-		*src_loc = _src_loc;
-	}
+        _src_loc->filename = filename;
+        _src_loc->line_no = line_no;
+        *src_loc = _src_loc;
+    }
 
-	bt_dwarf_die_destroy(die);
-	return 0;
+    bt_dwarf_die_destroy(die);
+    return 0;
 
 error:
-	source_location_destroy(_src_loc);
-	bt_dwarf_die_destroy(die);
-	return -1;
+    source_location_destroy(_src_loc);
+    bt_dwarf_die_destroy(die);
+    return -1;
 }
 
 /**
@@ -1376,69 +1338,68 @@ error:
  *
  * @returns		0 on success, -1 on failure
  */
-static
-int bin_info_lookup_cu_src_loc_no_inl(struct bt_dwarf_cu *cu, uint64_t addr,
-		struct source_location **src_loc)
+static int bin_info_lookup_cu_src_loc_no_inl(struct bt_dwarf_cu *cu, uint64_t addr,
+                                             struct source_location **src_loc)
 {
-	struct source_location *_src_loc = NULL;
-	struct bt_dwarf_die *die = NULL;
-	const char *filename = NULL;
-	Dwarf_Line *line = NULL;
-	Dwarf_Addr line_addr;
-	int ret = 0, line_no;
+    struct source_location *_src_loc = NULL;
+    struct bt_dwarf_die *die = NULL;
+    const char *filename = NULL;
+    Dwarf_Line *line = NULL;
+    Dwarf_Addr line_addr;
+    int ret = 0, line_no;
 
-	if (!cu || !src_loc) {
-		goto error;
-	}
+    if (!cu || !src_loc) {
+        goto error;
+    }
 
-	die = bt_dwarf_die_create(cu);
-	if (!die) {
-		goto error;
-	}
+    die = bt_dwarf_die_create(cu);
+    if (!die) {
+        goto error;
+    }
 
-	line = dwarf_getsrc_die(die->dwarf_die, addr);
-	if (!line) {
-		/* This is not an error. The caller needs to keep looking. */
-		goto end;
-	}
+    line = dwarf_getsrc_die(die->dwarf_die, addr);
+    if (!line) {
+        /* This is not an error. The caller needs to keep looking. */
+        goto end;
+    }
 
-	ret = dwarf_lineaddr(line, &line_addr);
-	if (ret) {
-		goto error;
-	}
+    ret = dwarf_lineaddr(line, &line_addr);
+    if (ret) {
+        goto error;
+    }
 
-	filename = dwarf_linesrc(line, NULL, NULL);
-	if (!filename) {
-		goto error;
-	}
+    filename = dwarf_linesrc(line, NULL, NULL);
+    if (!filename) {
+        goto error;
+    }
 
-	if (addr == line_addr) {
-		_src_loc = g_new0(struct source_location, 1);
-		if (!_src_loc) {
-			goto error;
-		}
+    if (addr == line_addr) {
+        _src_loc = g_new0(struct source_location, 1);
+        if (!_src_loc) {
+            goto error;
+        }
 
-		ret = dwarf_lineno(line, &line_no);
-		if (ret) {
-			goto error;
-		}
+        ret = dwarf_lineno(line, &line_no);
+        if (ret) {
+            goto error;
+        }
 
-		_src_loc->line_no = line_no;
-		_src_loc->filename = g_strdup(filename);
-	}
+        _src_loc->line_no = line_no;
+        _src_loc->filename = g_strdup(filename);
+    }
 
-	if (_src_loc) {
-		*src_loc = _src_loc;
-	}
+    if (_src_loc) {
+        *src_loc = _src_loc;
+    }
 
-	goto end;
+    goto end;
 
 error:
-	source_location_destroy(_src_loc);
-	ret = -1;
+    source_location_destroy(_src_loc);
+    ret = -1;
 end:
-	bt_dwarf_die_destroy(die);
-	return ret;
+    bt_dwarf_die_destroy(die);
+    return ret;
 }
 
 /**
@@ -1455,117 +1416,116 @@ end:
  * @param src_loc	Out parameter, the source location
  * @returns		0 on success, -1 on failure
  */
-static
-int bin_info_lookup_cu_src_loc(struct bt_dwarf_cu *cu, uint64_t addr,
-		struct source_location **src_loc)
+static int bin_info_lookup_cu_src_loc(struct bt_dwarf_cu *cu, uint64_t addr,
+                                      struct source_location **src_loc)
 {
-	int ret = 0;
-	struct source_location *_src_loc = NULL;
+    int ret = 0;
+    struct source_location *_src_loc = NULL;
 
-	if (!cu || !src_loc) {
-		goto error;
-	}
+    if (!cu || !src_loc) {
+        goto error;
+    }
 
-	ret = bin_info_lookup_cu_src_loc_inl(cu, addr, &_src_loc);
-	if (ret) {
-		goto error;
-	}
+    ret = bin_info_lookup_cu_src_loc_inl(cu, addr, &_src_loc);
+    if (ret) {
+        goto error;
+    }
 
-	if (_src_loc) {
-		goto end;
-	}
+    if (_src_loc) {
+        goto end;
+    }
 
-	ret = bin_info_lookup_cu_src_loc_no_inl(cu, addr, &_src_loc);
-	if (ret) {
-		goto error;
-	}
+    ret = bin_info_lookup_cu_src_loc_no_inl(cu, addr, &_src_loc);
+    if (ret) {
+        goto error;
+    }
 
-	if (_src_loc) {
-		goto end;
-	}
+    if (_src_loc) {
+        goto end;
+    }
 
 end:
-	if (_src_loc) {
-		*src_loc = _src_loc;
-	}
+    if (_src_loc) {
+        *src_loc = _src_loc;
+    }
 
-	return 0;
+    return 0;
 
 error:
-	source_location_destroy(_src_loc);
-	return -1;
+    source_location_destroy(_src_loc);
+    return -1;
 }
 
 int bin_info_lookup_source_location(struct bin_info *bin, uint64_t addr,
-		struct source_location **src_loc)
+                                    struct source_location **src_loc)
 {
-	struct bt_dwarf_cu *cu = NULL;
-	struct source_location *_src_loc = NULL;
+    struct bt_dwarf_cu *cu = NULL;
+    struct source_location *_src_loc = NULL;
 
-	if (!bin || !src_loc) {
-		goto error;
-	}
+    if (!bin || !src_loc) {
+        goto error;
+    }
 
-	/*
+    /*
 	 * If the bin_info has a build id but it does not match the build id
 	 * that was found on the file system, return an error.
 	 */
-	if (bin->build_id && !bin->file_build_id_matches) {
-		goto error;
-	}
+    if (bin->build_id && !bin->file_build_id_matches) {
+        goto error;
+    }
 
-	/* Set DWARF info if it hasn't been accessed yet. */
-	if (!bin->dwarf_info && !bin->is_elf_only) {
-		if (bin_info_set_dwarf_info(bin)) {
-			/* Failed to set DWARF info. */
-			bin->is_elf_only = true;
-		}
-	}
+    /* Set DWARF info if it hasn't been accessed yet. */
+    if (!bin->dwarf_info && !bin->is_elf_only) {
+        if (bin_info_set_dwarf_info(bin)) {
+            /* Failed to set DWARF info. */
+            bin->is_elf_only = true;
+        }
+    }
 
-	if (bin->is_elf_only) {
-		/* We cannot lookup source location without DWARF info. */
-		goto error;
-	}
+    if (bin->is_elf_only) {
+        /* We cannot lookup source location without DWARF info. */
+        goto error;
+    }
 
-	if (!bin_info_has_address(bin, addr)) {
-		goto error;
-	}
+    if (!bin_info_has_address(bin, addr)) {
+        goto error;
+    }
 
-	/*
+    /*
 	 * Addresses in ELF and DWARF are relative to base address for
 	 * PIC, so make the address argument relative too if needed.
 	 */
-	if (bin->is_pic) {
-		addr -= bin->low_addr;
-	}
+    if (bin->is_pic) {
+        addr -= bin->low_addr;
+    }
 
-	cu = bt_dwarf_cu_create(bin->dwarf_info);
-	if (!cu) {
-		goto error;
-	}
+    cu = bt_dwarf_cu_create(bin->dwarf_info);
+    if (!cu) {
+        goto error;
+    }
 
-	while (bt_dwarf_cu_next(cu) == 0) {
-		int ret;
+    while (bt_dwarf_cu_next(cu) == 0) {
+        int ret;
 
-		ret = bin_info_lookup_cu_src_loc(cu, addr, &_src_loc);
-		if (ret) {
-			goto error;
-		}
+        ret = bin_info_lookup_cu_src_loc(cu, addr, &_src_loc);
+        if (ret) {
+            goto error;
+        }
 
-		if (_src_loc) {
-			break;
-		}
-	}
+        if (_src_loc) {
+            break;
+        }
+    }
 
-	bt_dwarf_cu_destroy(cu);
-	if (_src_loc) {
-		*src_loc = _src_loc;
-	}
+    bt_dwarf_cu_destroy(cu);
+    if (_src_loc) {
+        *src_loc = _src_loc;
+    }
 
-	return 0;
+    return 0;
 
 error:
-	source_location_destroy(_src_loc);
-	bt_dwarf_cu_destroy(cu);
-	return -1;
+    source_location_destroy(_src_loc);
+    bt_dwarf_cu_destroy(cu);
+    return -1;
 }
