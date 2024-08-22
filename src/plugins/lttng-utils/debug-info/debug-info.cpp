@@ -28,7 +28,6 @@
 #include "debug-info.hpp"
 #include "trace-ir-data-copy.hpp"
 #include "trace-ir-mapping.hpp"
-#include "trace-ir-metadata-copy.hpp"
 #include "utils.hpp"
 
 #define DEFAULT_DEBUG_INFO_FIELD_NAME "debug_info"

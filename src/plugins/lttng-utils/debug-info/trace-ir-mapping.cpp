@@ -18,7 +18,6 @@
 
 #include "common/assert.h"
 
-#include "debug-info.hpp"
 #include "trace-ir-data-copy.hpp"
 #include "trace-ir-mapping.hpp"
 #include "trace-ir-metadata-copy.hpp"
