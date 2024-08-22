@@ -10,13 +10,10 @@
 #define BT_LOG_OUTPUT_LEVEL   (bin->log_level)
 #define BT_LOG_TAG            "PLUGIN/FLT.LTTNG-UTILS.DEBUG-INFO/BIN-INFO"
 
-#include <dwarf.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <glib.h>
 #include <inttypes.h>
 #include <libgen.h>
-#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,12 +22,9 @@
 
 #include "logging/comp-logging.h"
 
-#include "common/common.h"
-
 #include "bin-info.hpp"
 #include "crc32.h"
 #include "dwarf.hpp"
-#include "utils.hpp"
 
 /*
  * An address printed in hex is at most 20 bytes (16 for 64-bits +
