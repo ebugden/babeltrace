@@ -28,7 +28,7 @@ struct bin_info
 {
     bt_logging_level log_level;
 
-    /* Used for logging; can be `NULL` */
+    /* Used for logging; can be `nullptr` */
     bt_self_component *self_comp;
 
     /* Base virtual memory address. */
@@ -95,7 +95,7 @@ int bin_info_init(bt_logging_level log_level, bt_self_component *self_comp);
  * @param target_prefix  Path to the root file system of the target
  *                       or NULL.
  * @returns		Pointer to the new bin_info on success,
- *			NULL on failure.
+ *			`nullptr` on failure.
  */
 struct bin_info *bin_info_create(struct bt_fd_cache *fdc, const char *path, uint64_t low_addr,
                                  uint64_t memsz, bool is_pic, const char *debug_info_dir,
