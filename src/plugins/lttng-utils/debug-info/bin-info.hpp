@@ -16,7 +16,6 @@
 
 #include <babeltrace2/babeltrace.h>
 
-#include "common/macros.h"
 #include "fd-cache/fd-cache.hpp"
 
 #define DEFAULT_DEBUG_DIR       "/usr/lib/debug"
