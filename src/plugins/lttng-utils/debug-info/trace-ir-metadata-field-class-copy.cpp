@@ -17,7 +17,6 @@
 
 #include "common/assert.h"
 #include "common/common.h"
-#include "compat/compiler.h"
 
 #include "trace-ir-metadata-copy.hpp"
 #include "trace-ir-metadata-field-class-copy.hpp"

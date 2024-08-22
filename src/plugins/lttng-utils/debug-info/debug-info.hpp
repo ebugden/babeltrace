@@ -16,8 +16,6 @@
 
 #include <babeltrace2/babeltrace.h>
 
-#include "common/macros.h"
-
 #define VPID_FIELD_NAME     "vpid"
 #define IP_FIELD_NAME       "ip"
 #define BADDR_FIELD_NAME    "baddr"
