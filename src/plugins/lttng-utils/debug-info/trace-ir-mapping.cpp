@@ -90,7 +90,7 @@ static bt_trace *create_new_mapped_trace(struct trace_ir_maps *ir_maps, const bt
         metadata_maps->output_trace_class = create_new_mapped_trace_class(ir_maps, in_trace_class);
         if (!metadata_maps->output_trace_class) {
             BT_COMP_LOGE_APPEND_CAUSE(self_comp, "Error create output trace class");
-            out_trace = NULL;
+            out_trace = nullptr;
             goto end;
         }
     }
@@ -179,7 +179,7 @@ trace_ir_mapping_create_new_mapped_stream_class(struct trace_ir_maps *ir_maps,
 
     goto end;
 error:
-    out_stream_class = NULL;
+    out_stream_class = nullptr;
 end:
     return out_stream_class;
 }
@@ -202,7 +202,7 @@ bt_stream *trace_ir_mapping_create_new_mapped_stream(struct trace_ir_maps *ir_ma
     const bt_stream_class *in_stream_class;
     const bt_trace *in_trace;
     bt_stream_class *out_stream_class;
-    bt_stream *out_stream = NULL;
+    bt_stream *out_stream = nullptr;
 
     BT_ASSERT(ir_maps);
     BT_ASSERT(in_stream);
@@ -262,7 +262,7 @@ bt_stream *trace_ir_mapping_create_new_mapped_stream(struct trace_ir_maps *ir_ma
 
     goto end;
 error:
-    out_stream = NULL;
+    out_stream = nullptr;
 end:
     return out_stream;
 }
@@ -341,7 +341,7 @@ bt_event_class *trace_ir_mapping_create_new_mapped_event_class(struct trace_ir_m
 
     goto end;
 error:
-    out_event_class = NULL;
+    out_event_class = nullptr;
 end:
     return out_event_class;
 }
@@ -418,7 +418,7 @@ bt_packet *trace_ir_mapping_create_new_mapped_packet(struct trace_ir_maps *ir_ma
 
     goto end;
 error:
-    out_packet = NULL;
+    out_packet = nullptr;
 end:
     return out_packet;
 }
@@ -504,9 +504,9 @@ struct trace_ir_data_maps *trace_ir_data_maps_create(struct trace_ir_maps *ir_ma
     d_maps->input_trace = in_trace;
 
     /* Create the hashtables used to map data objects. */
-    d_maps->stream_map = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
+    d_maps->stream_map = g_hash_table_new_full(g_direct_hash, g_direct_equal, nullptr,
                                                (GDestroyNotify) bt_stream_put_ref);
-    d_maps->packet_map = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
+    d_maps->packet_map = g_hash_table_new_full(g_direct_hash, g_direct_equal, nullptr,
                                                (GDestroyNotify) bt_packet_put_ref);
 
     add_listener_status = bt_trace_add_destruction_listener(
@@ -544,13 +544,13 @@ struct trace_ir_metadata_maps *trace_ir_metadata_maps_create(struct trace_ir_map
     }
 
     /* Create the hashtables used to map metadata objects. */
-    md_maps->stream_class_map = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
+    md_maps->stream_class_map = g_hash_table_new_full(g_direct_hash, g_direct_equal, nullptr,
                                                       (GDestroyNotify) bt_stream_class_put_ref);
-    md_maps->event_class_map = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
+    md_maps->event_class_map = g_hash_table_new_full(g_direct_hash, g_direct_equal, nullptr,
                                                      (GDestroyNotify) bt_event_class_put_ref);
-    md_maps->field_class_map = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
+    md_maps->field_class_map = g_hash_table_new_full(g_direct_hash, g_direct_equal, nullptr,
                                                      (GDestroyNotify) bt_field_class_put_ref);
-    md_maps->clock_class_map = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
+    md_maps->clock_class_map = g_hash_table_new_full(g_direct_hash, g_direct_equal, nullptr,
                                                      (GDestroyNotify) bt_clock_class_put_ref);
 
     add_listener_status =
@@ -654,12 +654,12 @@ void trace_ir_maps_destroy(struct trace_ir_maps *maps)
 
     if (maps->data_maps) {
         g_hash_table_destroy(maps->data_maps);
-        maps->data_maps = NULL;
+        maps->data_maps = nullptr;
     }
 
     if (maps->metadata_maps) {
         g_hash_table_destroy(maps->metadata_maps);
-        maps->metadata_maps = NULL;
+        maps->metadata_maps = nullptr;
     }
 
     g_free(maps);
@@ -687,17 +687,18 @@ struct trace_ir_maps *trace_ir_maps_create(bt_self_component *self_comp,
 
     ir_maps->self_comp = self_comp;
 
-    ir_maps->data_maps = g_hash_table_new_full(g_direct_hash, g_direct_equal, (GDestroyNotify) NULL,
-                                               (GDestroyNotify) trace_ir_data_maps_destroy);
+    ir_maps->data_maps =
+        g_hash_table_new_full(g_direct_hash, g_direct_equal, (GDestroyNotify) nullptr,
+                              (GDestroyNotify) trace_ir_data_maps_destroy);
 
     ir_maps->metadata_maps =
-        g_hash_table_new_full(g_direct_hash, g_direct_equal, (GDestroyNotify) NULL,
+        g_hash_table_new_full(g_direct_hash, g_direct_equal, (GDestroyNotify) nullptr,
                               (GDestroyNotify) trace_ir_metadata_maps_destroy);
 
     goto end;
 error:
     trace_ir_maps_destroy(ir_maps);
-    ir_maps = NULL;
+    ir_maps = nullptr;
 end:
     return ir_maps;
 }
