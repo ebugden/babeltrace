@@ -64,7 +64,7 @@ enum debug_info_trace_ir_mapping_status copy_trace_content(const bt_trace *in_tr
     env_field_count = bt_trace_get_environment_entry_count(in_trace);
     for (i = 0; i < env_field_count; i++) {
         const char *value_name;
-        const bt_value *value = NULL;
+        const bt_value *value = nullptr;
         bt_trace_set_environment_entry_status set_env_status;
 
         bt_trace_borrow_environment_entry_by_index_const(in_trace, i, &value_name, &value);

@@ -27,7 +27,7 @@ struct bt_dwarf_cu *bt_dwarf_cu_create(Dwarf *dwarf_info)
     return cu;
 
 error:
-    return NULL;
+    return nullptr;
 }
 
 void bt_dwarf_cu_destroy(struct bt_dwarf_cu *cu)
@@ -46,8 +46,8 @@ int bt_dwarf_cu_next(struct bt_dwarf_cu *cu)
         goto end;
     }
 
-    ret = dwarf_nextcu(cu->dwarf_info, cu->next_offset, &next_offset, &cu_header_size, NULL, NULL,
-                       NULL);
+    ret = dwarf_nextcu(cu->dwarf_info, cu->next_offset, &next_offset, &cu_header_size, nullptr,
+                       nullptr, nullptr);
     if (ret) {
         /* ret is -1 on error, 1 if no next CU. */
         goto end;
@@ -63,8 +63,8 @@ end:
 
 struct bt_dwarf_die *bt_dwarf_die_create(struct bt_dwarf_cu *cu)
 {
-    Dwarf_Die *dwarf_die = NULL;
-    struct bt_dwarf_die *die = NULL;
+    Dwarf_Die *dwarf_die = nullptr;
+    struct bt_dwarf_die *die = nullptr;
 
     if (!cu) {
         goto error;
@@ -94,7 +94,7 @@ struct bt_dwarf_die *bt_dwarf_die_create(struct bt_dwarf_cu *cu)
 error:
     g_free(dwarf_die);
     g_free(die);
-    return NULL;
+    return nullptr;
 }
 
 void bt_dwarf_die_destroy(struct bt_dwarf_die *die)
@@ -115,7 +115,7 @@ int bt_dwarf_die_has_children(struct bt_dwarf_die *die)
 int bt_dwarf_die_child(struct bt_dwarf_die *die)
 {
     int ret;
-    Dwarf_Die *child_die = NULL;
+    Dwarf_Die *child_die = nullptr;
 
     if (!die) {
         ret = -1;
@@ -147,7 +147,7 @@ error:
 int bt_dwarf_die_next(struct bt_dwarf_die *die)
 {
     int ret;
-    Dwarf_Die *next_die = NULL;
+    Dwarf_Die *next_die = nullptr;
 
     if (!die) {
         ret = -1;
@@ -234,10 +234,10 @@ int bt_dwarf_die_get_call_file(struct bt_dwarf_die *die, char **filename)
 {
     int ret;
     Dwarf_Sword file_no;
-    const char *_filename = NULL;
-    Dwarf_Files *src_files = NULL;
-    Dwarf_Attribute *file_attr = NULL;
-    struct bt_dwarf_die *cu_die = NULL;
+    const char *_filename = nullptr;
+    Dwarf_Files *src_files = nullptr;
+    Dwarf_Attribute *file_attr = nullptr;
+    struct bt_dwarf_die *cu_die = nullptr;
 
     if (!die || !filename) {
         goto error;
@@ -263,12 +263,12 @@ int bt_dwarf_die_get_call_file(struct bt_dwarf_die *die, char **filename)
         goto error;
     }
 
-    ret = dwarf_getsrcfiles(cu_die->dwarf_die, &src_files, NULL);
+    ret = dwarf_getsrcfiles(cu_die->dwarf_die, &src_files, nullptr);
     if (ret) {
         goto error;
     }
 
-    _filename = dwarf_filesrc(src_files, file_no, NULL, NULL);
+    _filename = dwarf_filesrc(src_files, file_no, nullptr, nullptr);
     if (!_filename) {
         goto error;
     }
@@ -290,7 +290,7 @@ error:
 int bt_dwarf_die_get_call_line(struct bt_dwarf_die *die, uint64_t *line_no)
 {
     int ret = 0;
-    Dwarf_Attribute *line_attr = NULL;
+    Dwarf_Attribute *line_attr = nullptr;
     uint64_t _line_no;
 
     if (!die || !line_no) {
