@@ -507,8 +507,8 @@ enum debug_info_trace_ir_mapping_status copy_event_common_context_field_class_co
     const bt_field_class *in_field_class, bt_field_class *out_field_class)
 {
     enum debug_info_trace_ir_mapping_status status;
-    bt_field_class *debug_field_class = NULL, *bin_field_class = NULL, *func_field_class = NULL,
-                   *src_field_class = NULL;
+    bt_field_class *debug_field_class = nullptr, *bin_field_class = nullptr,
+                   *func_field_class = nullptr, *src_field_class = nullptr;
     bt_logging_level log_level = md_maps->log_level;
     bt_self_component *self_comp = md_maps->self_comp;
 

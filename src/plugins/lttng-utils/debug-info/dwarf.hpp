@@ -59,7 +59,7 @@ struct bt_dwarf_die
  *
  * @param dwarf_info	Dwarf instance
  * @returns		Pointer to the new bt_dwarf_cu on success,
- *			NULL on failure.
+ *			`nullptr` on failure.
  */
 struct bt_dwarf_cu *bt_dwarf_cu_create(Dwarf *dwarf_info);
 
@@ -88,7 +88,7 @@ int bt_dwarf_cu_next(struct bt_dwarf_cu *cu);
  *
  * @param cu	bt_dwarf_cu instance
  * @returns	Pointer to the new bt_dwarf_die on success,
- *		NULL on failure.
+ *		`nullptr` on failure.
  */
 struct bt_dwarf_die *bt_dwarf_die_create(struct bt_dwarf_cu *cu);
 

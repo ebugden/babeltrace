@@ -397,7 +397,7 @@ field_class_variant_copy(struct trace_ir_metadata_maps *md_maps,
 {
     bt_self_component *self_comp = md_maps->self_comp;
     enum debug_info_trace_ir_mapping_status status;
-    bt_field_class *out_tag_field_class = NULL;
+    bt_field_class *out_tag_field_class = nullptr;
     uint64_t i, variant_option_count;
     bt_field_class_type fc_type = bt_field_class_get_type(in_field_class);
 
@@ -633,7 +633,7 @@ bt_field_class *create_field_class_copy_internal(struct trace_ir_metadata_maps *
 {
     bt_self_component *self_comp = md_maps->self_comp;
     enum debug_info_trace_ir_mapping_status status;
-    bt_field_class *out_field_class = NULL;
+    bt_field_class *out_field_class = nullptr;
     bt_field_class_type fc_type = bt_field_class_get_type(in_field_class);
 
     BT_COMP_LOGD("Creating bare field class based on field class: in-fc-addr=%p", in_field_class);
@@ -678,7 +678,7 @@ bt_field_class *create_field_class_copy_internal(struct trace_ir_metadata_maps *
 
         bt_field_class *out_elem_fc = copy_field_class_array_element(md_maps, in_elem_fc);
         if (!out_elem_fc) {
-            out_field_class = NULL;
+            out_field_class = nullptr;
             goto error;
         }
 
@@ -697,7 +697,7 @@ bt_field_class *create_field_class_copy_internal(struct trace_ir_metadata_maps *
         bt_field_class *out_elem_fc = copy_field_class_array_element(md_maps, in_elem_fc);
 
         if (!out_elem_fc) {
-            out_field_class = NULL;
+            out_field_class = nullptr;
             goto error;
         }
 
@@ -779,7 +779,7 @@ bt_field_class *create_field_class_copy_internal(struct trace_ir_metadata_maps *
             }
         }
     } else if (bt_field_class_type_is(fc_type, BT_FIELD_CLASS_TYPE_VARIANT)) {
-        bt_field_class *out_sel_fc = NULL;
+        bt_field_class *out_sel_fc = nullptr;
 
         if (bt_field_class_type_is(fc_type, BT_FIELD_CLASS_TYPE_VARIANT_WITH_SELECTOR_FIELD)) {
             const bt_field_class *in_sel_fc;

@@ -52,7 +52,7 @@ struct bin_info *bin_info_create(struct bt_fd_cache *fdc, const char *path, uint
                                  const char *target_prefix, bt_logging_level log_level,
                                  bt_self_component *self_comp)
 {
-    struct bin_info *bin = NULL;
+    struct bin_info *bin = nullptr;
 
     BT_ASSERT(fdc);
 
@@ -68,7 +68,7 @@ struct bin_info *bin_info_create(struct bt_fd_cache *fdc, const char *path, uint
     bin->log_level = log_level;
     bin->self_comp = self_comp;
     if (target_prefix) {
-        bin->elf_path = g_build_filename(target_prefix, path, NULL);
+        bin->elf_path = g_build_filename(target_prefix, path, nullptr);
     } else {
         bin->elf_path = g_strdup(path);
     }
@@ -88,7 +88,7 @@ struct bin_info *bin_info_create(struct bt_fd_cache *fdc, const char *path, uint
     bin->memsz = memsz;
     bin->low_addr = low_addr;
     bin->high_addr = bin->low_addr + bin->memsz;
-    bin->build_id = NULL;
+    bin->build_id = nullptr;
     bin->build_id_len = 0;
     bin->file_build_id_matches = false;
     bin->fd_cache = fdc;
@@ -97,7 +97,7 @@ struct bin_info *bin_info_create(struct bt_fd_cache *fdc, const char *path, uint
 
 error:
     bin_info_destroy(bin);
-    return NULL;
+    return nullptr;
 }
 
 void bin_info_destroy(struct bin_info *bin)
@@ -130,8 +130,8 @@ void bin_info_destroy(struct bin_info *bin)
  */
 static int bin_info_set_elf_file(struct bin_info *bin)
 {
-    struct bt_fd_cache_handle *elf_handle = NULL;
-    Elf *elf_file = NULL;
+    struct bt_fd_cache_handle *elf_handle = nullptr;
+    Elf *elf_file = nullptr;
     int ret;
 
     BT_ASSERT(bin);
@@ -143,7 +143,7 @@ static int bin_info_set_elf_file(struct bin_info *bin)
     }
     bin->elf_handle = elf_handle;
 
-    elf_file = elf_begin(bt_fd_cache_handle_get_fd(bin->elf_handle), ELF_C_READ, NULL);
+    elf_file = elf_begin(bt_fd_cache_handle_get_fd(bin->elf_handle), ELF_C_READ, nullptr);
     if (!elf_file) {
         BT_COMP_LOGE_APPEND_CAUSE(bin->self_comp, "elf_begin failed: %s", elf_errmsg(-1));
         goto error;
@@ -264,7 +264,7 @@ end:
 static int is_build_id_matching(struct bin_info *bin)
 {
     int ret, is_build_id, is_matching = 0;
-    Elf_Scn *curr_section = NULL, *next_section = NULL;
+    Elf_Scn *curr_section = nullptr, *next_section = nullptr;
     GElf_Shdr curr_section_hdr;
 
     if (!bin->build_id) {
@@ -286,7 +286,7 @@ static int is_build_id_matching(struct bin_info *bin)
     }
 
     while (next_section) {
-        Elf_Data *note_data = NULL;
+        Elf_Data *note_data = nullptr;
 
         curr_section = next_section;
         next_section = elf_nextscn(bin->elf_file, curr_section);
@@ -302,7 +302,7 @@ static int is_build_id_matching(struct bin_info *bin)
         /*
          * elf_getdata() translates the data to native byte order.
          */
-        note_data = elf_getdata(curr_section, NULL);
+        note_data = elf_getdata(curr_section, nullptr);
         if (!note_data) {
             goto error;
         }
@@ -407,9 +407,9 @@ error:
 static int bin_info_set_dwarf_info_from_path(struct bin_info *bin, char *path)
 {
     int ret = 0;
-    struct bt_fd_cache_handle *dwarf_handle = NULL;
-    struct bt_dwarf_cu *cu = NULL;
-    Dwarf *dwarf_info = NULL;
+    struct bt_fd_cache_handle *dwarf_handle = nullptr;
+    struct bt_dwarf_cu *cu = nullptr;
+    Dwarf *dwarf_info = nullptr;
 
     if (!bin || !path) {
         goto error;
@@ -471,8 +471,8 @@ error:
 static int bin_info_set_dwarf_info_build_id(struct bin_info *bin)
 {
     int i = 0, ret = 0;
-    char *path = NULL, *build_id_prefix_dir = NULL, *build_id_file = NULL;
-    const char *dbg_dir = NULL;
+    char *path = nullptr, *build_id_prefix_dir = nullptr, *build_id_file = nullptr;
+    const char *dbg_dir = nullptr;
     size_t build_id_char_len, build_id_suffix_char_len, build_id_file_len;
 
     if (!bin || !bin->build_id) {
@@ -522,7 +522,7 @@ static int bin_info_set_dwarf_info_build_id(struct bin_info *bin)
     /* Append the suffix to the generated string, including the '\0'. */
     g_snprintf(&build_id_file[build_id_char_len], build_id_suffix_char_len, BUILD_ID_SUFFIX);
 
-    path = g_build_filename(dbg_dir, BUILD_ID_SUBDIR, build_id_prefix_dir, build_id_file, NULL);
+    path = g_build_filename(dbg_dir, BUILD_ID_SUBDIR, build_id_prefix_dir, build_id_file, nullptr);
     if (!path) {
         goto error;
     }
@@ -561,7 +561,7 @@ end:
 static int is_valid_debug_file(struct bin_info *bin, char *path, uint32_t crc)
 {
     int ret = 0;
-    struct bt_fd_cache_handle *debug_handle = NULL;
+    struct bt_fd_cache_handle *debug_handle = nullptr;
     uint32_t _crc = 0;
 
     if (!path) {
@@ -597,8 +597,8 @@ end:
 static int bin_info_set_dwarf_info_debug_link(struct bin_info *bin)
 {
     int ret = 0;
-    const gchar *dbg_dir = NULL;
-    gchar *bin_dir = NULL, *path = NULL;
+    const gchar *dbg_dir = nullptr;
+    gchar *bin_dir = nullptr, *path = nullptr;
 
     if (!bin || !bin->dbg_link_filename) {
         goto error;
@@ -608,7 +608,7 @@ static int bin_info_set_dwarf_info_debug_link(struct bin_info *bin)
     bin_dir = g_path_get_dirname(bin->elf_path);
 
     /* First look in the executable's dir */
-    path = g_build_filename(bin_dir, bin->dbg_link_filename, NULL);
+    path = g_build_filename(bin_dir, bin->dbg_link_filename, nullptr);
 
     if (is_valid_debug_file(bin, path, bin->dbg_link_crc)) {
         goto found;
@@ -616,7 +616,7 @@ static int bin_info_set_dwarf_info_debug_link(struct bin_info *bin)
 
     /* If not found, look in .debug subdir */
     g_free(path);
-    path = g_build_filename(bin_dir, DEBUG_SUBDIR, bin->dbg_link_filename, NULL);
+    path = g_build_filename(bin_dir, DEBUG_SUBDIR, bin->dbg_link_filename, nullptr);
 
     if (is_valid_debug_file(bin, path, bin->dbg_link_crc)) {
         goto found;
@@ -625,7 +625,7 @@ static int bin_info_set_dwarf_info_debug_link(struct bin_info *bin)
     /* Lastly, look under the global debug directory */
     g_free(path);
 
-    path = g_build_filename(dbg_dir, bin_dir, bin->dbg_link_filename, NULL);
+    path = g_build_filename(dbg_dir, bin_dir, bin->dbg_link_filename, nullptr);
     if (is_valid_debug_file(bin, path, bin->dbg_link_crc)) {
         goto found;
     }
@@ -716,7 +716,7 @@ static int bin_info_append_offset_str(const char *base_str, uint64_t low_addr, u
                                       char **result)
 {
     uint64_t offset;
-    char *_result = NULL;
+    char *_result = nullptr;
 
     if (!base_str || !result) {
         goto error;
@@ -760,9 +760,9 @@ static int bin_info_get_nearest_symbol_from_section(Elf_Scn *scn, uint64_t addr,
 {
     int i;
     size_t symbol_count;
-    Elf_Data *data = NULL;
-    GElf_Shdr *_shdr = NULL;
-    GElf_Sym *nearest_sym = NULL;
+    Elf_Data *data = nullptr;
+    GElf_Shdr *_shdr = nullptr;
+    GElf_Sym *nearest_sym = nullptr;
 
     if (!scn || !sym || !shdr) {
         goto error;
@@ -786,7 +786,7 @@ static int bin_info_get_nearest_symbol_from_section(Elf_Scn *scn, uint64_t addr,
         goto end;
     }
 
-    data = elf_getdata(scn, NULL);
+    data = elf_getdata(scn, nullptr);
     if (!data) {
         goto error;
     }
@@ -794,7 +794,7 @@ static int bin_info_get_nearest_symbol_from_section(Elf_Scn *scn, uint64_t addr,
     symbol_count = _shdr->sh_size / _shdr->sh_entsize;
 
     for (i = 0; i < symbol_count; ++i) {
-        GElf_Sym *cur_sym = NULL;
+        GElf_Sym *cur_sym = nullptr;
 
         cur_sym = g_new0(GElf_Sym, 1);
         if (!cur_sym) {
@@ -862,10 +862,10 @@ static int bin_info_lookup_elf_function_name(struct bin_info *bin, uint64_t addr
      * first iteration to prevent subsequent ones.
      */
     int ret = 0;
-    Elf_Scn *scn = NULL;
-    GElf_Sym *sym = NULL;
-    GElf_Shdr *shdr = NULL;
-    char *sym_name = NULL;
+    Elf_Scn *scn = nullptr;
+    GElf_Sym *sym = nullptr;
+    GElf_Shdr *shdr = nullptr;
+    char *sym_name = nullptr;
 
     /* Set ELF file if it hasn't been accessed yet. */
     if (!bin->elf_file) {
@@ -929,7 +929,7 @@ static int bin_info_lookup_cu_function_name(struct bt_dwarf_cu *cu, uint64_t add
 {
     int ret = 0;
     bool found = false;
-    struct bt_dwarf_die *die = NULL;
+    struct bt_dwarf_die *die = nullptr;
 
     if (!cu || !func_name) {
         goto error;
@@ -962,7 +962,7 @@ static int bin_info_lookup_cu_function_name(struct bt_dwarf_cu *cu, uint64_t add
 
     if (found) {
         uint64_t low_addr = 0;
-        char *die_name = NULL;
+        char *die_name = nullptr;
 
         ret = bt_dwarf_die_get_name(die, &die_name);
         if (ret) {
@@ -1008,8 +1008,8 @@ static int bin_info_lookup_dwarf_function_name(struct bin_info *bin, uint64_t ad
                                                char **func_name)
 {
     int ret = 0;
-    char *_func_name = NULL;
-    struct bt_dwarf_cu *cu = NULL;
+    char *_func_name = nullptr;
+    struct bt_dwarf_cu *cu = nullptr;
 
     if (!bin || !func_name) {
         goto error;
@@ -1048,7 +1048,7 @@ error:
 int bin_info_lookup_function_name(struct bin_info *bin, uint64_t addr, char **func_name)
 {
     int ret = 0;
-    char *_func_name = NULL;
+    char *_func_name = nullptr;
 
     if (!bin || !func_name) {
         goto error;
@@ -1110,7 +1110,7 @@ error:
 
 int bin_info_get_bin_loc(struct bin_info *bin, uint64_t addr, char **bin_loc)
 {
-    gchar *_bin_loc = NULL;
+    gchar *_bin_loc = nullptr;
 
     if (!bin || !bin_loc) {
         goto error;
@@ -1240,8 +1240,8 @@ static int bin_info_lookup_cu_src_loc_inl(struct bt_dwarf_cu *cu, uint64_t addr,
 {
     int ret = 0;
     bool found = false;
-    struct bt_dwarf_die *die = NULL;
-    struct source_location *_src_loc = NULL;
+    struct bt_dwarf_die *die = nullptr;
+    struct source_location *_src_loc = nullptr;
 
     if (!cu || !src_loc) {
         goto error;
@@ -1285,7 +1285,7 @@ static int bin_info_lookup_cu_src_loc_inl(struct bt_dwarf_cu *cu, uint64_t addr,
 
 end:
     if (found) {
-        char *filename = NULL;
+        char *filename = nullptr;
         uint64_t line_no;
 
         _src_loc = g_new0(struct source_location, 1);
@@ -1337,10 +1337,10 @@ error:
 static int bin_info_lookup_cu_src_loc_no_inl(struct bt_dwarf_cu *cu, uint64_t addr,
                                              struct source_location **src_loc)
 {
-    struct source_location *_src_loc = NULL;
-    struct bt_dwarf_die *die = NULL;
-    const char *filename = NULL;
-    Dwarf_Line *line = NULL;
+    struct source_location *_src_loc = nullptr;
+    struct bt_dwarf_die *die = nullptr;
+    const char *filename = nullptr;
+    Dwarf_Line *line = nullptr;
     Dwarf_Addr line_addr;
     int ret = 0, line_no;
 
@@ -1364,7 +1364,7 @@ static int bin_info_lookup_cu_src_loc_no_inl(struct bt_dwarf_cu *cu, uint64_t ad
         goto error;
     }
 
-    filename = dwarf_linesrc(line, NULL, NULL);
+    filename = dwarf_linesrc(line, nullptr, nullptr);
     if (!filename) {
         goto error;
     }
@@ -1416,7 +1416,7 @@ static int bin_info_lookup_cu_src_loc(struct bt_dwarf_cu *cu, uint64_t addr,
                                       struct source_location **src_loc)
 {
     int ret = 0;
-    struct source_location *_src_loc = NULL;
+    struct source_location *_src_loc = nullptr;
 
     if (!cu || !src_loc) {
         goto error;
@@ -1455,8 +1455,8 @@ error:
 int bin_info_lookup_source_location(struct bin_info *bin, uint64_t addr,
                                     struct source_location **src_loc)
 {
-    struct bt_dwarf_cu *cu = NULL;
-    struct source_location *_src_loc = NULL;
+    struct bt_dwarf_cu *cu = nullptr;
+    struct source_location *_src_loc = nullptr;
 
     if (!bin || !src_loc) {
         goto error;
