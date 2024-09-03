@@ -39,13 +39,20 @@ this_dir_relative="plugins/src.ctf.lttng-live"
 test_data_dir="$BT_TESTS_DATADIR/$this_dir_relative"
 trace_dir="$BT_CTF_TRACES_PATH"
 
-if [ "$BT_TESTS_OS_TYPE" = "mingw" ]; then
-	# Same as the above, but in Windows form (C:\foo\bar) instead of Unix form
-	# (/c/foo/bar).
-	trace_dir_native=$(cygpath -w "${trace_dir}")
-else
-	trace_dir_native="${trace_dir}"
-fi
+# Returns the location of the CTF test traces for the CTF version given
+# as `$1`.
+trace_path_prefix() {
+	local ctf_version="$1"
+
+	if [ "$BT_TESTS_OS_TYPE" = "mingw" ]; then
+		# Convert Unix form (/c/foo/bar) to Windows form
+		# (C:\foo\bar).
+		cygpath -w "${trace_dir}\\${ctf_version}"
+	else
+		echo "${trace_dir}/${ctf_version}"
+	fi
+}
+
 
 lttng_live_server() {
 	local pid_file="$1"
@@ -176,7 +183,7 @@ get_cli_output_with_lttng_live_server() {
 	return "$ret"
 }
 
-run_test() {
+run_test_one() {
 	local test_text="$1"
 	local cli_args_template="$2"
 	local expected_stdout="$3"
@@ -205,6 +212,24 @@ run_test() {
 	rm -f "$cli_stderr"
 	rm -f "$cli_stdout"
 	rm -f "$port_file"
+}
+
+# Calls `run_test_one()` for CTF 1 and 2.
+run_test() {
+	local test_text="$1"
+	local cli_args_template="$2"
+	local expected_stdout="$3"
+	local expected_stderr="$4"
+	shift 4
+	local server_args=("$@")
+	local trace_path_prefix
+
+	for ctf_version in 1 2; do
+		trace_path_prefix=$(trace_path_prefix "$ctf_version")
+		run_test_one "$test_text - CTF $ctf_version" "$cli_args_template" \
+			"$expected_stdout" "$expected_stderr" "$trace_path_prefix" \
+			"${server_args[@]}"
+	done
 }
 
 run_test_fail() {
@@ -252,36 +277,42 @@ test_list_sessions() {
 	local port_file
 	local tmp_stdout_expected
 	local template_expected
+	local trace_path_prefix
+	local cli_stderr
+	local cli_stdout
 
 	local test_text="CLI prints the expected session list"
 	local cli_args_template="-i lttng-live net://localhost:@PORT@"
 	local server_args=("$test_data_dir/list-sessions.json")
 
-	template_expected=$(<"$test_data_dir/cli-list-sessions.expect")
-	cli_stderr="$(mktemp -t test-live-list-sessions-stderr.XXXXXX)"
-	cli_stdout="$(mktemp -t test-live-list-sessions-stdout.XXXXXX)"
-	port_file="$(mktemp -t test-live-list-sessions-server-port.XXXXXX)"
-	tmp_stdout_expected="$(mktemp -t test-live-list-sessions-stdout-expected.XXXXXX)"
+	for ctf_version in 1 2; do
+		template_expected=$(<"$test_data_dir/cli-list-sessions.expect")
+		cli_stderr="$(mktemp -t  test-live-list-sessions-stderr.XXXXXX)"
+		cli_stdout="$(mktemp -t test-live-list-sessions-stdout.XXXXXX)"
+		port_file="$(mktemp -t test-live-list-sessions-server-port.XXXXXX)"
+		tmp_stdout_expected="$(mktemp -t test-live-list-sessions-stdout-expected.XXXXXX)"
+		trace_path_prefix="$(trace_path_prefix "$ctf_version")"
 
-	get_cli_output_with_lttng_live_server "$cli_args_template" "$cli_stdout" \
-		"$cli_stderr" "$port_file" "$trace_dir_native" true "${server_args[@]}"
-	port=$(<"$port_file")
+		get_cli_output_with_lttng_live_server "$cli_args_template" "$cli_stdout" \
+			"$cli_stderr" "$port_file" "$trace_path_prefix" true "${server_args[@]}"
+		port=$(<"$port_file")
 
-	# Craft the expected output. This is necessary since the port number
-	# (random) of a "relayd" is present in the output.
-	template_expected=${template_expected//@PORT@/$port}
+		# Craft the expected output. This is necessary since the port number
+		# (random) of a "relayd" is present in the output.
+		template_expected=${template_expected//@PORT@/$port}
 
-	echo "$template_expected" > "$tmp_stdout_expected"
+		echo "$template_expected" > "$tmp_stdout_expected"
 
-	bt_diff "$tmp_stdout_expected" "$cli_stdout"
-	ok $? "$test_text - stdout"
-	bt_diff "/dev/null" "$cli_stderr"
-	ok $? "$test_text - stderr"
+		bt_diff "$tmp_stdout_expected" "$cli_stdout"
+		ok $? "$test_text - stdout"
+		bt_diff "/dev/null" "$cli_stderr"
+		ok $? "$test_text - stderr"
 
-	rm -f "$cli_stderr"
-	rm -f "$cli_stdout"
-	rm -f "$port_file"
-	rm -f "$tmp_stdout_expected"
+		rm -f "$cli_stderr"
+		rm -f "$cli_stdout"
+		rm -f "$port_file"
+		rm -f "$tmp_stdout_expected"
+	done
 }
 
 test_base() {
@@ -294,7 +325,7 @@ test_base() {
 	local expected_stderr="/dev/null"
 
 	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
-		"$expected_stderr" "$trace_dir_native" "${server_args[@]}"
+		"$expected_stderr" "${server_args[@]}"
 }
 
 test_multi_domains() {
@@ -307,7 +338,7 @@ test_multi_domains() {
 	local expected_stderr="/dev/null"
 
 	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
-		"$expected_stderr" "$trace_dir_native" "${server_args[@]}"
+		"$expected_stderr" "${server_args[@]}"
 }
 
 test_rate_limited() {
@@ -323,7 +354,7 @@ test_rate_limited() {
 	local expected_stderr="/dev/null"
 
 	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
-		"$expected_stderr" "$trace_dir_native" "${server_args[@]}"
+		"$expected_stderr" "${server_args[@]}"
 }
 
 test_compare_to_ctf_fs() {
@@ -338,22 +369,38 @@ test_compare_to_ctf_fs() {
 	local expected_stdout
 	local expected_stderr
 
-	expected_stdout="$(mktemp -t test-live-compare-stdout-expected.XXXXXX)"
-	expected_stderr="$(mktemp -t test-live-compare-stderr-expected.XXXXXX)"
+	for ctf_version in 1 2; do
+		expected_stdout="$(mktemp -t test-live-compare-stdout-expected.XXXXXX)"
+		expected_stderr="$(mktemp -t test-live-compare-stderr-expected.XXXXXX)"
 
-	bt_cli "$expected_stdout" "$expected_stderr" "${trace_dir}/1/succeed/multi-domains" -c sink.text.details --params "with-trace-name=false,with-stream-name=false"
-	bt_remove_cr "${expected_stdout}"
-	bt_remove_cr "${expected_stderr}"
+		bt_cli "$expected_stdout" \
+			"$expected_stderr" \
+			"${trace_dir}/${ctf_version}/succeed/multi-domains" \
+			-c sink.text.details \
+			--params "with-trace-name=false,with-stream-name=false"
+		bt_remove_cr "${expected_stdout}"
+		bt_remove_cr "${expected_stderr}"
 
-	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
-		"$expected_stderr" "$trace_dir_native" "${server_args[@]}"
+		run_test_one \
+			"$test_text" \
+			"$cli_args_template" \
+			"$expected_stdout" \
+			"$expected_stderr" \
+			"$(trace_path_prefix $ctf_version)" \
+			"${server_args[@]}"
 
-	diag "Inverse session order from lttng-relayd"
-	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
-		"$expected_stderr" "$trace_dir_native" "${server_args_inverse[@]}"
+		diag "Inverse session order from lttng-relayd"
+		run_test_one \
+			"$test_text" \
+			"$cli_args_template" \
+			"$expected_stdout" \
+			"$expected_stderr" \
+			"$(trace_path_prefix $ctf_version)" \
+			"${server_args_inverse[@]}"
 
-	rm -f "$expected_stdout"
-	rm -f "$expected_stderr"
+		rm -f "$expected_stdout"
+		rm -f "$expected_stderr"
+	done
 }
 
 test_inactivity_discarded_packet() {
@@ -388,7 +435,7 @@ test_inactivity_discarded_packet() {
 	local expected_stderr="/dev/null"
 
 	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
-		"$expected_stderr" "$trace_dir_native" "${server_args[@]}"
+		"$expected_stderr" "${server_args[@]}"
 }
 
 test_split_metadata() {
@@ -404,12 +451,19 @@ test_split_metadata() {
 
 	local test_text="CLI attach and fetch from single-domain session - Receive metadata in two sections separated by a empty section"
 	local cli_args_template="-i lttng-live net://localhost:@PORT@/host/hostname/split-metadata -c sink.text.details"
-	local server_args=("$test_data_dir/split-metadata.json")
+	local server_args
 	local expected_stdout="${test_data_dir}/split-metadata.expect"
 	local expected_stderr="/dev/null"
+	local trace_path_prefix
 
-	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
-		"$expected_stderr" "$trace_dir_native" "${server_args[@]}"
+	for ctf_version in 1 2; do
+		trace_path_prefix=$(trace_path_prefix $ctf_version)
+		server_args=("$test_data_dir/split-metadata-ctf${ctf_version}.json")
+
+		run_test_one "$test_text" "$cli_args_template" \
+			"$expected_stdout" "$expected_stderr" "$trace_path_prefix" \
+			"${server_args[@]}"
+	done
 }
 
 test_stored_values() {
@@ -417,20 +471,23 @@ test_stored_values() {
 	# value slots in CTF message iterators.
 	local test_text="split metadata requiring additional stored values"
 	local cli_args_template="-i lttng-live net://localhost:@PORT@/host/hostname/stored-values -c sink.text.details"
-	local server_args=("$test_data_dir/stored-values.json")
+	local server_args
 	local expected_stdout="${test_data_dir}/stored-values.expect"
 	local expected_stderr="/dev/null"
 	local tmp_dir
 
-	tmp_dir=$(mktemp -d -t 'test-stored-value.XXXXXXX')
+	for ctf_version in 1 2; do
+		tmp_dir=$(mktemp -d -t 'test-stored-value.XXXXXXX')
+		server_args=("$test_data_dir/stored-values-ctf${ctf_version}.json")
 
-	# Generate test trace.
-	bt_gen_mctf_trace "${trace_dir}/1/live/stored-values.mctf" "$tmp_dir/stored-values"
+		# Generate test trace.
+		bt_gen_mctf_trace "${trace_dir}/${ctf_version}/live/stored-values.mctf" "$tmp_dir/stored-values"
 
-	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
-		"$expected_stderr" "$tmp_dir" "${server_args[@]}"
+		run_test_one "$test_text" "$cli_args_template" "$expected_stdout" \
+			"$expected_stderr" "$tmp_dir" "${server_args[@]}"
 
-	rm -rf "$tmp_dir"
+		rm -rf "$tmp_dir"
+	done
 }
 
 test_live_new_stream_during_inactivity() {
@@ -446,14 +503,18 @@ test_live_new_stream_during_inactivity() {
 
 	tmp_dir=$(mktemp -d -t 'test-new-streams.XXXXXXX')
 
-	# Generate test trace.
-	bt_gen_mctf_trace "${trace_dir}/1/live/new-streams/first-trace.mctf" "$tmp_dir/first-trace"
-	bt_gen_mctf_trace "${trace_dir}/1/live/new-streams/second-trace.mctf" "$tmp_dir/second-trace"
+	for ctf_version in 1 2; do
+		tmp_dir=$(mktemp -d -t 'test-new-streams.XXXXXXX')
 
-	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
-		"$expected_stderr" "$tmp_dir" "${server_args[@]}"
+		# Generate test trace.
+		bt_gen_mctf_trace "${trace_dir}/${ctf_version}/live/new-streams/first-trace.mctf" "$tmp_dir/first-trace"
+		bt_gen_mctf_trace "${trace_dir}/${ctf_version}/live/new-streams/second-trace.mctf" "$tmp_dir/second-trace"
 
-	rm -rf "$tmp_dir"
+		run_test_one "$test_text" "$cli_args_template" "$expected_stdout" \
+			"$expected_stderr" "$tmp_dir" "${server_args[@]}"
+
+		rm -rf "$tmp_dir"
+	done
 }
 
 test_invalid_metadata() {
@@ -461,13 +522,24 @@ test_invalid_metadata() {
 	local cli_args_template="-i lttng-live net://localhost:@PORT@/host/hostname/invalid-metadata"
 	local server_args=("$test_data_dir/invalid-metadata.json")
 	local expected_stdout="/dev/null"
+	local trace_path_prefix
+	local expected_error_msg
 
-	run_test_fail "$test_text" "$cli_args_template" "$expected_stdout" \
-		"At line 12 in metadata stream: syntax error, unexpected IDENTIFIER:  token=\"perchaude\"" \
-		"$trace_dir_native" "${server_args[@]}"
+	for ctf_version in 1 2; do
+		trace_path_prefix=$(trace_path_prefix $ctf_version)
+
+		if [[ $ctf_version -eq 1 ]]; then
+			expected_error_msg="At line 12 in metadata stream: syntax error, unexpected IDENTIFIER:  token=\"perchaude\""
+		else
+			expected_error_msg="Invalid fragment #1.*Expecting \`}\`"
+		fi
+
+		run_test_fail "$test_text" "$cli_args_template" "$expected_stdout" \
+			"$expected_error_msg" "$trace_path_prefix" "${server_args[@]}"
+	done
 }
 
-plan_tests 22
+plan_tests 44
 
 test_list_sessions
 test_base
