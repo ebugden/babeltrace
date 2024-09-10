@@ -13,7 +13,32 @@
 
 namespace bt2ccv {
 
-void ClockCorrelationValidator::_validate(const bt2::ConstMessage msg)
+namespace {
+
+bool clockClassHasKnownAndComparableIdentity(const bt2::ConstClockClass clockCls,
+                                             const int graphMipVersion) noexcept
+{
+    if (graphMipVersion == 0) {
+        return static_cast<bool>(clockCls.uuid());
+    } else {
+        return clockCls.name() && clockCls.uid();
+    }
+}
+
+bool clockClassHasKnownAndComparableOrigin(const bt2::ConstClockClass clockCls,
+                                           const int graphMipVersion) noexcept
+{
+    if (graphMipVersion == 0) {
+        return clockCls.origin().isUnixEpoch();
+    } else {
+        return clockCls.origin().isKnown();
+    }
+}
+
+} /* namespace */
+
+void ClockCorrelationValidator::_validate(const bt2::ConstMessage msg,
+                                          const std::uint64_t graphMipVersion)
 {
     bt2::OptionalBorrowedObject<bt2::ConstClockClass> clockCls;
     bt2::OptionalBorrowedObject<bt2::ConstStreamClass> streamCls;
@@ -42,12 +67,14 @@ void ClockCorrelationValidator::_validate(const bt2::ConstMessage msg)
         if (clockCls) {
             _mRefClockClass = clockCls->shared();
 
-            if (clockCls->origin().isUnixEpoch()) {
-                _mExpectation = PropsExpectation::OriginUnix;
-            } else if (const auto uuid = clockCls->uuid()) {
-                _mExpectation = PropsExpectation::OriginUnknownWithUuid;
+            if (clockClassHasKnownAndComparableOrigin(*clockCls, graphMipVersion)) {
+                _mExpectation = PropsExpectation::OriginKnown;
             } else {
-                _mExpectation = PropsExpectation::OriginUnknownWithoutUuid;
+                if (clockClassHasKnownAndComparableIdentity(*clockCls, graphMipVersion)) {
+                    _mExpectation = PropsExpectation::OriginUnknownWithId;
+                } else {
+                    _mExpectation = PropsExpectation::OriginUnknownWithoutId;
+                }
             }
         } else {
             _mExpectation = PropsExpectation::None;
@@ -64,60 +91,82 @@ void ClockCorrelationValidator::_validate(const bt2::ConstMessage msg)
 
         break;
 
-    case PropsExpectation::OriginUnix:
+    case PropsExpectation::OriginKnown:
         if (!clockCls) {
             throw ClockCorrelationError {
-                ClockCorrelationError::Type::ExpectingOriginUnixGotNoClockClass,
+                ClockCorrelationError::Type::ExpectingOriginKnownGotNoClockClass,
                 {},
                 *_mRefClockClass,
                 streamCls};
         }
 
-        if (!clockCls->origin().isUnixEpoch()) {
+        if (!clockClassHasKnownAndComparableOrigin(*clockCls, graphMipVersion)) {
             throw ClockCorrelationError {
-                ClockCorrelationError::Type::ExpectingOriginUnixGotUnknownOrigin, *clockCls,
+                ClockCorrelationError::Type::ExpectingOriginKnownGotUnknownOrigin, *clockCls,
                 *_mRefClockClass, streamCls};
+        }
+
+        if (graphMipVersion > 0) {
+            if (bt2::isSameClockOrigin(clockCls->origin(), _mRefClockClass->origin(),
+                                       graphMipVersion)) {
+                throw ClockCorrelationError {
+                    ClockCorrelationError::Type::ExpectingOriginKnownGotOtherOrigin, *clockCls,
+                    *_mRefClockClass, streamCls};
+            }
+        } else {
+            /*
+             * With MIP 0, the only way for a clock class to have a
+             * known origin is for it to be the Unix epoch.  At this
+             * point, we know that the two clock classes have known
+             * origins, so we also know they have the same origin.
+             */
         }
 
         break;
 
-    case PropsExpectation::OriginUnknownWithUuid:
+    case PropsExpectation::OriginUnknownWithId:
     {
         if (!clockCls) {
             throw ClockCorrelationError {
-                ClockCorrelationError::Type::ExpectingOriginUnknownWithUuidGotNoClockClass,
+                ClockCorrelationError::Type::ExpectingOriginUnknownWithIdGotNoClockClass,
                 {},
                 *_mRefClockClass,
                 streamCls};
         }
 
-        if (clockCls->origin().isUnixEpoch()) {
+        if (clockClassHasKnownAndComparableOrigin(*clockCls, graphMipVersion)) {
             throw ClockCorrelationError {
-                ClockCorrelationError::Type::ExpectingOriginUnknownWithUuidGotUnixOrigin, *clockCls,
+                ClockCorrelationError::Type::ExpectingOriginUnknownWithIdGotKnownOrigin, *clockCls,
                 *_mRefClockClass, streamCls};
         }
 
-        const auto uuid = clockCls->uuid();
-
-        if (!uuid) {
+        if (!clockClassHasKnownAndComparableIdentity(*clockCls, graphMipVersion)) {
             throw ClockCorrelationError {
-                ClockCorrelationError::Type::ExpectingOriginUnknownWithUuidGotWithoutUuid,
-                *clockCls, *_mRefClockClass, streamCls};
+                ClockCorrelationError::Type::ExpectingOriginUnknownWithIdGotWithoutId, *clockCls,
+                *_mRefClockClass, streamCls};
         }
 
-        if (*uuid != *_mRefClockClass->uuid()) {
-            throw ClockCorrelationError {
-                ClockCorrelationError::Type::ExpectingOriginUnknownWithUuidGotOtherUuid, *clockCls,
-                *_mRefClockClass, streamCls};
+        if (graphMipVersion == 0) {
+            if (*clockCls->uuid() != *_mRefClockClass->uuid()) {
+                throw ClockCorrelationError {
+                    ClockCorrelationError::Type::ExpectingOriginUnknownWithIdGotOtherId, *clockCls,
+                    *_mRefClockClass, streamCls};
+            }
+        } else {
+            if (clockCls->identity() != _mRefClockClass->identity()) {
+                throw ClockCorrelationError {
+                    ClockCorrelationError::Type::ExpectingOriginUnknownWithIdGotOtherId, *clockCls,
+                    *_mRefClockClass, streamCls};
+            }
         }
 
         break;
     }
 
-    case PropsExpectation::OriginUnknownWithoutUuid:
+    case PropsExpectation::OriginUnknownWithoutId:
         if (!clockCls) {
             throw ClockCorrelationError {
-                ClockCorrelationError::Type::ExpectingOriginUnknownWithoutUuidGotNoClockClass,
+                ClockCorrelationError::Type::ExpectingOriginUnknownWithoutIdGotNoClockClass,
                 {},
                 *_mRefClockClass,
                 streamCls};
@@ -125,7 +174,7 @@ void ClockCorrelationValidator::_validate(const bt2::ConstMessage msg)
 
         if (clockCls->libObjPtr() != _mRefClockClass->libObjPtr()) {
             throw ClockCorrelationError {
-                ClockCorrelationError::Type::ExpectingOriginUnknownWithoutUuidGotOtherClockClass,
+                ClockCorrelationError::Type::ExpectingOriginUnknownWithoutIdGotOtherClockClass,
                 *clockCls, *_mRefClockClass, streamCls};
         }
 
@@ -150,12 +199,13 @@ bt_clock_correlation_validator *bt_clock_correlation_validator_create() noexcept
 
 bool bt_clock_correlation_validator_validate_message(
     bt_clock_correlation_validator * const validator, const bt_message * const msg,
-    bt_clock_correlation_validator_error_type * const type,
+    const int graphMipVersion, bt_clock_correlation_validator_error_type * const type,
     const bt_clock_class ** const actualClockClsOut,
     const bt_clock_class ** const refClockClsOut) noexcept
 {
     try {
-        reinterpret_cast<bt2ccv::ClockCorrelationValidator *>(validator)->validate(bt2::wrap(msg));
+        reinterpret_cast<bt2ccv::ClockCorrelationValidator *>(validator)->validate(bt2::wrap(msg),
+                                                                                   graphMipVersion);
         return true;
     } catch (const bt2ccv::ClockCorrelationError& error) {
         *type = static_cast<bt_clock_correlation_validator_error_type>(error.type());
