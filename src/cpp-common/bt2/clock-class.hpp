@@ -411,6 +411,11 @@ public:
         return bt_clock_class_origin_is_unknown(_mClkCls.libObjPtr());
     }
 
+    bool isKnown() const noexcept
+    {
+        return !this->isUnknown();
+    }
+
     bool isUnixEpoch() const noexcept
     {
         return bt_clock_class_origin_is_unix_epoch(_mClkCls.libObjPtr());
