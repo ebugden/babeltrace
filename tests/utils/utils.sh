@@ -212,8 +212,12 @@ bt_remove_crlf() {
 }
 
 # Runs the `$BT_TESTS_BT2_BIN` command within an environment which can
-# import the `bt2` Python package, redirecting the standard output to
-# the `$1` file and the standard error to the `$2` file.
+# import the `bt2` Python package.
+#
+# If `$1` is not empty, redirect the standard output to that file,
+# otherwise don't redirect the standard output. If `$2` is not empty,
+# redirect the standard error to that file, otherwise don't redirect
+# the standard error.
 #
 # The remaining arguments are forwarded to the `$BT_TESTS_BT2_BIN`
 # command.
@@ -228,7 +232,16 @@ bt_cli() {
 	local -a bt_cli_args=("$@")
 
 	echo "Running: \`$BT_TESTS_BT2_BIN ${bt_cli_args[*]}\`" >&2
-	bt_run_in_py_env "$BT_TESTS_BT2_BIN" "${bt_cli_args[@]}" 1>"$stdout_file" 2>"$stderr_file"
+
+	if [[ -n "$stdout_file" && -n "$stderr_file" ]]; then
+		bt_run_in_py_env "$BT_TESTS_BT2_BIN" "${bt_cli_args[@]}" 1>"$stdout_file" 2>"$stderr_file"
+	elif [[ -n "$stdout_file" ]]; then
+		bt_run_in_py_env "$BT_TESTS_BT2_BIN" "${bt_cli_args[@]}" 1>"$stdout_file"
+	elif [[ -n "$stderr_file" ]]; then
+		bt_run_in_py_env "$BT_TESTS_BT2_BIN" "${bt_cli_args[@]}" 2>"$stderr_file"
+	else
+		bt_run_in_py_env "$BT_TESTS_BT2_BIN" "${bt_cli_args[@]}"
+	fi
 }
 
 # Checks the differences between:
