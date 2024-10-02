@@ -542,3 +542,12 @@ bt_maybe_cygpath_m() {
 
 	echo "$path"
 }
+
+# Returns whether `src.ctf.fs` supports the CTF version `$1` when
+# operating with the MIP version `$2`.
+valid_ctf_mip_combo() {
+	local ctf="$1"
+	local mip="$2"
+
+	[[ "$ctf" -eq 1 || "$mip" -eq 1 ]]
+}

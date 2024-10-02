@@ -399,11 +399,19 @@ test_compare_to_ctf_fs() {
 	local expected_stderr
 
 	for ctf_version in 1 2; do
+		# `src.ctf.fs` can only read CTF 2 with MIP 1, but
+		# `src.ctf.lttng-live` does not support MIP 1 yet. Skip
+		# CTF 2 until then.
+		if [[ $ctf_version -eq 2 ]]; then
+			continue
+		fi
+
 		expected_stdout="$(mktemp -t test-live-compare-stdout-expected.XXXXXX)"
 		expected_stderr="$(mktemp -t test-live-compare-stderr-expected.XXXXXX)"
 
 		bt_cli "$expected_stdout" \
 			"$expected_stderr" \
+			--allowed-mip-versions=0 \
 			"${trace_dir}/${ctf_version}/succeed/multi-domains" \
 			-c sink.text.details \
 			--params "with-trace-name=false,with-stream-name=false"
@@ -568,7 +576,7 @@ test_invalid_metadata() {
 	done
 }
 
-plan_tests 44
+plan_tests 40
 
 test_list_sessions
 test_base
