@@ -18,6 +18,11 @@ namespace {
 
 using namespace bt2c::literals::datalen;
 
+constexpr const char *btUserAttrsNs = "babeltrace.org,2020";
+constexpr const char *logLevelUserAttr = "log-level";
+constexpr const char *emfUriUserAttr = "emf-uri";
+constexpr const char *lttngUserAttrsNs = "lttng.org,2009";
+
 /*
  * Map of variant field class to the index of the currently
  * visited option.
@@ -601,17 +606,95 @@ bool pktCtxFcContainsUIntFcWithRole(const DataStreamCls& dataStreamCls,
 }
 
 /*
+ * Given `attrs`, a map value representing the user-attributes of a
+ * specific namespace, returns a version of `attrs` with the following keys
+ * removed:
+ *
+ *  ‣ `log-level`
+ *  ‣ `emf-uri`
+ *
+ * If `attrs` contained no other keys than these, return no value.
+ * Otherwise, return a new map value containing only the remaining keys.
+ */
+bt2::MapValue::Shared filterKnownUserAttrsOne(const bt2::ConstMapValue attrs)
+{
+    bt2::MapValue::Shared filteredAttrs;
+
+    attrs.forEach([&](const bt2c::CStringView k, const bt2::ConstValue v) {
+        if (k == logLevelUserAttr || k == emfUriUserAttr) {
+            return;
+        }
+
+        if (!filteredAttrs) {
+            filteredAttrs = bt2::MapValue::create();
+        }
+
+        filteredAttrs->insert(k, *v.copy());
+    });
+
+    return filteredAttrs;
+}
+
+/*
+ * Given `attrs`, a "map of maps" representing the user attributes of
+ * some object, returns a version of `attrs` with some known user
+ * attributes removed.
+ *
+ * The user attributes removed are some whose meaning is known to be
+ * expressed through some other, more specific properties of trace IR
+ * objects.
+ *
+ * The return value is a new shared reference to `attrs` if no attributes
+ * had to be removed, otherwise a newly allocated value.
+ */
+bt2::ConstMapValue::Shared filterKnownUserAttrs(const bt2::ConstMapValue attrs)
+{
+    const auto hasKnownUserAttr = [](const bt2::OptionalBorrowedObject<bt2::ConstValue> attrs) {
+        if (!attrs) {
+            return false;
+        }
+
+        return attrs->hasEntry(logLevelUserAttr) || attrs->hasEntry(emfUriUserAttr);
+    };
+
+    if (!hasKnownUserAttr(attrs[btUserAttrsNs])) {
+        /* No attribute to remove, no need to copy anything. */
+        return attrs.shared();
+    }
+
+    auto newAttrs = bt2::MapValue::create();
+
+    attrs.forEach([&](const bt2c::CStringView k, const bt2::ConstValue v) {
+        if (k != btUserAttrsNs) {
+            /* All other namespaces get copied as-is. */
+            newAttrs->insert(k, *v.copy());
+            return;
+        }
+
+        const auto filtered = filterKnownUserAttrsOne(v.asMap());
+
+        if (filtered) {
+            newAttrs->insert(k, *filtered);
+        }
+    });
+
+    return newAttrs;
+}
+
+/*
  * Sets the user attributes of the equivalent trace IR object of `obj`
- * (`obj.libCls()`) to the attributes of `obj` if `mipVersion` is
- * greater than or equal to 1.
+ * (`obj.libCls()`) to the attributes of `obj`.
  */
 template <typename ObjT>
-void trySetLibUserAttrs(ObjT& obj, const unsigned long long mipVersion) noexcept
+void trySetLibUserAttrs(ObjT& obj) noexcept
 {
-    if (mipVersion >= 1 && obj.attrs()) {
-        BT_ASSERT(obj.libCls());
-        obj.libCls()->userAttributes(*obj.attrs());
+    BT_ASSERT(obj.libCls());
+
+    if (!obj.attrs()) {
+        return;
     }
+
+    obj.libCls()->userAttributes(*filterKnownUserAttrs(*obj.attrs()));
 }
 
 /*
@@ -811,7 +894,7 @@ public:
 
         /* Assign as translation and set user attributes */
         structFc.libCls(*libStructFc);
-        trySetLibUserAttrs(structFc, _mMipVersion);
+        trySetLibUserAttrs(structFc);
 
         /* Translate member classes */
         for (auto& memberCls : structFc) {
@@ -970,7 +1053,7 @@ private:
     void _setLibFc(FcT& fc, bt2::FieldClass::Shared libFc) noexcept
     {
         fc.libCls(*libFc);
-        trySetLibUserAttrs(fc, _mMipVersion);
+        trySetLibUserAttrs(fc);
         _mLastTranslatedLibFc = std::move(libFc);
     }
 
@@ -1551,9 +1634,6 @@ private:
         return libFc->asStructure().shared();
     }
 
-    static constexpr const char *_btUserAttrsNs = "babeltrace.org,2020";
-    static constexpr const char *_lttngUserAttrsNs = "lttng.org,2009";
-
     static bt2::OptionalBorrowedObject<bt2::ConstValue>
     _userAttr(const bt2::ConstMapValue userAttrs, const char * const ns,
               const char * const name) noexcept
@@ -1583,15 +1663,14 @@ private:
     static bt2::OptionalBorrowedObject<bt2::ConstStringValue>
     _strUserAttr(const bt2::ConstMapValue userAttrs, const char * const name) noexcept
     {
-        if (const auto val = LibTraceClsFromTraceClsTranslator::_strUserAttr(
-                userAttrs, LibTraceClsFromTraceClsTranslator::_btUserAttrsNs, name)) {
+        if (const auto val =
+                LibTraceClsFromTraceClsTranslator::_strUserAttr(userAttrs, btUserAttrsNs, name)) {
             /* From Babeltrace 2 namespace */
             return val;
         }
 
         /* From LTTng namespace */
-        return LibTraceClsFromTraceClsTranslator::_strUserAttr(
-            userAttrs, LibTraceClsFromTraceClsTranslator::_lttngUserAttrsNs, name);
+        return LibTraceClsFromTraceClsTranslator::_strUserAttr(userAttrs, lttngUserAttrsNs, name);
     }
 
     /*
@@ -1628,7 +1707,8 @@ private:
         /* Set log level and EMF URI */
         if (eventRecordCls.attrs()) {
             /* Set log level */
-            if (const auto userAttr = this->_strUserAttr(*eventRecordCls.attrs(), "log-level")) {
+            if (const auto userAttr =
+                    this->_strUserAttr(*eventRecordCls.attrs(), logLevelUserAttr)) {
                 const auto logLevel = bt2c::call([&userAttr]()
                                                      -> bt2s::optional<bt2::EventClassLogLevel> {
                     if (userAttr->value() == MetadataStreamParser::logLevelEmergencyName) {
@@ -1675,13 +1755,13 @@ private:
             }
 
             /* Set EMF URI */
-            if (const auto userAttr = this->_strUserAttr(*eventRecordCls.attrs(), "emf-uri")) {
+            if (const auto userAttr = this->_strUserAttr(*eventRecordCls.attrs(), emfUriUserAttr)) {
                 libEventRecordCls->emfUri(userAttr->value().data());
             }
         }
 
         /* Set user attributes */
-        trySetLibUserAttrs(eventRecordCls, _mMipVersion);
+        trySetLibUserAttrs(eventRecordCls);
 
         /* Translate specific context field class, if any */
         if (eventRecordCls.specCtxFc()) {
@@ -1770,7 +1850,7 @@ private:
         }
 
         /* Set user attributes */
-        trySetLibUserAttrs(clkCls, _mMipVersion);
+        trySetLibUserAttrs(clkCls);
     }
 
     /*
@@ -1831,7 +1911,7 @@ private:
             }
 
             /* Set user attributes */
-            trySetLibUserAttrs(dataStreamCls, _mMipVersion);
+            trySetLibUserAttrs(dataStreamCls);
 
             /* Translate packet context field class, if any */
             if (dataStreamCls.pktCtxFc()) {
@@ -1871,7 +1951,7 @@ private:
             _mTraceCls->libCls()->assignsAutomaticStreamClassId(false);
 
             /* Set user attributes */
-            trySetLibUserAttrs(*_mTraceCls, _mMipVersion);
+            trySetLibUserAttrs(*_mTraceCls);
         }
 
         /* Translate data stream classes */

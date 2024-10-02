@@ -39,6 +39,26 @@ this_dir_relative="plugins/src.ctf.lttng-live"
 test_data_dir="$BT_TESTS_DATADIR/$this_dir_relative"
 trace_dir="$BT_CTF_TRACES_PATH"
 
+find_expect_file() {
+	local test_name="$1"
+	local ctf="$2"
+
+	names=(
+		"$expect_dir/$test_name-ctf$ctf.expect"
+		"$expect_dir/$test_name.expect"
+	)
+
+	for name in "${names[@]}"; do
+		if [[ -f "$name" ]]; then
+			echo "$name"
+			return
+		fi
+	done
+
+	echo "Could not find expect file for test $test_name, CTF $ctf" >&2
+	exit 1
+}
+
 # Returns the location of the CTF test traces for the CTF version given
 # as `$1`.
 trace_path_prefix() {
@@ -218,16 +238,25 @@ run_test_one() {
 run_test() {
 	local test_text="$1"
 	local cli_args_template="$2"
-	local expected_stdout="$3"
-	local expected_stderr="$4"
+	local expected_stdout_template="$3"
+	local expected_stderr_template="$4"
 	shift 4
 	local server_args=("$@")
 	local trace_path_prefix
+	local specific_expected_stdout
+	local specific_expected_stderr
 
 	for ctf_version in 1 2; do
 		trace_path_prefix=$(trace_path_prefix "$ctf_version")
-		run_test_one "$test_text - CTF $ctf_version" "$cli_args_template" \
-			"$expected_stdout" "$expected_stderr" "$trace_path_prefix" \
+		specific_expected_stdout="${expected_stdout_template//@CTF@/$ctf_version}"
+		specific_expected_stderr="${expected_stderr_template//@CTF@/$ctf_version}"
+
+		run_test_one \
+			"$test_text - CTF $ctf_version" \
+			"$cli_args_template" \
+			"$specific_expected_stdout" \
+			"$specific_expected_stderr" \
+			"$trace_path_prefix" \
 			"${server_args[@]}"
 	done
 }
@@ -321,7 +350,7 @@ test_base() {
 	local test_text="CLI attach and fetch from single-domains session - no discarded events"
 	local cli_args_template="-i lttng-live net://localhost:@PORT@/host/hostname/trace-with-index -c sink.text.details"
 	local server_args=("$test_data_dir/base.json")
-	local expected_stdout="${test_data_dir}/cli-base.expect"
+	local expected_stdout="${test_data_dir}/cli-base-ctf@CTF@.expect"
 	local expected_stderr="/dev/null"
 
 	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
@@ -334,7 +363,7 @@ test_multi_domains() {
 	local test_text="CLI attach and fetch from multi-domains session - discarded events"
 	local cli_args_template="-i lttng-live net://localhost:@PORT@/host/hostname/multi-domains -c sink.text.details"
 	local server_args=("${test_data_dir}/multi-domains.json")
-	local expected_stdout="$test_data_dir/cli-multi-domains.expect"
+	local expected_stdout="$test_data_dir/cli-multi-domains-ctf@CTF@.expect"
 	local expected_stderr="/dev/null"
 
 	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
@@ -350,7 +379,7 @@ test_rate_limited() {
 	local test_text="CLI many requests per packet"
 	local cli_args_template="-i lttng-live net://localhost:@PORT@/host/hostname/trace-with-index -c sink.text.details"
 	local server_args=(--max-query-data-response-size 1024 "$test_data_dir/rate-limited.json")
-	local expected_stdout="${test_data_dir}/cli-base.expect"
+	local expected_stdout="${test_data_dir}/cli-base-ctf@CTF@.expect"
 	local expected_stderr="/dev/null"
 
 	run_test "$test_text" "$cli_args_template" "$expected_stdout" \
