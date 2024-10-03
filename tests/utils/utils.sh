@@ -256,6 +256,13 @@ bt_diff() {
 	fi
 
 	diff -u <(bt_remove_cr_inline "$expected_file") <(bt_remove_cr_inline "$actual_file") 1>&2
+	ret=$?
+
+	if [[ ret -ne 0 && -f "$expected_file" && ${BT_TESTS_DIFF_WRITE_EXPECTED:-0} -ne 0 ]]; then
+		cp "$actual_file" "$expected_file"
+	fi
+
+	return $ret
 }
 
 # Checks the difference between:
