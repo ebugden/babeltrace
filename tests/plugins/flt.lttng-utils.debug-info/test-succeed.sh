@@ -32,6 +32,7 @@ python_utils_dir="$BT_TESTS_SRCDIR/utils/python"
 test_debug_info() {
 	local name="$1"
 	local local_args=(
+		"--allowed-mip-versions=0"
 		"-c" "flt.lttng-utils.debug-info"
 		"-p" "target-prefix=\"$binary_artefact_dir/x86-64-linux-gnu/dwarf-full\""
 		"-c" "sink.text.details"
@@ -79,6 +80,7 @@ test_compare_to_ctf_fs() {
 		"$actual_stdout" \
 		"$actual_stderr" \
 		"${cli_args[@]}" \
+		--allowed-mip-versions=0 \
 		"${details_cli_args[@]}" \
 		"${debug_info_cli_args[@]}"
 
