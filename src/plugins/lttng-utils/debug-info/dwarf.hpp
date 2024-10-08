@@ -6,16 +6,15 @@
  * Babeltrace - DWARF Information Reader
  */
 
-/* clang-format off */
-
 #ifndef BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_DWARF_HPP
 #define BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_DWARF_HPP
 
+#include <dwarf.h>
+#include <elfutils/libdw.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <dwarf.h>
-#include <elfutils/libdw.h>
+
 #include "common/macros.h"
 
 /*
@@ -27,29 +26,31 @@
  * This structure corresponds to a single compilation unit (CU) for a
  * given set of debug information (Dwarf type).
  */
-struct bt_dwarf_cu {
-	Dwarf *dwarf_info;
-	/* Offset in bytes in the DWARF file to current CU header. */
-	Dwarf_Off offset;
-	/* Offset in bytes in the DWARF file to next CU header. */
-	Dwarf_Off next_offset;
-	/* Size in bytes of CU header */
-	size_t header_size;
+struct bt_dwarf_cu
+{
+    Dwarf *dwarf_info;
+    /* Offset in bytes in the DWARF file to current CU header. */
+    Dwarf_Off offset;
+    /* Offset in bytes in the DWARF file to next CU header. */
+    Dwarf_Off next_offset;
+    /* Size in bytes of CU header */
+    size_t header_size;
 };
 
 /*
  * This structure represents a single debug information entry (DIE),
  * within a compilation unit (CU).
  */
-struct bt_dwarf_die {
-	struct bt_dwarf_cu *cu;
-	Dwarf_Die *dwarf_die;
-	/*
-	 * A depth of 0 represents a root DIE, located in the DWARF
-	 * layout on the same level as its corresponding CU entry. Its
-	 * children DIEs will have a depth of 1, and so forth.
-	 */
-	unsigned int depth;
+struct bt_dwarf_die
+{
+    struct bt_dwarf_cu *cu;
+    Dwarf_Die *dwarf_die;
+    /*
+     * A depth of 0 represents a root DIE, located in the DWARF
+     * layout on the same level as its corresponding CU entry. Its
+     * children DIEs will have a depth of 1, and so forth.
+     */
+    unsigned int depth;
 };
 
 /**
@@ -183,8 +184,7 @@ int bt_dwarf_die_get_call_file(struct bt_dwarf_die *die, char **filename);
  *			subroutine's callsite
  * @returns		0 on success, -1 on failure
  */
-int bt_dwarf_die_get_call_line(struct bt_dwarf_die *die,
-		uint64_t *line_no);
+int bt_dwarf_die_get_call_line(struct bt_dwarf_die *die, uint64_t *line_no);
 
 /**
  * Verifies whether a given DIE contains the virtual memory address
@@ -200,7 +200,6 @@ int bt_dwarf_die_get_call_line(struct bt_dwarf_die *die,
  *			false if not
  * @returns		0 on success, -1 on failure
  */
-int bt_dwarf_die_contains_addr(struct bt_dwarf_die *die, uint64_t addr,
-		bool *contains);
+int bt_dwarf_die_contains_addr(struct bt_dwarf_die *die, uint64_t addr, bool *contains);
 
 #endif /* BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_DWARF_HPP */

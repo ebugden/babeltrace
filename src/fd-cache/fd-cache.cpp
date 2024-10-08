@@ -6,224 +6,216 @@
  * Babeltrace - File descriptor cache
  */
 
-/* clang-format off */
-
 #define BT_LOG_OUTPUT_LEVEL (fdc->log_level)
-#define BT_LOG_TAG "FD-CACHE"
-#include "logging/log.h"
-
+#define BT_LOG_TAG          "FD-CACHE"
 #include <fcntl.h>
+#include <glib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <glib.h>
+
+#include "logging/log.h"
 
 #include "common/assert.h"
+
 #include "fd-cache.hpp"
 
-struct file_key {
-	uint64_t dev;
-	uint64_t ino;
-};
-
-struct fd_handle_internal {
-	struct bt_fd_cache_handle fd_handle;
-	uint64_t ref_count;
-	struct file_key *key;
-};
-
-static
-void fd_cache_handle_internal_destroy(
-		struct fd_handle_internal *internal_fd)
+struct file_key
 {
-	if (!internal_fd) {
-		goto end;
-	}
+    uint64_t dev;
+    uint64_t ino;
+};
 
-	if (internal_fd->fd_handle.fd >= 0) {
-		close(internal_fd->fd_handle.fd);
-		internal_fd->fd_handle.fd = -1;
-	}
+struct fd_handle_internal
+{
+    struct bt_fd_cache_handle fd_handle;
+    uint64_t ref_count;
+    struct file_key *key;
+};
+
+static void fd_cache_handle_internal_destroy(struct fd_handle_internal *internal_fd)
+{
+    if (!internal_fd) {
+        goto end;
+    }
+
+    if (internal_fd->fd_handle.fd >= 0) {
+        close(internal_fd->fd_handle.fd);
+        internal_fd->fd_handle.fd = -1;
+    }
 
 end:
-	g_free(internal_fd);
+    g_free(internal_fd);
 }
 
 /*
  * Using simple hash algorithm found on stackoverflow:
  * https://stackoverflow.com/questions/664014/
  */
-static inline
-uint64_t hash_uint64_t(uint64_t x) {
-	x = (x ^ (x >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
-	x = (x ^ (x >> 27)) * UINT64_C(0x94d049bb133111eb);
-	x = x ^ (x >> 31);
-	return x;
+static inline uint64_t hash_uint64_t(uint64_t x)
+{
+    x = (x ^ (x >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
+    x = (x ^ (x >> 27)) * UINT64_C(0x94d049bb133111eb);
+    x = x ^ (x >> 31);
+    return x;
 }
 
-static
-guint file_key_hash(gconstpointer v)
+static guint file_key_hash(gconstpointer v)
 {
-	const struct file_key *fk = static_cast<const file_key *>(v);
-	return hash_uint64_t(fk->dev) ^ hash_uint64_t(fk->ino);
+    const struct file_key *fk = static_cast<const file_key *>(v);
+    return hash_uint64_t(fk->dev) ^ hash_uint64_t(fk->ino);
 }
 
-static
-gboolean file_key_equal(gconstpointer v1, gconstpointer v2)
+static gboolean file_key_equal(gconstpointer v1, gconstpointer v2)
 {
-	const struct file_key *fk1 = static_cast<const file_key *>(v1);
-	const struct file_key *fk2 = static_cast<const file_key *>(v2);
+    const struct file_key *fk1 = static_cast<const file_key *>(v1);
+    const struct file_key *fk2 = static_cast<const file_key *>(v2);
 
-	return (fk1->dev == fk2->dev) && (fk1->ino == fk2->ino);
+    return (fk1->dev == fk2->dev) && (fk1->ino == fk2->ino);
 }
 
-static
-void file_key_destroy(gpointer data)
+static void file_key_destroy(gpointer data)
 {
-	struct file_key *fk = static_cast<file_key *>(data);
-	g_free(fk);
+    struct file_key *fk = static_cast<file_key *>(data);
+    g_free(fk);
 }
 
 int bt_fd_cache_init(struct bt_fd_cache *fdc, int log_level)
 {
-	int ret = 0;
+    int ret = 0;
 
-	fdc->log_level = log_level;
-	fdc->cache = g_hash_table_new_full(file_key_hash, file_key_equal,
-		file_key_destroy, (GDestroyNotify) fd_cache_handle_internal_destroy);
-	if (!fdc->cache) {
-		ret = -1;
-	}
+    fdc->log_level = log_level;
+    fdc->cache = g_hash_table_new_full(file_key_hash, file_key_equal, file_key_destroy,
+                                       (GDestroyNotify) fd_cache_handle_internal_destroy);
+    if (!fdc->cache) {
+        ret = -1;
+    }
 
-	return ret;
+    return ret;
 }
 
 void bt_fd_cache_fini(struct bt_fd_cache *fdc)
 {
-	if (!fdc->cache) {
-		goto end;
-	}
+    if (!fdc->cache) {
+        goto end;
+    }
 
-	/*
-	 * All handle should have been removed for the hashtable at this point.
-	 */
-	BT_ASSERT(g_hash_table_size(fdc->cache) == 0);
-	g_hash_table_destroy(fdc->cache);
+    /*
+     * All handle should have been removed for the hashtable at this point.
+     */
+    BT_ASSERT(g_hash_table_size(fdc->cache) == 0);
+    g_hash_table_destroy(fdc->cache);
 
 end:
-	return;
+    return;
 }
 
-struct bt_fd_cache_handle *bt_fd_cache_get_handle(struct bt_fd_cache *fdc,
-		const char *path)
+struct bt_fd_cache_handle *bt_fd_cache_get_handle(struct bt_fd_cache *fdc, const char *path)
 {
-	struct fd_handle_internal *fd_internal = NULL;
-	struct stat statbuf;
-	struct file_key fk;
-	int ret, fd = -1;
+    struct fd_handle_internal *fd_internal = NULL;
+    struct stat statbuf;
+    struct file_key fk;
+    int ret, fd = -1;
 
-	ret = stat(path, &statbuf);
-	if (ret < 0) {
-		/*
-		 * This is not necessarily an error as we sometimes try to open
-		 * files to see if they exist. Log the error as DEBUG severity
-		 * level.
-		 */
-		BT_LOGD_ERRNO("Failed to stat file", ": path=%s", path);
-		goto end;
-	}
+    ret = stat(path, &statbuf);
+    if (ret < 0) {
+        /*
+         * This is not necessarily an error as we sometimes try to open
+         * files to see if they exist. Log the error as DEBUG severity
+         * level.
+         */
+        BT_LOGD_ERRNO("Failed to stat file", ": path=%s", path);
+        goto end;
+    }
 
-	/*
-	 * Use the device number and inode number to uniquely identify a file.
-	 * Even if the file has the same path, it may have been replaced so we
-	 * must open a new FD for it. This replacement of file is more likely
-	 * to happen with a lttng-live source component.
-	 */
-	fk.dev = statbuf.st_dev;
-	fk.ino = statbuf.st_ino;
+    /*
+     * Use the device number and inode number to uniquely identify a file.
+     * Even if the file has the same path, it may have been replaced so we
+     * must open a new FD for it. This replacement of file is more likely
+     * to happen with a lttng-live source component.
+     */
+    fk.dev = statbuf.st_dev;
+    fk.ino = statbuf.st_ino;
 
-	fd_internal = static_cast<fd_handle_internal *>(g_hash_table_lookup(fdc->cache, &fk));
-	if (!fd_internal) {
-		struct file_key *file_key;
+    fd_internal = static_cast<fd_handle_internal *>(g_hash_table_lookup(fdc->cache, &fk));
+    if (!fd_internal) {
+        struct file_key *file_key;
 
-		fd = open(path, O_RDONLY);
-		if (fd < 0) {
-			BT_LOGE_ERRNO("Failed to open file", "path=%s", path);
-			goto error;
-		}
+        fd = open(path, O_RDONLY);
+        if (fd < 0) {
+            BT_LOGE_ERRNO("Failed to open file", "path=%s", path);
+            goto error;
+        }
 
-		fd_internal = g_new0(struct fd_handle_internal, 1);
-		if (!fd_internal) {
-			BT_LOGE_STR("Failed to allocate internal FD handle.");
-			goto error;
-		}
+        fd_internal = g_new0(struct fd_handle_internal, 1);
+        if (!fd_internal) {
+            BT_LOGE_STR("Failed to allocate internal FD handle.");
+            goto error;
+        }
 
-		file_key = g_new0(struct file_key, 1);
-		if (!fd_internal) {
-			BT_LOGE_STR("Failed to allocate file key.");
-			goto error;
-		}
+        file_key = g_new0(struct file_key, 1);
+        if (!fd_internal) {
+            BT_LOGE_STR("Failed to allocate file key.");
+            goto error;
+        }
 
-		*file_key = fk;
+        *file_key = fk;
 
-		fd_internal->fd_handle.fd = fd;
-		fd_internal->ref_count = 0;
-		fd_internal->key = file_key;
+        fd_internal->fd_handle.fd = fd;
+        fd_internal->ref_count = 0;
+        fd_internal->key = file_key;
 
-		/* Insert the newly created fd handle. */
-		g_hash_table_insert(fdc->cache, fd_internal->key, fd_internal);
-	}
+        /* Insert the newly created fd handle. */
+        g_hash_table_insert(fdc->cache, fd_internal->key, fd_internal);
+    }
 
-	fd_internal->ref_count++;
-	goto end;
+    fd_internal->ref_count++;
+    goto end;
 
 error:
-	/*
-	 * Close file descriptor if it was open() and we are currently on error
-	 * path.
-	 */
-	if (fd != -1) {
-		ret = close(fd);
-		if (ret) {
-			BT_LOGE_ERRNO("Failed to close file descriptor",
-				": fd=%i, path=%s", fd, path);
-		}
-	}
+    /*
+     * Close file descriptor if it was open() and we are currently on error
+     * path.
+     */
+    if (fd != -1) {
+        ret = close(fd);
+        if (ret) {
+            BT_LOGE_ERRNO("Failed to close file descriptor", ": fd=%i, path=%s", fd, path);
+        }
+    }
 
-	fd_cache_handle_internal_destroy(fd_internal);
-	fd_internal = NULL;
+    fd_cache_handle_internal_destroy(fd_internal);
+    fd_internal = NULL;
 end:
-	return (struct bt_fd_cache_handle *) fd_internal;
+    return (struct bt_fd_cache_handle *) fd_internal;
 }
 
-void bt_fd_cache_put_handle(struct bt_fd_cache *fdc,
-		struct bt_fd_cache_handle *handle)
+void bt_fd_cache_put_handle(struct bt_fd_cache *fdc, struct bt_fd_cache_handle *handle)
 {
-	struct fd_handle_internal *fd_internal;
+    struct fd_handle_internal *fd_internal;
 
-	if (!handle) {
-		goto end;
-	}
+    if (!handle) {
+        goto end;
+    }
 
-	fd_internal = (struct fd_handle_internal *) handle;
+    fd_internal = (struct fd_handle_internal *) handle;
 
-	BT_ASSERT(fd_internal->ref_count > 0);
+    BT_ASSERT(fd_internal->ref_count > 0);
 
-	if (fd_internal->ref_count > 1) {
-		fd_internal->ref_count--;
-	} else {
-		gboolean ret;
-		int close_ret;
+    if (fd_internal->ref_count > 1) {
+        fd_internal->ref_count--;
+    } else {
+        gboolean ret;
+        int close_ret;
 
-		close_ret = close(fd_internal->fd_handle.fd);
-		if (close_ret == -1) {
-			BT_LOGE_ERRNO("Failed to close file descriptor",
-				": fd=%d", fd_internal->fd_handle.fd);
-		}
-		ret = g_hash_table_remove(fdc->cache, fd_internal->key);
-		BT_ASSERT(ret);
-	}
+        close_ret = close(fd_internal->fd_handle.fd);
+        if (close_ret == -1) {
+            BT_LOGE_ERRNO("Failed to close file descriptor", ": fd=%d", fd_internal->fd_handle.fd);
+        }
+        ret = g_hash_table_remove(fdc->cache, fd_internal->key);
+        BT_ASSERT(ret);
+    }
 
 end:
-	return;
+    return;
 }

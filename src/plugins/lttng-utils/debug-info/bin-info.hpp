@@ -6,71 +6,73 @@
  * Babeltrace - Executable and Shared Object Debug Info Reader
  */
 
-/* clang-format off */
-
 #ifndef BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_BIN_INFO_HPP
 #define BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_BIN_INFO_HPP
 
-#include <babeltrace2/babeltrace.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <gelf.h>
 #include <elfutils/libdw.h>
+#include <gelf.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+#include <babeltrace2/babeltrace.h>
+
 #include "common/macros.h"
 #include "fd-cache/fd-cache.hpp"
 
-#define DEFAULT_DEBUG_DIR "/usr/lib/debug"
-#define DEBUG_SUBDIR ".debug"
-#define BUILD_ID_SUBDIR ".build-id"
-#define BUILD_ID_SUFFIX ".debug"
+#define DEFAULT_DEBUG_DIR       "/usr/lib/debug"
+#define DEBUG_SUBDIR            ".debug"
+#define BUILD_ID_SUBDIR         ".build-id"
+#define BUILD_ID_SUFFIX         ".debug"
 #define BUILD_ID_PREFIX_DIR_LEN 2
 
-struct bin_info {
-	bt_logging_level log_level;
+struct bin_info
+{
+    bt_logging_level log_level;
 
-	/* Used for logging; can be `NULL` */
-	bt_self_component *self_comp;
+    /* Used for logging; can be `NULL` */
+    bt_self_component *self_comp;
 
-	/* Base virtual memory address. */
-	uint64_t low_addr;
-	/* Upper bound of exec address space. */
-	uint64_t high_addr;
-	/* Size of exec address space. */
-	uint64_t memsz;
-	/* Paths to ELF and DWARF files. */
-	gchar *elf_path;
-	gchar *dwarf_path;
-	/* libelf and libdw objects representing the files. */
-	Elf *elf_file;
-	Dwarf *dwarf_info;
-	/* Optional build ID info. */
-	uint8_t *build_id;
-	size_t build_id_len;
+    /* Base virtual memory address. */
+    uint64_t low_addr;
+    /* Upper bound of exec address space. */
+    uint64_t high_addr;
+    /* Size of exec address space. */
+    uint64_t memsz;
+    /* Paths to ELF and DWARF files. */
+    gchar *elf_path;
+    gchar *dwarf_path;
+    /* libelf and libdw objects representing the files. */
+    Elf *elf_file;
+    Dwarf *dwarf_info;
+    /* Optional build ID info. */
+    uint8_t *build_id;
+    size_t build_id_len;
 
-	/* Optional debug link info. */
-	gchar *dbg_link_filename;
-	uint32_t dbg_link_crc;
-	/* fd cache handles to ELF and DWARF files. */
-	struct bt_fd_cache_handle *elf_handle;
-	struct bt_fd_cache_handle *dwarf_handle;
-	/* Configuration. */
-	gchar *debug_info_dir;
-	/* Denotes whether the executable is position independent code. */
-	bool is_pic:1;
-	/* Denotes whether the build id in the trace matches to one on disk. */
-	bool file_build_id_matches:1;
-	/*
-	 * Denotes whether the executable only has ELF symbols and no
-	 * DWARF info.
-	 */
-	bool is_elf_only:1;
-	/* Weak ref. Owned by the iterator. */
-	struct bt_fd_cache *fd_cache;
+    /* Optional debug link info. */
+    gchar *dbg_link_filename;
+    uint32_t dbg_link_crc;
+    /* fd cache handles to ELF and DWARF files. */
+    struct bt_fd_cache_handle *elf_handle;
+    struct bt_fd_cache_handle *dwarf_handle;
+    /* Configuration. */
+    gchar *debug_info_dir;
+    /* Denotes whether the executable is position independent code. */
+    bool is_pic : 1;
+    /* Denotes whether the build id in the trace matches to one on disk. */
+    bool file_build_id_matches : 1;
+    /*
+     * Denotes whether the executable only has ELF symbols and no
+     * DWARF info.
+     */
+    bool is_elf_only : 1;
+    /* Weak ref. Owned by the iterator. */
+    struct bt_fd_cache *fd_cache;
 };
 
-struct source_location {
-	uint64_t line_no;
-	gchar *filename;
+struct source_location
+{
+    uint64_t line_no;
+    gchar *filename;
 };
 
 /**
@@ -79,8 +81,7 @@ struct source_location {
  *
  * @returns		0 on success, -1 on failure
  */
-int bin_info_init(bt_logging_level log_level,
-		bt_self_component *self_comp);
+int bin_info_init(bt_logging_level log_level, bt_self_component *self_comp);
 
 /**
  * Instantiate a structure representing an ELF executable, possibly
@@ -97,10 +98,10 @@ int bin_info_init(bt_logging_level log_level,
  * @returns		Pointer to the new bin_info on success,
  *			NULL on failure.
  */
-struct bin_info *bin_info_create(struct bt_fd_cache *fdc, const char *path,
-		uint64_t low_addr, uint64_t memsz, bool is_pic,
-		const char *debug_info_dir, const char *target_prefix,
-		bt_logging_level log_level, bt_self_component *self_comp);
+struct bin_info *bin_info_create(struct bt_fd_cache *fdc, const char *path, uint64_t low_addr,
+                                 uint64_t memsz, bool is_pic, const char *debug_info_dir,
+                                 const char *target_prefix, bt_logging_level log_level,
+                                 bt_self_component *self_comp);
 
 /**
  * Destroy the given bin_info instance
@@ -118,8 +119,7 @@ void bin_info_destroy(struct bin_info *bin);
  * @param build_id_len	Length in bytes of the build_id
  * @returns		0 on success, -1 on failure
  */
-int bin_info_set_build_id(struct bin_info *bin, uint8_t *build_id,
-		size_t build_id_len);
+int bin_info_set_build_id(struct bin_info *bin, uint8_t *build_id, size_t build_id_len);
 
 /**
  * Sets the debug link information for a given bin_info instance.
@@ -130,8 +130,7 @@ int bin_info_set_build_id(struct bin_info *bin, uint8_t *build_id,
  * @param crc		Checksum for the debug info file
  * @returns		0 on success, -1 on failure
  */
-int bin_info_set_debug_link(struct bin_info *bin, const char *filename,
-		uint32_t crc);
+int bin_info_set_debug_link(struct bin_info *bin, const char *filename, uint32_t crc);
 
 /**
  * Returns whether or not the given bin info \p bin contains the
@@ -142,14 +141,13 @@ int bin_info_set_debug_link(struct bin_info *bin, const char *filename,
  * @returns		1 if \p bin contains \p addr, 0 if it does not,
  *			-1 on failure
  */
-static inline
-int bin_info_has_address(struct bin_info *bin, uint64_t addr)
+static inline int bin_info_has_address(struct bin_info *bin, uint64_t addr)
 {
-	if (!bin) {
-		return -1;
-	}
+    if (!bin) {
+        return -1;
+    }
 
-	return addr >= bin->low_addr && addr < bin->high_addr;
+    return addr >= bin->low_addr && addr < bin->high_addr;
 }
 
 /**
@@ -171,8 +169,7 @@ int bin_info_has_address(struct bin_info *bin, uint64_t addr)
  * @param func_name	Out parameter, the function name.
  * @returns		0 on success, -1 on failure
  */
-int bin_info_lookup_function_name(struct bin_info *bin, uint64_t addr,
-		char **func_name);
+int bin_info_lookup_function_name(struct bin_info *bin, uint64_t addr, char **func_name);
 
 /**
  * Get the source location (file name and line number) for a given
@@ -193,7 +190,7 @@ int bin_info_lookup_function_name(struct bin_info *bin, uint64_t addr,
  * @returns		0 on success, -1 on failure
  */
 int bin_info_lookup_source_location(struct bin_info *bin, uint64_t addr,
-		struct source_location **src_loc);
+                                    struct source_location **src_loc);
 /**
  * Get a string representing the location within the binary of a given
  * address.
