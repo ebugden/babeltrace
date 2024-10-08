@@ -7,22 +7,22 @@
  * Babeltrace - Trace IR metadata field class copy
  */
 
-/* clang-format off */
-
 #ifndef BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_TRACE_IR_METADATA_FIELD_CLASS_COPY_HPP
 #define BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_TRACE_IR_METADATA_FIELD_CLASS_COPY_HPP
 
 #include <babeltrace2/babeltrace.h>
+
 #include "common/macros.h"
+
 #include "trace-ir-mapping.hpp"
 
-enum debug_info_trace_ir_mapping_status copy_field_class_content_internal(
-		struct trace_ir_metadata_maps *trace_ir_metadata_maps,
-		const bt_field_class *in_field_class,
-		bt_field_class *out_field_class);
+enum debug_info_trace_ir_mapping_status
+copy_field_class_content_internal(struct trace_ir_metadata_maps *trace_ir_metadata_maps,
+                                  const bt_field_class *in_field_class,
+                                  bt_field_class *out_field_class);
 
-bt_field_class *create_field_class_copy_internal(
-		struct trace_ir_metadata_maps *trace_ir_metadata_maps,
-		const bt_field_class *in_field_class);
+bt_field_class *
+create_field_class_copy_internal(struct trace_ir_metadata_maps *trace_ir_metadata_maps,
+                                 const bt_field_class *in_field_class);
 
 #endif /* BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_TRACE_IR_METADATA_FIELD_CLASS_COPY_HPP */

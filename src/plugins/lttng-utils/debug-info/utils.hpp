@@ -6,8 +6,6 @@
  * Babeltrace - Debug Info Utilities
  */
 
-/* clang-format off */
-
 #ifndef BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_UTILS_HPP
 #define BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_UTILS_HPP
 
@@ -23,8 +21,7 @@
  */
 const char *get_filename_from_path(const char *path);
 
-bool is_event_common_ctx_dbg_info_compatible(
-		const bt_field_class *in_field_class,
-		const char *debug_info_field_class_name);
+bool is_event_common_ctx_dbg_info_compatible(const bt_field_class *in_field_class,
+                                             const char *debug_info_field_class_name);
 
 #endif /* BABELTRACE_PLUGINS_LTTNG_UTILS_DEBUG_INFO_UTILS_HPP */
