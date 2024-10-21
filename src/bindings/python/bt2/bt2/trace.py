@@ -207,7 +207,7 @@ class _Trace(bt2_user_attrs._WithUserAttrs, _TraceConst):
     def _name(self, name):
         bt2_utils._check_str(name)
         status = native_bt.trace_set_name(self._ptr, name)
-        bt2_utils._handle_func_status(status, "cannot set trace class object's name")
+        bt2_utils._handle_func_status(status, "cannot set trace object's name")
 
     _name = property(fset=_name)
 
