@@ -388,6 +388,11 @@ class _EnumerationFieldClassTestCase(_TestIntegerFieldClassProps):
         expected_labels = set(["a", "c"])
         self.assertEqual(labels, expected_labels)
 
+    def test_find_by_value_none_found(self):
+        self._fc.add_mapping("a", self._ranges1)
+        mappings = self._fc.mappings_for_value(999999)
+        self.assertEqual(mappings, [])
+
 
 class UnsignedEnumerationFieldClassTestCase(
     _EnumerationFieldClassTestCase, _TestFieldClass, unittest.TestCase
