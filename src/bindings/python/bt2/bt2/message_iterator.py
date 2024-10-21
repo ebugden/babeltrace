@@ -103,13 +103,13 @@ class _MessageIteratorConfiguration:
     def __init__(self, ptr):
         self._ptr = ptr
 
-    def can_seek_forward(self, value):
+    def _set_can_seek_forward(self, value):
         bt2_utils._check_bool(value)
         native_bt.self_message_iterator_configuration_set_can_seek_forward(
             self._ptr, value
         )
 
-    can_seek_forward = property(fset=can_seek_forward)
+    can_seek_forward = property(fset=_set_can_seek_forward)
 
 
 # This is extended by the user to implement component classes in Python.  It
