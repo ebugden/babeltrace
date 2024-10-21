@@ -1,8 +1,8 @@
 // Render with Asciidoctor
 
 = Babeltrace{nbsp}2 contributor's guide
-Jérémie Galarneau, Philippe Proulx
-22 February 2024
+Jérémie Galarneau, Simon Marchi, Philippe Proulx
+23 October 2024
 :toc: left
 :toclevels: 3
 :icons: font
@@ -2307,3 +2307,19 @@ https://github.com/psf/black[Black] specified in `dev-requirements.txt`.
 
 All Python imports must be sorted using the version of
 https://pycqa.github.io/isort/[isort] indicated in `dev-requirements.txt`.
+
+== Git
+
+=== Commit message style
+
+When referring to a specific commit (either in free text or in a
+trailer line), use the `__12-DIGIT HASH__ ("__SUBJECT__")`
+https://www.kernel.org/doc/html/v4.10/process/submitting-patches.html#describe-your-changes[format],
+for example:
+
+    602446e40e7a ("ctf: add explicit cast to CStringView in ternary")
+
+Generate such a string from the `HEAD` commit of a repository with:
+
+    $ git log -1 --abbrev=12 --pretty='%h ("%s")'
+
