@@ -3356,6 +3356,14 @@ bt_field_class_blob_dynamic_with_length_field_borrow_length_field_location_const
 }
 
 BT_EXPORT
+uint64_t bt_field_class_get_graph_mip_version(
+		const bt_field_class *field_class)
+{
+	BT_ASSERT_PRE_DEV_FC_NON_NULL(field_class);
+	return field_class->mip_version;
+}
+
+BT_EXPORT
 void bt_field_class_get_ref(const struct bt_field_class *field_class)
 {
 	bt_object_get_ref(field_class);
