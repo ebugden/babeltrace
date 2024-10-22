@@ -180,6 +180,7 @@ uint64_t bt_field_class_bit_array_get_flag_count(const bt_field_class *fc)
 	const struct bt_field_class_bit_array *ba_fc = (const void *) fc;
 
 	BT_ASSERT_PRE_DEV_FC_NON_NULL(fc);
+	BT_ASSERT_PRE_DEV_FC_MIP_VERSION_GE(fc, 1);
 	BT_ASSERT_PRE_DEV_FC_HAS_TYPE("field-class", fc, "bit-array",
 		BT_FIELD_CLASS_TYPE_BIT_ARRAY, "Field class");
 	return ba_fc->flags->len;
@@ -199,6 +200,7 @@ bt_field_class_bit_array_add_flag_status bt_field_class_bit_array_add_flag(
 
 	BT_ASSERT_PRE_NO_ERROR();
 	BT_ASSERT_PRE_FC_NON_NULL(fc);
+	BT_ASSERT_PRE_FC_MIP_VERSION_GE(fc, 1);
 	BT_ASSERT_PRE_FC_HAS_TYPE("field-class", fc, "bit-array",
 		BT_FIELD_CLASS_TYPE_BIT_ARRAY, "Field class");
 	BT_ASSERT_PRE_NON_NULL("label", label, "Label");
@@ -271,6 +273,7 @@ bt_field_class_bit_array_borrow_flag_by_index_const(
 	struct bt_field_class_bit_array *ba_fc = (void *) fc;
 
 	BT_ASSERT_PRE_DEV_FC_NON_NULL(fc);
+	BT_ASSERT_PRE_DEV_FC_MIP_VERSION_GE(fc, 1);
 	BT_ASSERT_PRE_DEV_FC_HAS_TYPE("field-class", fc, "bit-array",
 		BT_FIELD_CLASS_TYPE_BIT_ARRAY, "Field class");
 	BT_ASSERT_PRE_DEV_VALID_INDEX(index, ba_fc->flags->len);
@@ -287,6 +290,7 @@ bt_field_class_bit_array_borrow_flag_by_label_const(
 	uint64_t i;
 
 	BT_ASSERT_PRE_DEV_FC_NON_NULL(fc);
+	BT_ASSERT_PRE_DEV_FC_MIP_VERSION_GE(fc, 1);
 	BT_ASSERT_PRE_DEV_FC_HAS_TYPE("field-class", fc, "bit-array",
 		BT_FIELD_CLASS_TYPE_BIT_ARRAY, "Field class");
 	BT_ASSERT_PRE_DEV_NON_NULL("label", label, "Label");
@@ -316,6 +320,7 @@ bt_field_class_bit_array_get_active_flag_labels_for_value_as_integer(
 
 	BT_ASSERT_PRE_DEV_NO_ERROR();
 	BT_ASSERT_PRE_DEV_FC_NON_NULL(fc);
+	BT_ASSERT_PRE_DEV_FC_MIP_VERSION_GE(fc, 1);
 	BT_ASSERT_PRE_DEV_FC_HAS_TYPE("field-class", fc, "bit-array",
 		BT_FIELD_CLASS_TYPE_BIT_ARRAY, "Field class");
 	BT_ASSERT_PRE_DEV_NON_NULL("label-array-output", label_array,
