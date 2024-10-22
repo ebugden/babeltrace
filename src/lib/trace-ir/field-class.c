@@ -147,6 +147,12 @@ struct bt_field_class *bt_field_class_bit_array_create(
 		goto error;
 	}
 
+	ba_fc->label_buf = g_ptr_array_new();
+	if (!ba_fc->label_buf) {
+		BT_LIB_LOGE_APPEND_CAUSE("Failed to allocate a GPtrArray.");
+		goto error;
+	}
+
 	BT_LIB_LOGD("Created bit array field class object: %!+F", ba_fc);
 	goto end;
 
