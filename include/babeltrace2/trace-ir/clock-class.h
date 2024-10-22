@@ -1479,6 +1479,27 @@ See bt_clock_class_borrow_user_attributes().
 extern const bt_value *bt_clock_class_borrow_user_attributes_const(
 		const bt_clock_class *clock_class) __BT_NOEXCEPT;
 
+/*!
+@brief
+    Returns the effective \bt_mip (MIP) version of the trace processing
+    \bt_graph containing the \bt_comp from which
+    \bt_p{clock_class} was created.
+
+@param[in] clock_class
+    Clock class of which to get the effective MIP version.
+
+@returns
+    Effective MIP version of \bt_p{clock_class}.
+
+@bt_pre_not_null{clock_class}
+
+@sa bt_self_component_get_graph_mip_version() &mdash;
+    Returns the effective MIP version of the trace processing
+    graph which contains a given component.
+*/
+extern uint64_t bt_clock_class_get_graph_mip_version(
+		const bt_clock_class *clock_class) __BT_NOEXCEPT;
+
 /*! @} */
 
 /*!

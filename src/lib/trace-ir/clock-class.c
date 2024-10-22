@@ -615,6 +615,14 @@ void bt_clock_class_set_user_attributes(
 }
 
 BT_EXPORT
+uint64_t bt_clock_class_get_graph_mip_version(
+		const bt_clock_class *clock_class)
+{
+	BT_ASSERT_PRE_DEV_CLK_CLS_NON_NULL(clock_class);
+	return clock_class->mip_version;
+}
+
+BT_EXPORT
 void bt_clock_class_get_ref(const struct bt_clock_class *clock_class)
 {
 	bt_object_get_ref(clock_class);
