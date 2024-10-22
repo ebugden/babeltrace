@@ -626,7 +626,7 @@ struct bt_field_class *create_enumeration_field_class(
 
 	enum_fc->label_buf = g_ptr_array_new();
 	if (!enum_fc->label_buf) {
-		BT_LIB_LOGE_APPEND_CAUSE("Failed to allocate a GArray.");
+		BT_LIB_LOGE_APPEND_CAUSE("Failed to allocate a GPtrArray.");
 		goto error;
 	}
 
