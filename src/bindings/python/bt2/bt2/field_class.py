@@ -18,8 +18,12 @@ def _obj_type_from_field_class_ptr_template(type_map, ptr):
     return type_map[typeid]
 
 
-def _obj_type_from_field_class_ptr(ptr):
+def _obj_type_from_field_class_ptr(ptr) -> "_FieldClass":
     return _obj_type_from_field_class_ptr_template(_FIELD_CLASS_TYPE_TO_OBJ, ptr)
+
+
+def _create_field_class_from_ptr(ptr):
+    return _obj_type_from_field_class_ptr(ptr)._create_from_ptr(ptr)
 
 
 def _create_field_class_from_ptr_and_get_ref_template(type_map, ptr):

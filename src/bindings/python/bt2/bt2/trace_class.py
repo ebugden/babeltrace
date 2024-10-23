@@ -4,12 +4,14 @@
 # Copyright (c) 2018 Francis Deslauriers <francis.deslauriers@efficios.com>
 # Copyright (c) 2019 Simon Marchi <simon.marchi@efficios.com>
 
+import typing
 import functools
 import collections.abc
 
 from bt2 import error as bt2_error
 from bt2 import trace as bt2_trace
 from bt2 import utils as bt2_utils
+from bt2 import value as bt2_value
 from bt2 import object as bt2_object
 from bt2 import native_bt
 from bt2 import field_class as bt2_field_class
@@ -269,23 +271,28 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
 
     # Field class creation methods.
 
-    def _check_field_class_create_status(self, ptr, type_name):
+    @staticmethod
+    def _check_and_wrap_field_class(
+        ptr,
+        type_name: str,
+        user_attributes: typing.Optional[bt2_value._MapValueConst],
+    ):
         if ptr is None:
             raise bt2_error._MemoryError(
                 "cannot create {} field class".format(type_name)
             )
 
-    @staticmethod
-    def _set_field_class_user_attrs(fc, user_attributes):
+        fc = bt2_field_class._create_field_class_from_ptr(ptr)
+
         if user_attributes is not None:
             fc._set_user_attributes(user_attributes)
 
-    def create_bool_field_class(self, user_attributes=None):
-        field_class_ptr = native_bt.field_class_bool_create(self._ptr)
-        self._check_field_class_create_status(field_class_ptr, "boolean")
-        fc = bt2_field_class._BoolFieldClass._create_from_ptr(field_class_ptr)
-        self._set_field_class_user_attrs(fc, user_attributes)
         return fc
+
+    def create_bool_field_class(self, user_attributes=None):
+        return self._check_and_wrap_field_class(
+            native_bt.field_class_bool_create(self._ptr), "boolean", user_attributes
+        )
 
     def create_bit_array_field_class(self, length, user_attributes=None):
         bt2_utils._check_uint64(length)
@@ -297,41 +304,37 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
                 )
             )
 
-        field_class_ptr = native_bt.field_class_bit_array_create(self._ptr, length)
-        self._check_field_class_create_status(field_class_ptr, "bit array")
-        fc = bt2_field_class._BitArrayFieldClass._create_from_ptr(field_class_ptr)
-        self._set_field_class_user_attrs(fc, user_attributes)
-        return fc
+        return self._check_and_wrap_field_class(
+            native_bt.field_class_bit_array_create(self._ptr, length),
+            "bit array",
+            user_attributes,
+        )
 
     def _create_integer_field_class(
         self,
         create_func,
-        py_cls,
         type_name,
         field_value_range,
         preferred_display_base,
         user_attributes,
     ):
-        field_class_ptr = create_func(self._ptr)
-        self._check_field_class_create_status(field_class_ptr, type_name)
-
-        field_class = py_cls._create_from_ptr(field_class_ptr)
+        fc = self._check_and_wrap_field_class(
+            create_func(self._ptr), type_name, user_attributes
+        )
 
         if field_value_range is not None:
-            field_class._set_field_value_range(field_value_range)
+            fc._set_field_value_range(field_value_range)
 
         if preferred_display_base is not None:
-            field_class._set_preferred_display_base(preferred_display_base)
+            fc._set_preferred_display_base(preferred_display_base)
 
-        self._set_field_class_user_attrs(field_class, user_attributes)
-        return field_class
+        return fc
 
     def create_signed_integer_field_class(
         self, field_value_range=None, preferred_display_base=None, user_attributes=None
     ):
         return self._create_integer_field_class(
             native_bt.field_class_integer_signed_create,
-            bt2_field_class._SignedIntegerFieldClass,
             "signed integer",
             field_value_range,
             preferred_display_base,
@@ -343,7 +346,6 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
     ):
         return self._create_integer_field_class(
             native_bt.field_class_integer_unsigned_create,
-            bt2_field_class._UnsignedIntegerFieldClass,
             "unsigned integer",
             field_value_range,
             preferred_display_base,
@@ -355,7 +357,6 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
     ):
         return self._create_integer_field_class(
             native_bt.field_class_enumeration_signed_create,
-            bt2_field_class._SignedEnumerationFieldClass,
             "signed enumeration",
             field_value_range,
             preferred_display_base,
@@ -367,7 +368,6 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
     ):
         return self._create_integer_field_class(
             native_bt.field_class_enumeration_unsigned_create,
-            bt2_field_class._UnsignedEnumerationFieldClass,
             "unsigned enumeration",
             field_value_range,
             preferred_display_base,
@@ -375,51 +375,39 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         )
 
     def create_single_precision_real_field_class(self, user_attributes=None):
-        field_class_ptr = native_bt.field_class_real_single_precision_create(self._ptr)
-        self._check_field_class_create_status(field_class_ptr, "single-precision real")
-
-        field_class = bt2_field_class._SinglePrecisionRealFieldClass._create_from_ptr(
-            field_class_ptr
+        return self._check_and_wrap_field_class(
+            native_bt.field_class_real_single_precision_create(self._ptr),
+            "single-precision real",
+            user_attributes,
         )
-
-        self._set_field_class_user_attrs(field_class, user_attributes)
-
-        return field_class
 
     def create_double_precision_real_field_class(self, user_attributes=None):
-        field_class_ptr = native_bt.field_class_real_double_precision_create(self._ptr)
-        self._check_field_class_create_status(field_class_ptr, "double-precision real")
-
-        field_class = bt2_field_class._DoublePrecisionRealFieldClass._create_from_ptr(
-            field_class_ptr
+        return self._check_and_wrap_field_class(
+            native_bt.field_class_real_double_precision_create(self._ptr),
+            "double-precision real",
+            user_attributes,
         )
 
-        self._set_field_class_user_attrs(field_class, user_attributes)
-
-        return field_class
-
     def create_structure_field_class(self, user_attributes=None):
-        field_class_ptr = native_bt.field_class_structure_create(self._ptr)
-        self._check_field_class_create_status(field_class_ptr, "structure")
-        fc = bt2_field_class._StructureFieldClass._create_from_ptr(field_class_ptr)
-        self._set_field_class_user_attrs(fc, user_attributes)
-        return fc
+        return self._check_and_wrap_field_class(
+            native_bt.field_class_structure_create(self._ptr),
+            "structure",
+            user_attributes,
+        )
 
     def create_string_field_class(self, user_attributes=None):
-        field_class_ptr = native_bt.field_class_string_create(self._ptr)
-        self._check_field_class_create_status(field_class_ptr, "string")
-        fc = bt2_field_class._StringFieldClass._create_from_ptr(field_class_ptr)
-        self._set_field_class_user_attrs(fc, user_attributes)
-        return fc
+        return self._check_and_wrap_field_class(
+            native_bt.field_class_string_create(self._ptr), "string", user_attributes
+        )
 
     def create_static_array_field_class(self, elem_fc, length, user_attributes=None):
         bt2_utils._check_type(elem_fc, bt2_field_class._FieldClass)
         bt2_utils._check_uint64(length)
-        ptr = native_bt.field_class_array_static_create(self._ptr, elem_fc._ptr, length)
-        self._check_field_class_create_status(ptr, "static array")
-        fc = bt2_field_class._StaticArrayFieldClass._create_from_ptr(ptr)
-        self._set_field_class_user_attrs(fc, user_attributes)
-        return fc
+        return self._check_and_wrap_field_class(
+            native_bt.field_class_array_static_create(self._ptr, elem_fc._ptr, length),
+            "static array",
+            user_attributes,
+        )
 
     def create_dynamic_array_field_class(
         self, elem_fc, length_fc=None, user_attributes=None
@@ -431,25 +419,26 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             bt2_utils._check_type(length_fc, bt2_field_class._UnsignedIntegerFieldClass)
             length_fc_ptr = length_fc._ptr
 
-        ptr = native_bt.field_class_array_dynamic_create(
-            self._ptr, elem_fc._ptr, length_fc_ptr
+        return self._check_and_wrap_field_class(
+            native_bt.field_class_array_dynamic_create(
+                self._ptr, elem_fc._ptr, length_fc_ptr
+            ),
+            "dynamic array",
+            user_attributes,
         )
-        self._check_field_class_create_status(ptr, "dynamic array")
-        fc = bt2_field_class._obj_type_from_field_class_ptr(ptr)._create_from_ptr(ptr)
-        self._set_field_class_user_attrs(fc, user_attributes)
-        return fc
 
     def create_option_without_selector_field_class(
         self, content_fc, user_attributes=None
     ):
         bt2_utils._check_type(content_fc, bt2_field_class._FieldClass)
-        ptr = native_bt.field_class_option_without_selector_create(
-            self._ptr, content_fc._ptr
+
+        return self._check_and_wrap_field_class(
+            native_bt.field_class_option_without_selector_create(
+                self._ptr, content_fc._ptr
+            ),
+            "option",
+            user_attributes,
         )
-        self._check_field_class_create_status(ptr, "option")
-        fc = bt2_field_class._obj_type_from_field_class_ptr(ptr)._create_from_ptr(ptr)
-        self._set_field_class_user_attrs(fc, user_attributes)
-        return fc
 
     def create_option_with_bool_selector_field_class(
         self, content_fc, selector_fc, selector_is_reversed=False, user_attributes=None
@@ -457,12 +446,13 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         bt2_utils._check_type(content_fc, bt2_field_class._FieldClass)
         bt2_utils._check_bool(selector_is_reversed)
         bt2_utils._check_type(selector_fc, bt2_field_class._BoolFieldClass)
-        ptr = native_bt.field_class_option_with_selector_field_bool_create(
-            self._ptr, content_fc._ptr, selector_fc._ptr
+        fc = self._check_and_wrap_field_class(
+            native_bt.field_class_option_with_selector_field_bool_create(
+                self._ptr, content_fc._ptr, selector_fc._ptr
+            ),
+            "option",
+            user_attributes,
         )
-        self._check_field_class_create_status(ptr, "option")
-        fc = bt2_field_class._obj_type_from_field_class_ptr(ptr)._create_from_ptr(ptr)
-        self._set_field_class_user_attrs(fc, user_attributes)
         fc._set_selector_is_reversed(selector_is_reversed)
         return fc
 
@@ -488,10 +478,7 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
                 )
             )
 
-        self._check_field_class_create_status(ptr, "option")
-        fc = bt2_field_class._obj_type_from_field_class_ptr(ptr)._create_from_ptr(ptr)
-        self._set_field_class_user_attrs(fc, user_attributes)
-        return fc
+        return self._check_and_wrap_field_class(ptr, "option", user_attributes)
 
     def create_variant_field_class(self, selector_fc=None, user_attributes=None):
         selector_fc_ptr = None
@@ -500,8 +487,8 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             bt2_utils._check_type(selector_fc, bt2_field_class._IntegerFieldClass)
             selector_fc_ptr = selector_fc._ptr
 
-        ptr = native_bt.field_class_variant_create(self._ptr, selector_fc_ptr)
-        self._check_field_class_create_status(ptr, "variant")
-        fc = bt2_field_class._obj_type_from_field_class_ptr(ptr)._create_from_ptr(ptr)
-        self._set_field_class_user_attrs(fc, user_attributes)
-        return fc
+        return self._check_and_wrap_field_class(
+            native_bt.field_class_variant_create(self._ptr, selector_fc_ptr),
+            "variant",
+            user_attributes,
+        )
