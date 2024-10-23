@@ -2,8 +2,14 @@
 #
 # Copyright (c) 2017 Philippe Proulx <pproulx@efficios.com>
 
+from bt2 import utils as bt2_utils
 from bt2 import object as bt2_object
 from bt2 import native_bt
+
+typing = bt2_utils._typing_mod
+
+if typing.TYPE_CHECKING:
+    from bt2 import connection as bt2_connection
 
 
 def _bt2_connection():
@@ -42,14 +48,14 @@ class _PortConst(bt2_object._SharedObject):
         return native_bt.port_put_ref(ptr)
 
     @property
-    def name(self):
+    def name(self) -> str:
         ptr = self._as_port_ptr(self._ptr)
         name = native_bt.port_get_name(ptr)
         assert name is not None
         return name
 
     @property
-    def connection(self):
+    def connection(self) -> typing.Optional["bt2_connection._ConnectionConst"]:
         ptr = self._as_port_ptr(self._ptr)
         conn_ptr = native_bt.port_borrow_connection_const(ptr)
 
@@ -59,7 +65,7 @@ class _PortConst(bt2_object._SharedObject):
         return _bt2_connection()._ConnectionConst._create_from_ptr_and_get_ref(conn_ptr)
 
     @property
-    def is_connected(self):
+    def is_connected(self) -> bool:
         return self.connection is not None
 
 
@@ -78,7 +84,7 @@ class _UserComponentPort(_PortConst):
         return native_bt.self_component_port_as_port(ptr)
 
     @property
-    def connection(self):
+    def connection(self) -> typing.Optional["bt2_connection._ConnectionConst"]:
         ptr = self._as_port_ptr(self._ptr)
         conn_ptr = native_bt.port_borrow_connection_const(ptr)
 
@@ -88,7 +94,7 @@ class _UserComponentPort(_PortConst):
         return _bt2_connection()._ConnectionConst._create_from_ptr_and_get_ref(conn_ptr)
 
     @property
-    def user_data(self):
+    def user_data(self) -> object:
         ptr = self._as_self_port_ptr(self._ptr)
         return native_bt.self_component_port_get_data(ptr)
 

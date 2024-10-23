@@ -13,6 +13,8 @@ from bt2 import utils as bt2_utils
 from bt2 import object as bt2_object
 from bt2 import native_bt
 
+typing = bt2_utils._typing_mod
+
 
 def _create_from_ptr_template(ptr, object_map):
     if ptr is None:
@@ -53,7 +55,7 @@ def _create_from_const_ptr_and_get_ref(ptr):
     return _create_from_ptr_and_get_ref_template(ptr, _TYPE_TO_CONST_OBJ)
 
 
-def create_value(value):
+def create_value(value) -> typing.Optional["_Value"]:
     if value is None:
         # null value object
         return
@@ -98,7 +100,7 @@ class _ValueConst(bt2_object._SharedObject, metaclass=abc.ABCMeta):
         _create_from_const_ptr_and_get_ref
     )
 
-    def __ne__(self, other):
+    def __ne__(self, other) -> bool:
         return not (self == other)
 
     def _check_create_status(self, ptr):
@@ -133,19 +135,19 @@ class _NumericValueConst(_ValueConst):
             "'{}' object is not a number object".format(other.__class__.__name__)
         )
 
-    def __int__(self):
+    def __int__(self) -> int:
         return int(self._value)
 
-    def __float__(self):
+    def __float__(self) -> float:
         return float(self._value)
 
     def __repr__(self):
         return repr(self._value)
 
-    def __lt__(self, other):
+    def __lt__(self, other) -> bool:
         return self._value < self._extract_value(other)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         try:
             return self._value == self._extract_value(other)
         except Exception:
@@ -169,13 +171,13 @@ class _NumericValueConst(_ValueConst):
         else:
             return round(self._value, ndigits)
 
-    def __ceil__(self):
+    def __ceil__(self) -> int:
         return math.ceil(self._value)
 
-    def __floor__(self):
+    def __floor__(self) -> int:
         return math.floor(self._value)
 
-    def __trunc__(self):
+    def __trunc__(self) -> int:
         return int(self._value)
 
     def __abs__(self):
@@ -258,10 +260,10 @@ class _IntegralValue(_IntegralValueConst, _NumericValue):
 class _BoolValueConst(_IntegralValueConst):
     _NAME = "Const boolean"
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self._value
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self._value)
 
     @property
@@ -273,7 +275,7 @@ class _BoolValueConst(_IntegralValueConst):
 class BoolValue(_BoolValueConst, _IntegralValue):
     _NAME = "Boolean"
 
-    def __init__(self, value=None):
+    def __init__(self, value: typing.Union[None, bool, _BoolValueConst] = None):
         if value is None:
             ptr = native_bt.value_bool_create()
         else:
@@ -309,7 +311,7 @@ class _IntegerValueConst(_IntegralValueConst):
 
 
 class _IntegerValue(_IntegerValueConst, _IntegralValue):
-    def __init__(self, value=None):
+    def __init__(self, value: typing.Optional[typing.SupportsInt] = None):
         if value is None:
             ptr = self._create_default_value()
         else:
@@ -370,7 +372,7 @@ class _RealValueConst(_NumericValueConst, numbers.Real):
 class RealValue(_RealValueConst, _NumericValue):
     _NAME = "Real number"
 
-    def __init__(self, value=None):
+    def __init__(self, value: typing.Optional[typing.SupportsFloat] = None):
         if value is None:
             ptr = native_bt.value_real_create()
         else:
@@ -409,38 +411,38 @@ class _StringValueConst(collections.abc.Sequence, _Value):
     def _value(self):
         return native_bt.value_string_get(self._ptr)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         try:
             return self._value == self._value_to_str(other)
         except Exception:
             return False
 
-    def __lt__(self, other):
+    def __lt__(self, other) -> bool:
         return self._value < self._value_to_str(other)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self._value)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self._value)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self._value
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> str:
         return self._value[index]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._value)
 
-    def __contains__(self, item):
+    def __contains__(self, item: typing.Union[str, "_StringValueConst"]) -> bool:
         return self._value_to_str(item) in self._value
 
 
 class StringValue(_StringValueConst, _Value):
     _NAME = "String"
 
-    def __init__(self, value=None):
+    def __init__(self, value: typing.Union[None, str, _StringValueConst] = None):
         if value is None:
             ptr = native_bt.value_string_create()
         else:
@@ -455,7 +457,7 @@ class StringValue(_StringValueConst, _Value):
 
     value = property(fset=_set_value)
 
-    def __iadd__(self, value):
+    def __iadd__(self, value: typing.Union[str, _StringValueConst]) -> "StringValue":
         curvalue = self._value
         curvalue += self._value_to_str(value)
         self.value = curvalue
@@ -463,7 +465,7 @@ class StringValue(_StringValueConst, _Value):
 
 
 class _ContainerConst:
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return len(self) != 0
 
 
@@ -479,7 +481,7 @@ class _ArrayValueConst(_ContainerConst, collections.abc.Sequence, _ValueConst):
     )
     _is_const = True
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, collections.abc.Sequence):
             return False
 
@@ -493,7 +495,7 @@ class _ArrayValueConst(_ContainerConst, collections.abc.Sequence, _ValueConst):
 
         return True
 
-    def __len__(self):
+    def __len__(self) -> int:
         size = native_bt.value_array_get_length(self._ptr)
         assert size >= 0
         return size
@@ -512,13 +514,13 @@ class _ArrayValueConst(_ContainerConst, collections.abc.Sequence, _ValueConst):
         if index < 0 or index >= len(self):
             raise IndexError("array value object index is out of range")
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> typing.Optional[_ValueConst]:
         self._check_index(index)
         ptr = self._borrow_element_by_index(self._ptr, index)
         assert ptr
         return self._create_value_from_ptr_and_get_ref(ptr)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "[{}]".format(", ".join([repr(v) for v in self]))
 
 
@@ -528,7 +530,7 @@ class ArrayValue(_ArrayValueConst, _Container, collections.abc.MutableSequence, 
         native_bt.value_array_borrow_element_by_index
     )
 
-    def __init__(self, value=None):
+    def __init__(self, value: typing.Optional[typing.Iterable] = None):
         ptr = native_bt.value_array_create()
         self._check_create_status(ptr)
         super().__init__(ptr)
@@ -539,7 +541,7 @@ class ArrayValue(_ArrayValueConst, _Container, collections.abc.MutableSequence, 
             for elem in value:
                 self.append(elem)
 
-    def __setitem__(self, index, value):
+    def __setitem__(self, index: int, value):
         self._check_index(index)
         value = create_value(value)
 
@@ -562,7 +564,7 @@ class ArrayValue(_ArrayValueConst, _Container, collections.abc.MutableSequence, 
         status = native_bt.value_array_append_element(self._ptr, ptr)
         bt2_utils._handle_func_status(status)
 
-    def __iadd__(self, iterable):
+    def __iadd__(self, iterable: typing.Iterable):
         # Python will raise a TypeError if there's anything wrong with
         # the iterable protocol.
         for elem in iterable:
@@ -585,7 +587,7 @@ class _MapValueKeyIterator(collections.abc.Iterator):
 
         self._keys = _create_from_ptr(keys_ptr)
 
-    def __next__(self):
+    def __next__(self) -> str:
         if self._at == len(self._map_obj):
             raise StopIteration
 
@@ -598,10 +600,10 @@ class _MapValueConst(_ContainerConst, collections.abc.Mapping, _ValueConst):
     _NAME = "Const map"
     _borrow_entry_value_ptr = staticmethod(native_bt.value_map_borrow_entry_value_const)
 
-    def __ne__(self, other):
+    def __ne__(self, other) -> bool:
         return _Value.__ne__(self, other)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, collections.abc.Mapping):
             return False
 
@@ -618,12 +620,12 @@ class _MapValueConst(_ContainerConst, collections.abc.Mapping, _ValueConst):
 
         return True
 
-    def __len__(self):
+    def __len__(self) -> int:
         size = native_bt.value_map_get_size(self._ptr)
         assert size >= 0
         return size
 
-    def __contains__(self, key):
+    def __contains__(self, key: str) -> bool:
         self._check_key_type(key)
         return native_bt.value_map_has_entry(self._ptr, key)
 
@@ -634,16 +636,16 @@ class _MapValueConst(_ContainerConst, collections.abc.Mapping, _ValueConst):
         if key not in self:
             raise KeyError(key)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> typing.Optional[_ValueConst]:
         self._check_key(key)
         ptr = self._borrow_entry_value_ptr(self._ptr, key)
         assert ptr
         return self._create_value_from_ptr_and_get_ref(ptr)
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[str]:
         return _MapValueKeyIterator(self)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         items = ["{}: {}".format(repr(k), repr(v)) for k, v in self.items()]
         return "{{{}}}".format(", ".join(items))
 
@@ -652,7 +654,7 @@ class MapValue(_MapValueConst, _Container, collections.abc.MutableMapping, _Valu
     _NAME = "Map"
     _borrow_entry_value_ptr = staticmethod(native_bt.value_map_borrow_entry_value)
 
-    def __init__(self, value=None):
+    def __init__(self, value: typing.Optional[typing.Iterable] = None):
         ptr = native_bt.value_map_create()
         self._check_create_status(ptr)
         super().__init__(ptr)
@@ -663,7 +665,7 @@ class MapValue(_MapValueConst, _Container, collections.abc.MutableMapping, _Valu
             for key, elem in value.items():
                 self[key] = elem
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value):
         self._check_key_type(key)
         value = create_value(value)
 

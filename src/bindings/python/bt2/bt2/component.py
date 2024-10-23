@@ -3,6 +3,7 @@
 # Copyright (c) 2017 Philippe Proulx <pproulx@efficios.com>
 
 import sys
+import uuid as uuidp
 import collections.abc
 
 from bt2 import port as bt2_port
@@ -16,6 +17,8 @@ from bt2 import trace_class as bt2_trace_class
 from bt2 import query_executor as bt2_query_executor
 from bt2 import message_iterator as bt2_message_iterator
 from bt2 import integer_range_set as bt2_integer_range_set
+
+typing = bt2_utils._typing_mod
 
 
 class _IncompleteUserClass(Exception):
@@ -35,26 +38,26 @@ class _IncompleteUserClass(Exception):
 
 class _ComponentClassConst(bt2_object._SharedObject):
     @property
-    def name(self):
+    def name(self) -> str:
         ptr = self._bt_as_component_class_ptr(self._ptr)
         name = native_bt.component_class_get_name(ptr)
         assert name is not None
         return name
 
     @property
-    def description(self):
+    def description(self) -> typing.Optional[str]:
         ptr = self._bt_as_component_class_ptr(self._ptr)
         return native_bt.component_class_get_description(ptr)
 
     @property
-    def help(self):
+    def help(self) -> typing.Optional[str]:
         ptr = self._bt_as_component_class_ptr(self._ptr)
         return native_bt.component_class_get_help(ptr)
 
     def _bt_component_class_ptr(self):
         return self._bt_as_component_class_ptr(self._ptr)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, _ComponentClassConst):
             try:
                 if not issubclass(other, _UserComponent):
@@ -112,7 +115,7 @@ class _PortIterator(collections.abc.Iterator):
         self._comp_ports = comp_ports
         self._at = 0
 
-    def __next__(self):
+    def __next__(self) -> str:
         if self._at == len(self._comp_ports):
             raise StopIteration
 
@@ -148,7 +151,7 @@ class _ComponentPorts(collections.abc.Mapping):
         self._get_port_count = get_port_count
         self._port_pycls = port_pycls
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> bt2_port._PortConst:
         bt2_utils._check_str(key)
         port_ptr = self._borrow_port_ptr_by_name(self._component_ptr, key)
 
@@ -157,12 +160,12 @@ class _ComponentPorts(collections.abc.Mapping):
 
         return self._port_pycls._create_from_ptr_and_get_ref(port_ptr)
 
-    def __len__(self):
+    def __len__(self) -> int:
         count = self._get_port_count(self._component_ptr)
         assert count >= 0
         return count
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[bt2_port._PortConst]:
         return _PortIterator(self)
 
 
@@ -182,26 +185,26 @@ class _ComponentPorts(collections.abc.Mapping):
 
 class _ComponentConst:
     @property
-    def name(self):
+    def name(self) -> str:
         ptr = self._bt_as_component_ptr(self._ptr)
         name = native_bt.component_get_name(ptr)
         assert name is not None
         return name
 
     @property
-    def logging_level(self):
+    def logging_level(self) -> int:
         ptr = self._bt_as_component_ptr(self._ptr)
         return native_bt.component_get_logging_level(ptr)
 
     @property
-    def cls(self):
+    def cls(self) -> _ComponentClassConst:
         cc_ptr = self._bt_borrow_component_class_ptr(self._ptr)
         assert cc_ptr is not None
         return _create_component_class_from_const_ptr_and_get_ref(
             cc_ptr, self._bt_comp_cls_type
         )
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not hasattr(other, "addr"):
             return False
 
@@ -253,7 +256,7 @@ class _GenericSourceComponentConst(bt2_object._SharedObject, _SourceComponentCon
         native_bt.component_source_put_ref(ptr)
 
     @property
-    def output_ports(self):
+    def output_ports(self) -> _ComponentPorts:
         return _ComponentPorts(
             self._ptr,
             native_bt.component_source_borrow_output_port_by_name_const,
@@ -275,7 +278,7 @@ class _GenericFilterComponentConst(bt2_object._SharedObject, _FilterComponentCon
         native_bt.component_filter_put_ref(ptr)
 
     @property
-    def output_ports(self):
+    def output_ports(self) -> _ComponentPorts:
         return _ComponentPorts(
             self._ptr,
             native_bt.component_filter_borrow_output_port_by_name_const,
@@ -285,7 +288,7 @@ class _GenericFilterComponentConst(bt2_object._SharedObject, _FilterComponentCon
         )
 
     @property
-    def input_ports(self):
+    def input_ports(self) -> _ComponentPorts:
         return _ComponentPorts(
             self._ptr,
             native_bt.component_filter_borrow_input_port_by_name_const,
@@ -307,7 +310,7 @@ class _GenericSinkComponentConst(bt2_object._SharedObject, _SinkComponentConst):
         native_bt.component_sink_put_ref(ptr)
 
     @property
-    def input_ports(self):
+    def input_ports(self) -> _ComponentPorts:
         return _ComponentPorts(
             self._ptr,
             native_bt.component_sink_borrow_input_port_by_name_const,
@@ -608,22 +611,22 @@ class _UserComponentType(type):
         cls._iter_cls = iter_cls
 
     @property
-    def name(cls):
+    def name(cls) -> str:
         ptr = cls._bt_as_component_class_ptr(cls._bt_cc_ptr)
         return native_bt.component_class_get_name(ptr)
 
     @property
-    def description(cls):
+    def description(cls) -> typing.Optional[str]:
         ptr = cls._bt_as_component_class_ptr(cls._bt_cc_ptr)
         return native_bt.component_class_get_description(ptr)
 
     @property
-    def help(cls):
+    def help(cls) -> typing.Optional[str]:
         ptr = cls._bt_as_component_class_ptr(cls._bt_cc_ptr)
         return native_bt.component_class_get_help(ptr)
 
     @property
-    def addr(cls):
+    def addr(cls) -> int:
         return int(cls._bt_cc_ptr)
 
     def _bt_get_supported_mip_versions_from_native(cls, params_ptr, obj, log_level):
@@ -732,7 +735,7 @@ class _UserSinkComponentConfiguration(_UserComponentConfiguration):
 
 class _UserComponent(metaclass=_UserComponentType):
     @property
-    def name(self):
+    def name(self) -> str:
         ptr = self._bt_as_not_self_specific_component_ptr(self._bt_ptr)
         ptr = self._bt_as_component_ptr(ptr)
         name = native_bt.component_get_name(ptr)
@@ -740,13 +743,13 @@ class _UserComponent(metaclass=_UserComponentType):
         return name
 
     @property
-    def logging_level(self):
+    def logging_level(self) -> int:
         ptr = self._bt_as_not_self_specific_component_ptr(self._bt_ptr)
         ptr = self._bt_as_component_ptr(ptr)
         return native_bt.component_get_logging_level(ptr)
 
     @property
-    def cls(self):
+    def cls(self) -> _ComponentClassConst:
         comp_ptr = self._bt_as_not_self_specific_component_ptr(self._bt_ptr)
         cc_ptr = self._bt_borrow_component_class_ptr(comp_ptr)
         return _create_component_class_from_const_ptr_and_get_ref(
@@ -754,11 +757,11 @@ class _UserComponent(metaclass=_UserComponentType):
         )
 
     @property
-    def addr(self):
+    def addr(self) -> int:
         return int(self._bt_ptr)
 
     @property
-    def _graph_mip_version(self):
+    def _graph_mip_version(self) -> int:
         ptr = self._bt_as_self_component_ptr(self._bt_ptr)
         return native_bt.self_component_get_graph_mip_version(ptr)
 
@@ -787,8 +790,10 @@ class _UserComponent(metaclass=_UserComponentType):
         self._user_port_connected(port, other_port)
 
     def _create_trace_class(
-        self, user_attributes=None, assigns_automatic_stream_class_id=True
-    ):
+        self,
+        user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
+        assigns_automatic_stream_class_id: bool = True,
+    ) -> bt2_trace_class._TraceClass:
         ptr = self._bt_as_self_component_ptr(self._bt_ptr)
         tc_ptr = native_bt.trace_class_create(ptr)
 
@@ -805,15 +810,15 @@ class _UserComponent(metaclass=_UserComponentType):
 
     def _create_clock_class(
         self,
-        frequency=None,
-        name=None,
-        user_attributes=None,
-        description=None,
-        precision=None,
-        offset=None,
-        origin_is_unix_epoch=True,
-        uuid=None,
-    ):
+        frequency: typing.Optional[int] = None,
+        name: typing.Optional[str] = None,
+        user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
+        description: typing.Optional[str] = None,
+        precision: typing.Optional[int] = None,
+        offset: typing.Optional[int] = None,
+        origin_is_unix_epoch: bool = True,
+        uuid: typing.Optional[uuidp.UUID] = None,
+    ) -> bt2_clock_class._ClockClass:
         ptr = self._bt_as_self_component_ptr(self._bt_ptr)
         cc_ptr = native_bt.clock_class_create(ptr)
 
@@ -858,7 +863,7 @@ class _UserSourceComponent(_UserComponent, _SourceComponentConst):
     _config_pycls = _UserSourceComponentConfiguration
 
     @property
-    def _output_ports(self):
+    def _output_ports(self) -> _ComponentPorts:
         def get_output_port_count(self_ptr):
             ptr = self._bt_as_not_self_specific_component_ptr(self_ptr)
             return native_bt.component_source_get_output_port_count(ptr)
@@ -871,7 +876,9 @@ class _UserSourceComponent(_UserComponent, _SourceComponentConst):
             bt2_port._UserComponentOutputPort,
         )
 
-    def _add_output_port(self, name, user_data=None):
+    def _add_output_port(
+        self, name: str, user_data: object = None
+    ) -> bt2_port._UserComponentOutputPort:
         bt2_utils._check_str(name)
 
         if name in self._output_ports:
@@ -902,7 +909,7 @@ class _UserFilterComponent(_UserComponent, _FilterComponentConst):
     _config_pycls = _UserFilterComponentConfiguration
 
     @property
-    def _output_ports(self):
+    def _output_ports(self) -> _ComponentPorts:
         def get_output_port_count(self_ptr):
             ptr = self._bt_as_not_self_specific_component_ptr(self_ptr)
             return native_bt.component_filter_get_output_port_count(ptr)
@@ -916,7 +923,7 @@ class _UserFilterComponent(_UserComponent, _FilterComponentConst):
         )
 
     @property
-    def _input_ports(self):
+    def _input_ports(self) -> _ComponentPorts:
         def get_input_port_count(self_ptr):
             ptr = self._bt_as_not_self_specific_component_ptr(self_ptr)
             return native_bt.component_filter_get_input_port_count(ptr)
@@ -929,7 +936,9 @@ class _UserFilterComponent(_UserComponent, _FilterComponentConst):
             bt2_port._UserComponentInputPort,
         )
 
-    def _add_output_port(self, name, user_data=None):
+    def _add_output_port(
+        self, name: str, user_data: object = None
+    ) -> bt2_port._UserComponentOutputPort:
         bt2_utils._check_str(name)
 
         if name in self._output_ports:
@@ -949,7 +958,9 @@ class _UserFilterComponent(_UserComponent, _FilterComponentConst):
             self_port_ptr
         )
 
-    def _add_input_port(self, name, user_data=None):
+    def _add_input_port(
+        self, name: str, user_data: object = None
+    ) -> bt2_port._UserComponentInputPort:
         bt2_utils._check_str(name)
 
         if name in self._input_ports:
@@ -986,7 +997,7 @@ class _UserSinkComponent(_UserComponent, _SinkComponentConst):
         pass
 
     @property
-    def _input_ports(self):
+    def _input_ports(self) -> _ComponentPorts:
         def get_input_port_count(self_ptr):
             ptr = self._bt_as_not_self_specific_component_ptr(self_ptr)
             return native_bt.component_sink_get_input_port_count(ptr)
@@ -999,7 +1010,9 @@ class _UserSinkComponent(_UserComponent, _SinkComponentConst):
             bt2_port._UserComponentInputPort,
         )
 
-    def _add_input_port(self, name, user_data=None):
+    def _add_input_port(
+        self, name: str, user_data: object = None
+    ) -> bt2_port._UserComponentInputPort:
         bt2_utils._check_str(name)
 
         if name in self._input_ports:
@@ -1019,7 +1032,9 @@ class _UserSinkComponent(_UserComponent, _SinkComponentConst):
             self_port_ptr
         )
 
-    def _create_message_iterator(self, input_port):
+    def _create_message_iterator(
+        self, input_port: bt2_port._UserComponentInputPort
+    ) -> bt2_message_iterator._UserComponentInputPortMessageIterator:
         bt2_utils._check_type(input_port, bt2_port._UserComponentInputPort)
 
         if not input_port.is_connected:
@@ -1037,5 +1052,5 @@ class _UserSinkComponent(_UserComponent, _SinkComponentConst):
         return bt2_message_iterator._UserComponentInputPortMessageIterator(msg_iter_ptr)
 
     @property
-    def _is_interrupted(self):
+    def _is_interrupted(self) -> bool:
         return bool(native_bt.self_component_sink_is_interrupted(self._bt_ptr))

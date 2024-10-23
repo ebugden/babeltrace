@@ -7,11 +7,12 @@ import sys
 from bt2 import utils as bt2_utils
 from bt2 import component as bt2_component
 
+typing = bt2_utils._typing_mod
 # Python plugin path to `_PluginInfo` (cache)
 _plugin_infos = {}
 
 
-def plugin_component_class(component_class):
+def plugin_component_class(component_class: typing.Type[bt2_component._UserComponent]):
     if not issubclass(component_class, bt2_component._UserComponent):
         raise TypeError("component class is not a subclass of a user component class")
 
@@ -20,7 +21,14 @@ def plugin_component_class(component_class):
 
 
 def register_plugin(
-    module_name, name, description=None, author=None, license=None, version=None
+    module_name: str,
+    name: str,
+    description: typing.Optional[str] = None,
+    author: typing.Optional[str] = None,
+    license: typing.Optional[str] = None,
+    version: typing.Union[
+        typing.Tuple[int, int, int], typing.Tuple[int, int, int, str], None
+    ] = None,
 ):
     if module_name not in sys.modules:
         raise RuntimeError(

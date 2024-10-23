@@ -9,23 +9,25 @@ from bt2 import object as bt2_object
 from bt2 import native_bt
 from bt2 import user_attributes as bt2_user_attrs
 
+typing = bt2_utils._typing_mod
+
 
 class ClockClassOffset:
-    def __init__(self, seconds=0, cycles=0):
+    def __init__(self, seconds: int = 0, cycles: int = 0):
         bt2_utils._check_int64(seconds)
         bt2_utils._check_int64(cycles)
         self._seconds = seconds
         self._cycles = cycles
 
     @property
-    def seconds(self):
+    def seconds(self) -> int:
         return self._seconds
 
     @property
-    def cycles(self):
+    def cycles(self) -> int:
         return self._cycles
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
             # not comparing apples to apples
             return False
@@ -47,33 +49,33 @@ class _ClockClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsCo
         return native_bt.clock_class_borrow_user_attributes_const(ptr)
 
     @property
-    def name(self):
+    def name(self) -> typing.Optional[str]:
         return native_bt.clock_class_get_name(self._ptr)
 
     @property
-    def description(self):
+    def description(self) -> typing.Optional[str]:
         return native_bt.clock_class_get_description(self._ptr)
 
     @property
-    def frequency(self):
+    def frequency(self) -> int:
         return native_bt.clock_class_get_frequency(self._ptr)
 
     @property
-    def precision(self):
+    def precision(self) -> int:
         precision = native_bt.clock_class_get_precision(self._ptr)
         return precision
 
     @property
-    def offset(self):
+    def offset(self) -> ClockClassOffset:
         offset_s, offset_cycles = native_bt.clock_class_get_offset(self._ptr)
         return ClockClassOffset(offset_s, offset_cycles)
 
     @property
-    def origin_is_unix_epoch(self):
+    def origin_is_unix_epoch(self) -> bool:
         return native_bt.clock_class_origin_is_unix_epoch(self._ptr)
 
     @property
-    def uuid(self):
+    def uuid(self) -> typing.Optional[uuidp.UUID]:
         uuid_bytes = native_bt.clock_class_get_uuid(self._ptr)
 
         if uuid_bytes is None:
@@ -81,7 +83,7 @@ class _ClockClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsCo
 
         return uuidp.UUID(bytes=uuid_bytes)
 
-    def cycles_to_ns_from_origin(self, cycles):
+    def cycles_to_ns_from_origin(self, cycles: int) -> int:
         bt2_utils._check_uint64(cycles)
         status, ns = native_bt.clock_class_cycles_to_ns_from_origin(self._ptr, cycles)
         error_msg = "cannot convert clock value to nanoseconds from origin for given clock class"

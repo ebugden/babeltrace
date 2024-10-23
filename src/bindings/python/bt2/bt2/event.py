@@ -12,6 +12,8 @@ from bt2 import stream as bt2_stream
 from bt2 import native_bt
 from bt2 import event_class as bt2_event_class
 
+typing = bt2_utils._typing_mod
+
 
 class _EventConst(bt2_object._UniqueObject, collections.abc.Mapping):
     _borrow_class_ptr = staticmethod(native_bt.event_borrow_class_const)
@@ -31,21 +33,21 @@ class _EventConst(bt2_object._UniqueObject, collections.abc.Mapping):
     _stream_pycls = property(lambda _: bt2_stream._StreamConst)
 
     @property
-    def cls(self):
+    def cls(self) -> bt2_event_class._EventClassConst:
         event_class_ptr = self._borrow_class_ptr(self._ptr)
         assert event_class_ptr is not None
         return self._event_class_pycls._create_from_ptr_and_get_ref(event_class_ptr)
 
     @property
-    def name(self):
+    def name(self) -> typing.Optional[str]:
         return self.cls.name
 
     @property
-    def id(self):
+    def id(self) -> typing.Optional[int]:
         return self.cls.id
 
     @property
-    def packet(self):
+    def packet(self) -> typing.Optional[bt2_packet._PacketConst]:
         packet_ptr = self._borrow_packet_ptr(self._ptr)
 
         if packet_ptr is None:
@@ -54,13 +56,13 @@ class _EventConst(bt2_object._UniqueObject, collections.abc.Mapping):
         return self._packet_pycls._create_from_ptr_and_get_ref(packet_ptr)
 
     @property
-    def stream(self):
+    def stream(self) -> typing.Optional[bt2_stream._StreamConst]:
         stream_ptr = self._borrow_stream_ptr(self._ptr)
         assert stream_ptr is not None
         return self._stream_pycls._create_from_ptr_and_get_ref(stream_ptr)
 
     @property
-    def common_context_field(self):
+    def common_context_field(self) -> typing.Optional[bt2_field._StructureFieldConst]:
         field_ptr = self._borrow_common_context_field_ptr(self._ptr)
 
         if field_ptr is None:
@@ -71,7 +73,7 @@ class _EventConst(bt2_object._UniqueObject, collections.abc.Mapping):
         )
 
     @property
-    def specific_context_field(self):
+    def specific_context_field(self) -> typing.Optional[bt2_field._StructureFieldConst]:
         field_ptr = self._borrow_specific_context_field_ptr(self._ptr)
 
         if field_ptr is None:
@@ -82,7 +84,7 @@ class _EventConst(bt2_object._UniqueObject, collections.abc.Mapping):
         )
 
     @property
-    def payload_field(self):
+    def payload_field(self) -> typing.Optional[bt2_field._StructureFieldConst]:
         field_ptr = self._borrow_payload_field_ptr(self._ptr)
 
         if field_ptr is None:

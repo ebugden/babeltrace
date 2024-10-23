@@ -10,6 +10,11 @@ from bt2 import native_bt
 from bt2 import stream_class as bt2_stream_class
 from bt2 import user_attributes as bt2_user_attrs
 
+typing = bt2_utils._typing_mod
+
+if typing.TYPE_CHECKING:
+    from bt2 import trace as bt2_trace
+
 
 def _bt2_trace():
     from bt2 import trace as bt2_trace
@@ -37,22 +42,22 @@ class _StreamConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsConst)
     _trace_pycls = property(lambda _: _bt2_trace()._TraceConst)
 
     @property
-    def cls(self):
+    def cls(self) -> bt2_stream_class._StreamClassConst:
         stream_class_ptr = self._borrow_class_ptr(self._ptr)
         assert stream_class_ptr is not None
         return self._stream_class_pycls._create_from_ptr_and_get_ref(stream_class_ptr)
 
     @property
-    def name(self):
+    def name(self) -> typing.Optional[str]:
         return native_bt.stream_get_name(self._ptr)
 
     @property
-    def id(self):
+    def id(self) -> int:
         id = native_bt.stream_get_id(self._ptr)
         return id if id >= 0 else None
 
     @property
-    def trace(self):
+    def trace(self) -> "bt2_trace._TraceConst":
         trace_ptr = self._borrow_trace_ptr(self._ptr)
         assert trace_ptr is not None
         return self._trace_pycls._create_from_ptr_and_get_ref(trace_ptr)
@@ -69,7 +74,7 @@ class _Stream(bt2_user_attrs._WithUserAttrs, _StreamConst):
     _stream_class_pycls = bt2_stream_class._StreamClass
     _trace_pycls = property(lambda _: _bt2_trace()._Trace)
 
-    def create_packet(self):
+    def create_packet(self) -> bt2_packet._Packet:
         if not self.cls.supports_packets:
             raise ValueError(
                 "cannot create packet: stream class does not support packets"

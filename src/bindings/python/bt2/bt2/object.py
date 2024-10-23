@@ -23,10 +23,10 @@ class _BaseObject:
         return self._ptr_internal
 
     @property
-    def addr(self):
+    def addr(self) -> int:
         return int(self._ptr_internal)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<{}.{} object @ {}>".format(
             self.__class__.__module__, self.__class__.__name__, hex(self.addr)
         )

@@ -10,112 +10,7 @@ from bt2 import object as bt2_object
 from bt2 import component as bt2_component
 from bt2 import native_bt
 
-
-def find_plugins_in_path(path, recurse=True, fail_on_load_error=False):
-    bt2_utils._check_str(path)
-    bt2_utils._check_bool(recurse)
-    bt2_utils._check_bool(fail_on_load_error)
-    plugin_set_ptr = None
-
-    if os.path.isfile(path):
-        status, plugin_set_ptr = native_bt.bt2_plugin_find_all_from_file(
-            path, fail_on_load_error
-        )
-    elif os.path.isdir(path):
-        status, plugin_set_ptr = native_bt.bt2_plugin_find_all_from_dir(
-            path, int(recurse), int(fail_on_load_error)
-        )
-    else:
-        raise ValueError("invalid path: '{}'".format(path))
-
-    if status == native_bt.__BT_FUNC_STATUS_NOT_FOUND:
-        return
-
-    bt2_utils._handle_func_status(status, "failed to find plugins")
-    assert plugin_set_ptr is not None
-    return _PluginSet._create_from_ptr(plugin_set_ptr)
-
-
-def find_plugins(
-    find_in_std_env_var=True,
-    find_in_user_dir=True,
-    find_in_sys_dir=True,
-    find_in_static=True,
-    fail_on_load_error=False,
-):
-    bt2_utils._check_bool(find_in_std_env_var)
-    bt2_utils._check_bool(find_in_user_dir)
-    bt2_utils._check_bool(find_in_sys_dir)
-    bt2_utils._check_bool(find_in_static)
-    bt2_utils._check_bool(fail_on_load_error)
-    plugin_set_ptr = None
-
-    status, plugin_set_ptr = native_bt.bt2_plugin_find_all(
-        int(find_in_std_env_var),
-        int(find_in_user_dir),
-        int(find_in_sys_dir),
-        int(find_in_static),
-        int(fail_on_load_error),
-    )
-
-    if status == native_bt.__BT_FUNC_STATUS_NOT_FOUND:
-        return
-
-    bt2_utils._handle_func_status(status, "failed to find plugins")
-    assert plugin_set_ptr is not None
-    return _PluginSet._create_from_ptr(plugin_set_ptr)
-
-
-def find_plugin(
-    name,
-    find_in_std_env_var=True,
-    find_in_user_dir=True,
-    find_in_sys_dir=True,
-    find_in_static=True,
-    fail_on_load_error=False,
-):
-    bt2_utils._check_str(name)
-    bt2_utils._check_bool(fail_on_load_error)
-    status, ptr = native_bt.bt2_plugin_find(
-        name,
-        int(find_in_std_env_var),
-        int(find_in_user_dir),
-        int(find_in_sys_dir),
-        int(find_in_static),
-        int(fail_on_load_error),
-    )
-
-    if status == native_bt.__BT_FUNC_STATUS_NOT_FOUND:
-        return
-
-    bt2_utils._handle_func_status(status, "failed to find plugin")
-    assert ptr is not None
-    return _Plugin._create_from_ptr(ptr)
-
-
-class _PluginSet(bt2_object._SharedObject, collections.abc.Sequence):
-    @staticmethod
-    def _put_ref(ptr):
-        native_bt.plugin_set_put_ref(ptr)
-
-    @staticmethod
-    def _get_ref(ptr):
-        native_bt.plugin_set_get_ref(ptr)
-
-    def __len__(self):
-        count = native_bt.plugin_set_get_plugin_count(self._ptr)
-        assert count >= 0
-        return count
-
-    def __getitem__(self, index):
-        bt2_utils._check_uint64(index)
-
-        if index >= len(self):
-            raise IndexError
-
-        plugin_ptr = native_bt.plugin_set_borrow_plugin_by_index_const(self._ptr, index)
-        assert plugin_ptr is not None
-        return _Plugin._create_from_ptr_and_get_ref(plugin_ptr)
+typing = bt2_utils._typing_mod
 
 
 class _PluginVersion:
@@ -126,22 +21,22 @@ class _PluginVersion:
         self._extra = extra
 
     @property
-    def major(self):
+    def major(self) -> int:
         return self._major
 
     @property
-    def minor(self):
+    def minor(self) -> int:
         return self._minor
 
     @property
-    def patch(self):
+    def patch(self) -> int:
         return self._patch
 
     @property
-    def extra(self):
+    def extra(self) -> typing.Optional[str]:
         return self._extra
 
-    def __str__(self):
+    def __str__(self) -> str:
         extra = ""
 
         if self._extra is not None:
@@ -155,7 +50,7 @@ class _PluginComponentClassesIterator(collections.abc.Iterator):
         self._plugin_comp_cls = plugin_comp_cls
         self._at = 0
 
-    def __next__(self):
+    def __next__(self) -> str:
         plugin_ptr = self._plugin_comp_cls._plugin._ptr
         total = self._plugin_comp_cls._component_class_count(plugin_ptr)
 
@@ -182,7 +77,7 @@ class _PluginComponentClasses(collections.abc.Mapping):
     def __init__(self, plugin):
         self._plugin = plugin
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> bt2_component._ComponentClassConst:
         bt2_utils._check_str(key)
         cc_ptr = self._borrow_component_class_by_name(self._plugin._ptr, key)
 
@@ -193,10 +88,10 @@ class _PluginComponentClasses(collections.abc.Mapping):
             cc_ptr, self._comp_cls_type
         )
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._component_class_count(self._plugin._ptr)
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[bt2_component._ComponentClassConst]:
         return _PluginComponentClassesIterator(self)
 
 
@@ -249,29 +144,29 @@ class _Plugin(bt2_object._SharedObject):
         native_bt.plugin_get_ref(ptr)
 
     @property
-    def name(self):
+    def name(self) -> str:
         name = native_bt.plugin_get_name(self._ptr)
         assert name is not None
         return name
 
     @property
-    def author(self):
+    def author(self) -> typing.Optional[str]:
         return native_bt.plugin_get_author(self._ptr)
 
     @property
-    def license(self):
+    def license(self) -> typing.Optional[str]:
         return native_bt.plugin_get_license(self._ptr)
 
     @property
-    def description(self):
+    def description(self) -> typing.Optional[str]:
         return native_bt.plugin_get_description(self._ptr)
 
     @property
-    def path(self):
+    def path(self) -> typing.Optional[str]:
         return native_bt.plugin_get_path(self._ptr)
 
     @property
-    def version(self):
+    def version(self) -> typing.Optional[_PluginVersion]:
         status, major, minor, patch, extra = native_bt.bt2_plugin_get_version(self._ptr)
 
         if status == native_bt.PROPERTY_AVAILABILITY_NOT_AVAILABLE:
@@ -280,13 +175,122 @@ class _Plugin(bt2_object._SharedObject):
         return _PluginVersion(major, minor, patch, extra)
 
     @property
-    def source_component_classes(self):
+    def source_component_classes(self) -> _PluginSourceComponentClasses:
         return _PluginSourceComponentClasses(self)
 
     @property
-    def filter_component_classes(self):
+    def filter_component_classes(self) -> _PluginFilterComponentClasses:
         return _PluginFilterComponentClasses(self)
 
     @property
-    def sink_component_classes(self):
+    def sink_component_classes(self) -> _PluginSinkComponentClasses:
         return _PluginSinkComponentClasses(self)
+
+
+class _PluginSet(bt2_object._SharedObject, collections.abc.Sequence):
+    @staticmethod
+    def _put_ref(ptr):
+        native_bt.plugin_set_put_ref(ptr)
+
+    @staticmethod
+    def _get_ref(ptr):
+        native_bt.plugin_set_get_ref(ptr)
+
+    def __len__(self) -> int:
+        count = native_bt.plugin_set_get_plugin_count(self._ptr)
+        assert count >= 0
+        return count
+
+    def __getitem__(self, index: int) -> _Plugin:
+        bt2_utils._check_uint64(index)
+
+        if index >= len(self):
+            raise IndexError
+
+        plugin_ptr = native_bt.plugin_set_borrow_plugin_by_index_const(self._ptr, index)
+        assert plugin_ptr is not None
+        return _Plugin._create_from_ptr_and_get_ref(plugin_ptr)
+
+
+def find_plugins_in_path(
+    path: str, recurse: bool = True, fail_on_load_error: bool = False
+) -> typing.Optional[_PluginSet]:
+    bt2_utils._check_str(path)
+    bt2_utils._check_bool(recurse)
+    bt2_utils._check_bool(fail_on_load_error)
+    plugin_set_ptr = None
+
+    if os.path.isfile(path):
+        status, plugin_set_ptr = native_bt.bt2_plugin_find_all_from_file(
+            path, fail_on_load_error
+        )
+    elif os.path.isdir(path):
+        status, plugin_set_ptr = native_bt.bt2_plugin_find_all_from_dir(
+            path, int(recurse), int(fail_on_load_error)
+        )
+    else:
+        raise ValueError("invalid path: '{}'".format(path))
+
+    if status == native_bt.__BT_FUNC_STATUS_NOT_FOUND:
+        return
+
+    bt2_utils._handle_func_status(status, "failed to find plugins")
+    assert plugin_set_ptr is not None
+    return _PluginSet._create_from_ptr(plugin_set_ptr)
+
+
+def find_plugins(
+    find_in_std_env_var: bool = True,
+    find_in_user_dir: bool = True,
+    find_in_sys_dir: bool = True,
+    find_in_static: bool = True,
+    fail_on_load_error: bool = False,
+) -> typing.Optional[_PluginSet]:
+    bt2_utils._check_bool(find_in_std_env_var)
+    bt2_utils._check_bool(find_in_user_dir)
+    bt2_utils._check_bool(find_in_sys_dir)
+    bt2_utils._check_bool(find_in_static)
+    bt2_utils._check_bool(fail_on_load_error)
+    plugin_set_ptr = None
+
+    status, plugin_set_ptr = native_bt.bt2_plugin_find_all(
+        int(find_in_std_env_var),
+        int(find_in_user_dir),
+        int(find_in_sys_dir),
+        int(find_in_static),
+        int(fail_on_load_error),
+    )
+
+    if status == native_bt.__BT_FUNC_STATUS_NOT_FOUND:
+        return
+
+    bt2_utils._handle_func_status(status, "failed to find plugins")
+    assert plugin_set_ptr is not None
+    return _PluginSet._create_from_ptr(plugin_set_ptr)
+
+
+def find_plugin(
+    name: str,
+    find_in_std_env_var: bool = True,
+    find_in_user_dir: bool = True,
+    find_in_sys_dir: bool = True,
+    find_in_static: bool = True,
+    fail_on_load_error: bool = False,
+) -> typing.Optional[_Plugin]:
+    bt2_utils._check_str(name)
+    bt2_utils._check_bool(fail_on_load_error)
+    status, ptr = native_bt.bt2_plugin_find(
+        name,
+        int(find_in_std_env_var),
+        int(find_in_user_dir),
+        int(find_in_sys_dir),
+        int(find_in_static),
+        int(fail_on_load_error),
+    )
+
+    if status == native_bt.__BT_FUNC_STATUS_NOT_FOUND:
+        return
+
+    bt2_utils._handle_func_status(status, "failed to find plugin")
+    assert ptr is not None
+    return _Plugin._create_from_ptr(ptr)

@@ -15,11 +15,14 @@ from bt2 import utils as bt2_utils
 from bt2 import value as bt2_value
 from bt2 import plugin as bt2_plugin
 from bt2 import logging as bt2_logging
+from bt2 import message as bt2_message
 from bt2 import component as bt2_component
 from bt2 import native_bt
 from bt2 import query_executor as bt2_query_executor
 from bt2 import message_iterator as bt2_message_iterator
 from bt2 import component_descriptor as bt2_component_descriptor
+
+typing = bt2_utils._typing_mod
 
 # a pair of component and ComponentSpec
 _ComponentAndSpec = namedtuple("_ComponentAndSpec", ["comp", "spec"])
@@ -41,7 +44,7 @@ class _BaseComponentSpec:
         return self._params
 
     @property
-    def obj(self):
+    def obj(self) -> object:
         return self._obj
 
     @property
@@ -53,7 +56,12 @@ class ComponentSpec(_BaseComponentSpec):
     # A component spec with a specific component class.
     def __init__(
         self,
-        component_class,
+        component_class: typing.Union[
+            bt2_component._SourceComponentClassConst,
+            bt2_component._FilterComponentClassConst,
+            typing.Type[bt2_component._UserSourceComponent],
+            typing.Type[bt2_component._UserFilterComponent],
+        ],
         params=None,
         obj=None,
         logging_level=bt2_logging.LoggingLevel.NONE,
@@ -87,17 +95,24 @@ class ComponentSpec(_BaseComponentSpec):
         self._component_class = component_class
 
     @property
-    def component_class(self):
+    def component_class(
+        self,
+    ) -> typing.Union[
+        bt2_component._SourceComponentClassConst,
+        bt2_component._FilterComponentClassConst,
+        typing.Type[bt2_component._UserSourceComponent],
+        typing.Type[bt2_component._UserFilterComponent],
+    ]:
         return self._component_class
 
     @classmethod
     def from_named_plugin_and_component_class(
         cls,
-        plugin_name,
-        component_class_name,
+        plugin_name: str,
+        component_class_name: str,
         params=None,
-        obj=None,
-        logging_level=bt2_logging.LoggingLevel.NONE,
+        obj: object = None,
+        logging_level: int = bt2_logging.LoggingLevel.NONE,
     ):
         plugin = bt2_plugin.find_plugin(plugin_name)
 
@@ -122,12 +137,18 @@ class AutoSourceComponentSpec(_BaseComponentSpec):
     # A component spec that does automatic source discovery.
     _no_obj = object()
 
-    def __init__(self, input, params=None, obj=_no_obj, logging_level=None):
+    def __init__(
+        self,
+        input: str,
+        params=None,
+        obj: object = _no_obj,
+        logging_level: typing.Optional[int] = None,
+    ):
         super().__init__(params, obj, logging_level)
         self._input = input
 
     @property
-    def input(self):
+    def input(self) -> str:
         return self._input
 
 
@@ -267,12 +288,12 @@ class _TraceCollectionMessageIteratorProxySink(bt2_component._UserSinkComponent)
 class TraceCollectionMessageIterator(bt2_message_iterator._MessageIterator):
     def __init__(
         self,
-        source_component_specs,
-        filter_component_specs=None,
-        stream_intersection_mode=False,
-        begin=None,
-        end=None,
-        plugin_set=None,
+        source_component_specs: typing.Iterable[ComponentSpec],
+        filter_component_specs: typing.Optional[typing.Iterable[ComponentSpec]] = None,
+        stream_intersection_mode: bool = False,
+        begin: typing.Union[None, numbers.Real, datetime.datetime] = None,
+        end: typing.Union[None, numbers.Real, datetime.datetime] = None,
+        plugin_set: typing.Optional[bt2_plugin._PluginSet] = None,
     ):
         bt2_utils._check_bool(stream_intersection_mode)
         self._stream_intersection_mode = stream_intersection_mode
@@ -386,7 +407,7 @@ class TraceCollectionMessageIterator(bt2_message_iterator._MessageIterator):
                     '"{}" object is not a ComponentSpec'.format(type(comp_spec))
                 )
 
-    def __next__(self):
+    def __next__(self) -> bt2_message._MessageConst:
         assert self._msg_list[0] is None
         self._graph.run_once()
         msg = self._msg_list[0]

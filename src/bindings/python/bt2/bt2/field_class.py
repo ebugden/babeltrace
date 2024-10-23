@@ -12,6 +12,8 @@ from bt2 import field_path as bt2_field_path
 from bt2 import user_attributes as bt2_user_attrs
 from bt2 import integer_range_set as bt2_integer_range_set
 
+typing = bt2_utils._typing_mod
+
 
 def _obj_type_from_field_class_ptr_template(type_map, ptr):
     typeid = native_bt.field_class_get_type(ptr)
@@ -99,13 +101,13 @@ class _BitArrayFieldClass(_BitArrayFieldClassConst, _FieldClass):
 
 class _IntegerFieldClassConst(_FieldClassConst):
     @property
-    def field_value_range(self):
+    def field_value_range(self) -> int:
         size = native_bt.field_class_integer_get_field_value_range(self._ptr)
         assert size >= 1
         return size
 
     @property
-    def preferred_display_base(self):
+    def preferred_display_base(self) -> IntegerDisplayBase:
         base = native_bt.field_class_integer_get_preferred_display_base(self._ptr)
         assert base >= 0
         return base
@@ -189,11 +191,11 @@ class _EnumerationFieldClassMapping:
         self._ranges = self._range_set_pycls._create_from_ptr_and_get_ref(ranges_ptr)
 
     @property
-    def label(self):
+    def label(self) -> str:
         return self._label
 
     @property
-    def ranges(self):
+    def ranges(self) -> bt2_integer_range_set._IntegerRangeSetConst:
         return self._ranges
 
 
@@ -218,12 +220,12 @@ class _SignedEnumerationFieldClassMappingConst(_EnumerationFieldClassMapping):
 
 
 class _EnumerationFieldClassConst(_IntegerFieldClassConst, collections.abc.Mapping):
-    def __len__(self):
+    def __len__(self) -> int:
         count = native_bt.field_class_enumeration_get_mapping_count(self._ptr)
         assert count >= 0
         return count
 
-    def mappings_for_value(self, value):
+    def mappings_for_value(self, value: int) -> "list[str]":
         self._check_int_type(value)
 
         status, labels = self._get_mapping_labels_for_value(self._ptr, value)
@@ -232,12 +234,12 @@ class _EnumerationFieldClassConst(_IntegerFieldClassConst, collections.abc.Mappi
         )
         return [self[label] for label in labels]
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[_EnumerationFieldClassMapping]:
         for idx in range(len(self)):
             mapping_ptr = self._borrow_mapping_ptr_by_index(self._ptr, idx)
             yield self._mapping_pycls(mapping_ptr).label
 
-    def __getitem__(self, label):
+    def __getitem__(self, label: str) -> _EnumerationFieldClassMapping:
         bt2_utils._check_str(label)
         mapping_ptr = self._borrow_mapping_ptr_by_label(self._ptr, label)
 
@@ -248,7 +250,9 @@ class _EnumerationFieldClassConst(_IntegerFieldClassConst, collections.abc.Mappi
 
 
 class _EnumerationFieldClass(_EnumerationFieldClassConst, _IntegerFieldClass):
-    def add_mapping(self, label, ranges):
+    def add_mapping(
+        self, label: str, ranges: bt2_integer_range_set._IntegerRangeSetConst
+    ):
         bt2_utils._check_str(label)
         bt2_utils._check_type(ranges, self._range_set_pycls)
 
@@ -260,7 +264,12 @@ class _EnumerationFieldClass(_EnumerationFieldClassConst, _IntegerFieldClass):
             status, "cannot add mapping to enumeration field class object"
         )
 
-    def __iadd__(self, mappings):
+    def __iadd__(
+        self,
+        mappings: typing.Iterable[
+            typing.Tuple[str, bt2_integer_range_set._IntegerRangeSetConst]
+        ],
+    ) -> "_EnumerationFieldClass":
         for label, ranges in mappings:
             self.add_mapping(label, ranges)
 
@@ -350,13 +359,13 @@ class _StructureFieldClassMemberConst(bt2_user_attrs._WithUserAttrsConst):
         self._member_ptr = member_ptr
 
     @property
-    def name(self):
+    def name(self) -> str:
         name = native_bt.field_class_structure_member_get_name(self._member_ptr)
         assert name is not None
         return name
 
     @property
-    def field_class(self):
+    def field_class(self) -> _FieldClassConst:
         fc_ptr = self._borrow_field_class_ptr(self._member_ptr)
         assert fc_ptr is not None
         return self._create_field_class_from_ptr_and_get_ref(fc_ptr)
@@ -394,12 +403,12 @@ class _StructureFieldClassConst(_FieldClassConst, collections.abc.Mapping):
         lambda _: _StructureFieldClassMemberConst
     )
 
-    def __len__(self):
+    def __len__(self) -> int:
         count = native_bt.field_class_structure_get_member_count(self._ptr)
         assert count >= 0
         return count
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> _StructureFieldClassMemberConst:
         if not isinstance(key, str):
             raise TypeError(
                 "key must be a 'str' object, got '{}'".format(key.__class__.__name__)
@@ -412,13 +421,13 @@ class _StructureFieldClassConst(_FieldClassConst, collections.abc.Mapping):
 
         return self._structure_member_field_class_pycls(self, member_ptr)
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[str]:
         for idx in range(len(self)):
             member_ptr = self._borrow_member_ptr_by_index(self._ptr, idx)
             assert member_ptr is not None
             yield native_bt.field_class_structure_member_get_name(member_ptr)
 
-    def member_at_index(self, index):
+    def member_at_index(self, index: int) -> _StructureFieldClassMemberConst:
         bt2_utils._check_uint64(index)
 
         if index >= len(self):
@@ -439,7 +448,12 @@ class _StructureFieldClass(_StructureFieldClassConst, _FieldClass):
     )
     _structure_member_field_class_pycls = property(lambda _: _StructureFieldClassMember)
 
-    def append_member(self, name, field_class, user_attributes=None):
+    def append_member(
+        self,
+        name: str,
+        field_class: _FieldClass,
+        user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
+    ):
         bt2_utils._check_str(name)
         bt2_utils._check_type(field_class, _FieldClass)
 
@@ -462,7 +476,9 @@ class _StructureFieldClass(_StructureFieldClassConst, _FieldClass):
         if user_attributes is not None:
             self[name]._set_user_attributes(user_attributes_value)
 
-    def __iadd__(self, members):
+    def __iadd__(
+        self, members: typing.Iterable[typing.Tuple[str, _FieldClass]]
+    ) -> "_StructureFieldClass":
         for name, field_class in members:
             self.append_member(name, field_class)
 
@@ -479,7 +495,7 @@ class _OptionFieldClassConst(_FieldClassConst):
     )
 
     @property
-    def field_class(self):
+    def field_class(self) -> _FieldClassConst:
         elem_fc_ptr = self._borrow_field_class_ptr(self._ptr)
         return self._create_field_class_from_ptr_and_get_ref(elem_fc_ptr)
 
@@ -488,7 +504,7 @@ class _OptionWithSelectorFieldClassConst(_OptionFieldClassConst):
     _NAME = "Const option (with selector)"
 
     @property
-    def selector_field_path(self):
+    def selector_field_path(self) -> typing.Optional[bt2_field_path._FieldPathConst]:
         ptr = native_bt.field_class_option_with_selector_field_borrow_selector_field_path_const(
             self._ptr
         )
@@ -502,7 +518,7 @@ class _OptionWithBoolSelectorFieldClassConst(_OptionWithSelectorFieldClassConst)
     _NAME = "Const option (with boolean selector)"
 
     @property
-    def selector_is_reversed(self):
+    def selector_is_reversed(self) -> bool:
         return bool(
             native_bt.field_class_option_with_selector_field_bool_selector_is_reversed(
                 self._ptr
@@ -514,7 +530,7 @@ class _OptionWithIntegerSelectorFieldClassConst(_OptionWithSelectorFieldClassCon
     _NAME = "Const option (with integer selector)"
 
     @property
-    def ranges(self):
+    def ranges(self) -> bt2_integer_range_set._IntegerRangeSetConst:
         range_set_ptr = self._borrow_selector_ranges_ptr(self._ptr)
         assert range_set_ptr is not None
         return self._range_set_pycls._create_from_ptr_and_get_ref(range_set_ptr)
@@ -611,13 +627,13 @@ class _VariantFieldClassOptionConst(bt2_user_attrs._WithUserAttrsConst):
         self._opt_ptr = option_ptr
 
     @property
-    def name(self):
+    def name(self) -> str:
         name = native_bt.field_class_variant_option_get_name(self._opt_ptr)
         assert name is not None
         return name
 
     @property
-    def field_class(self):
+    def field_class(self) -> _FieldClassConst:
         fc_ptr = self._borrow_field_class_ptr(self._opt_ptr)
         assert fc_ptr is not None
         return self._create_field_class_from_ptr_and_get_ref(fc_ptr)
@@ -648,7 +664,7 @@ class _VariantFieldClassWithIntegerSelectorOptionConst(_VariantFieldClassOptionC
         super().__init__(owning_var_fc, self._as_option_ptr(spec_opt_ptr))
 
     @property
-    def ranges(self):
+    def ranges(self) -> bt2_integer_range_set._IntegerRangeSetConst:
         range_set_ptr = self._borrow_ranges_ptr(self._spec_ptr)
         assert range_set_ptr is not None
         return self._range_set_pycls._create_from_ptr_and_get_ref(range_set_ptr)
@@ -715,12 +731,12 @@ class _VariantFieldClassConst(_FieldClassConst, collections.abc.Mapping):
     def _create_option_from_ptr(self, opt_ptr):
         return self._variant_option_pycls(self, opt_ptr)
 
-    def __len__(self):
+    def __len__(self) -> int:
         count = native_bt.field_class_variant_get_option_count(self._ptr)
         assert count >= 0
         return count
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> _VariantFieldClassOptionConst:
         if not isinstance(key, str):
             raise TypeError(
                 "key must be a 'str' object, got '{}'".format(key.__class__.__name__)
@@ -733,14 +749,14 @@ class _VariantFieldClassConst(_FieldClassConst, collections.abc.Mapping):
 
         return self._create_option_from_ptr(opt_ptr)
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[str]:
         for idx in range(len(self)):
             opt_ptr = self._borrow_option_ptr_by_index(self._ptr, idx)
             assert opt_ptr is not None
             base_opt_ptr = self._as_option_ptr(opt_ptr)
             yield native_bt.field_class_variant_option_get_name(base_opt_ptr)
 
-    def option_at_index(self, index):
+    def option_at_index(self, index: int) -> _VariantFieldClassOptionConst:
         bt2_utils._check_uint64(index)
 
         if index >= len(self):
@@ -771,7 +787,12 @@ class _VariantFieldClassWithoutSelector(
 ):
     _NAME = "Variant (without selector)"
 
-    def append_option(self, name, field_class, user_attributes=None):
+    def append_option(
+        self,
+        name: str,
+        field_class: _FieldClass,
+        user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
+    ):
         bt2_utils._check_str(name)
         bt2_utils._check_type(field_class, _FieldClass)
 
@@ -794,7 +815,9 @@ class _VariantFieldClassWithoutSelector(
         if user_attributes is not None:
             self[name]._set_user_attributes(user_attributes_value)
 
-    def __iadd__(self, options):
+    def __iadd__(
+        self, options: typing.Iterable[typing.Tuple[str, _FieldClass]]
+    ) -> "_VariantFieldClassWithoutSelector":
         for name, field_class in options:
             self.append_option(name, field_class)
 
@@ -805,7 +828,7 @@ class _VariantFieldClassWithIntegerSelectorConst(_VariantFieldClassConst):
     _NAME = "Const variant (with selector)"
 
     @property
-    def selector_field_path(self):
+    def selector_field_path(self) -> typing.Optional[bt2_field_path._FieldPathConst]:
         ptr = native_bt.field_class_variant_with_selector_field_borrow_selector_field_path_const(
             self._ptr
         )
@@ -821,7 +844,13 @@ class _VariantFieldClassWithIntegerSelector(
 ):
     _NAME = "Variant (with selector)"
 
-    def append_option(self, name, field_class, ranges, user_attributes=None):
+    def append_option(
+        self,
+        name: str,
+        field_class: _FieldClass,
+        ranges: bt2_integer_range_set._IntegerRangeSetConst,
+        user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
+    ):
         bt2_utils._check_str(name)
         bt2_utils._check_type(field_class, _FieldClass)
         bt2_utils._check_type(ranges, self._variant_option_pycls._range_set_pycls)
@@ -848,7 +877,12 @@ class _VariantFieldClassWithIntegerSelector(
         if user_attributes is not None:
             self[name]._set_user_attributes(user_attributes_value)
 
-    def __iadd__(self, options):
+    def __iadd__(
+        self,
+        options: typing.Iterable[
+            typing.Tuple[str, _FieldClass, bt2_integer_range_set._IntegerRangeSetConst]
+        ],
+    ):
         for name, field_class, ranges in options:
             self.append_option(name, field_class, ranges)
 
@@ -916,7 +950,7 @@ class _ArrayFieldClassConst(_FieldClassConst):
     )
 
     @property
-    def element_field_class(self):
+    def element_field_class(self) -> _FieldClassConst:
         elem_fc_ptr = self._borrow_element_field_class(self._ptr)
         return self._create_field_class_from_ptr_and_get_ref(elem_fc_ptr)
 
@@ -934,7 +968,7 @@ class _StaticArrayFieldClassConst(_ArrayFieldClassConst):
     _NAME = "Const static array"
 
     @property
-    def length(self):
+    def length(self) -> int:
         return native_bt.field_class_array_static_get_length(self._ptr)
 
 
@@ -950,7 +984,7 @@ class _DynamicArrayWithLengthFieldFieldClassConst(_DynamicArrayFieldClassConst):
     _NAME = "Const dynamic array (with length field)"
 
     @property
-    def length_field_path(self):
+    def length_field_path(self) -> typing.Optional[bt2_field_path._FieldPathConst]:
         ptr = native_bt.field_class_array_dynamic_with_length_field_borrow_length_field_path_const(
             self._ptr
         )

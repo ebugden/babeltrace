@@ -4,8 +4,11 @@
 
 import collections
 
+from bt2 import utils as bt2_utils
 from bt2 import object as bt2_object
 from bt2 import native_bt
+
+typing = bt2_utils._typing_mod
 
 
 class FieldPathScope:
@@ -24,7 +27,7 @@ class _IndexFieldPathItem(_FieldPathItem):
         self._index = index
 
     @property
-    def index(self):
+    def index(self) -> int:
         return self._index
 
 
@@ -46,14 +49,22 @@ class _FieldPathConst(bt2_object._SharedObject, collections.abc.Iterable):
         native_bt.field_path_put_ref(ptr)
 
     @property
-    def root_scope(self):
+    def root_scope(self) -> FieldPathScope:
         scope = native_bt.field_path_get_root_scope(self._ptr)
         return _SCOPE_TO_OBJ[scope]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return native_bt.field_path_get_item_count(self._ptr)
 
-    def __iter__(self):
+    def __iter__(
+        self,
+    ) -> typing.Iterator[
+        typing.Union[
+            _IndexFieldPathItem,
+            _CurrentArrayElementFieldPathItem,
+            _CurrentOptionContentFieldPathItem,
+        ]
+    ]:
         for idx in range(len(self)):
             item_ptr = native_bt.field_path_borrow_item_by_index_const(self._ptr, idx)
             assert item_ptr is not None

@@ -8,10 +8,15 @@ from bt2 import logging as bt2_logging
 from bt2 import native_bt
 from bt2 import component_descriptor as bt2_component_descriptor
 
+typing = bt2_utils._typing_mod
+
 
 def get_greatest_operative_mip_version(
-    component_descriptors, log_level=bt2_logging.LoggingLevel.NONE
-):
+    component_descriptors: typing.Sequence[
+        bt2_component_descriptor.ComponentDescriptor
+    ],
+    log_level: int = bt2_logging.LoggingLevel.NONE,
+) -> typing.Optional[int]:
     bt2_utils._check_log_level(log_level)
     comp_descr_set_ptr = native_bt.component_descriptor_set_create()
 

@@ -9,6 +9,8 @@ from bt2 import utils as bt2_utils
 from bt2 import object as bt2_object
 from bt2 import native_bt
 
+typing = bt2_utils._typing_mod
+
 
 class _IntegerRangeConst:
     def __init__(self, lower, upper=None):
@@ -30,18 +32,18 @@ class _IntegerRangeConst:
         self._upper = upper
 
     @property
-    def lower(self):
+    def lower(self) -> int:
         return self._lower
 
     @property
-    def upper(self):
+    def upper(self) -> int:
         return self._upper
 
-    def contains(self, value):
+    def contains(self, value: int) -> bool:
         self._check_type(value)
         return value >= self._lower and value <= self._upper
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, _IntegerRangeConst):
             return False
 
@@ -49,7 +51,7 @@ class _IntegerRangeConst:
 
 
 class _IntegerRange(_IntegerRangeConst):
-    def __init__(self, lower, upper=None):
+    def __init__(self, lower: int, upper: typing.Optional[int] = None):
         super().__init__(lower, upper)
 
 
@@ -72,20 +74,20 @@ class UnsignedIntegerRange(_UnsignedIntegerRangeConst, _IntegerRange):
 
 
 class _IntegerRangeSetConst(bt2_object._SharedObject, collections.abc.Set):
-    def __len__(self):
+    def __len__(self) -> int:
         range_set_ptr = self._as_range_set_ptr(self._ptr)
         count = native_bt.integer_range_set_get_range_count(range_set_ptr)
         assert count >= 0
         return count
 
-    def __contains__(self, other_range):
+    def __contains__(self, other_range: object) -> bool:
         for rg in self:
             if rg == other_range:
                 return True
 
         return False
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[_IntegerRangeConst]:
         for idx in range(len(self)):
             rg_ptr = self._borrow_range_ptr_by_index(self._ptr, idx)
             assert rg_ptr is not None
@@ -93,13 +95,13 @@ class _IntegerRangeSetConst(bt2_object._SharedObject, collections.abc.Set):
             upper = self._range_get_upper(rg_ptr)
             yield self._range_pycls(lower, upper)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, _IntegerRangeSetConst):
             return False
 
         return self._is_equal(self._ptr, other._ptr)
 
-    def contains_value(self, value):
+    def contains_value(self, value: int) -> bool:
         for rg in self:
             if rg.contains(value):
                 return True
@@ -108,7 +110,14 @@ class _IntegerRangeSetConst(bt2_object._SharedObject, collections.abc.Set):
 
 
 class _IntegerRangeSet(_IntegerRangeSetConst, collections.abc.MutableSet):
-    def __init__(self, ranges=None):
+    def __init__(
+        self,
+        ranges: typing.Union[
+            None,
+            typing.Iterable[_IntegerRange],
+            typing.Iterable[typing.Union[typing.Tuple[int, int], int]],
+        ] = None,
+    ):
         ptr = self._create_range_set()
 
         if ptr is None:
@@ -121,7 +130,9 @@ class _IntegerRangeSet(_IntegerRangeSetConst, collections.abc.MutableSet):
             for rg in ranges:
                 self.add(rg)
 
-    def add(self, rg):
+    def add(
+        self, rg: typing.Union[_IntegerRange, typing.Union[typing.Tuple[int, int], int]]
+    ):
         if type(rg) is not self._range_pycls:
             if self._range_pycls._is_type(rg):
                 rg = self._range_pycls(rg)
@@ -132,7 +143,7 @@ class _IntegerRangeSet(_IntegerRangeSetConst, collections.abc.MutableSet):
         status = self._add_range(self._ptr, rg.lower, rg.upper)
         bt2_utils._handle_func_status(status, "cannot add range to range set object")
 
-    def discard(self, rg):
+    def discard(self, rg: _IntegerRange):
         raise NotImplementedError
 
 

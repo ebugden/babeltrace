@@ -15,15 +15,15 @@ class LoggingLevel:
     NONE = native_bt.LOGGING_LEVEL_NONE
 
 
-def get_minimal_logging_level():
+def get_minimal_logging_level() -> int:
     return native_bt.logging_get_minimal_level()
 
 
-def get_global_logging_level():
+def get_global_logging_level() -> int:
     return native_bt.logging_get_global_level()
 
 
-def set_global_logging_level(level):
+def set_global_logging_level(level: int):
     levels = (
         LoggingLevel.TRACE,
         LoggingLevel.DEBUG,

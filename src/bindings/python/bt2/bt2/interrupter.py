@@ -25,10 +25,10 @@ class Interrupter(bt2_object._SharedObject):
         super().__init__(ptr)
 
     @property
-    def is_set(self):
+    def is_set(self) -> bool:
         return bool(native_bt.interrupter_is_set(self._ptr))
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self.is_set
 
     def set(self):

@@ -16,6 +16,8 @@ from bt2 import native_bt
 from bt2 import connection as bt2_connection
 from bt2 import interrupter as bt2_interrupter
 
+typing = bt2_utils._typing_mod
+
 
 def _graph_port_added_listener_from_native(
     user_listener, component_ptr, component_type, port_ptr, port_type
@@ -36,7 +38,7 @@ class Graph(bt2_object._SharedObject):
     def _put_ref(ptr):
         native_bt.graph_put_ref(ptr)
 
-    def __init__(self, mip_version=0):
+    def __init__(self, mip_version: int = 0):
         bt2_utils._check_uint64(mip_version)
 
         if mip_version > bt2_mip.get_maximal_mip_version():
@@ -55,12 +57,15 @@ class Graph(bt2_object._SharedObject):
 
     def add_component(
         self,
-        component_class,
-        name,
+        component_class: typing.Union[
+            bt2_component._ComponentClassConst,
+            typing.Type[bt2_component._UserComponent],
+        ],
+        name: str,
         params=None,
-        obj=None,
-        logging_level=bt2_logging.LoggingLevel.NONE,
-    ):
+        obj: object = None,
+        logging_level: int = bt2_logging.LoggingLevel.NONE,
+    ) -> bt2_component._ComponentConst:
         if isinstance(component_class, bt2_component._SourceComponentClassConst):
             cc_ptr = component_class._ptr
             add_fn = native_bt.bt2_graph_add_source_component
@@ -115,7 +120,11 @@ class Graph(bt2_object._SharedObject):
             comp_ptr, cc_type
         )
 
-    def connect_ports(self, upstream_port, downstream_port):
+    def connect_ports(
+        self,
+        upstream_port: bt2_port._OutputPortConst,
+        downstream_port: bt2_port._InputPortConst,
+    ) -> bt2_connection._ConnectionConst:
         bt2_utils._check_type(upstream_port, bt2_port._OutputPortConst)
         bt2_utils._check_type(downstream_port, bt2_port._InputPortConst)
         status, conn_ptr = native_bt.graph_connect_ports(
@@ -127,7 +136,12 @@ class Graph(bt2_object._SharedObject):
         assert conn_ptr
         return bt2_connection._ConnectionConst._create_from_ptr_and_get_ref(conn_ptr)
 
-    def add_port_added_listener(self, listener):
+    def add_port_added_listener(
+        self,
+        listener: typing.Callable[
+            [bt2_component._ComponentConst, bt2_port._PortConst], None
+        ],
+    ):
         if not callable(listener):
             raise TypeError("'listener' parameter is not callable")
 
@@ -151,11 +165,11 @@ class Graph(bt2_object._SharedObject):
         status = native_bt.graph_run(self._ptr)
         bt2_utils._handle_func_status(status, "graph object stopped running")
 
-    def add_interrupter(self, interrupter):
+    def add_interrupter(self, interrupter: bt2_interrupter.Interrupter):
         bt2_utils._check_type(interrupter, bt2_interrupter.Interrupter)
         native_bt.graph_add_interrupter(self._ptr, interrupter._ptr)
 
     @property
-    def default_interrupter(self):
+    def default_interrupter(self) -> bt2_interrupter.Interrupter:
         ptr = native_bt.graph_borrow_default_interrupter(self._ptr)
         return bt2_interrupter.Interrupter._create_from_ptr_and_get_ref(ptr)

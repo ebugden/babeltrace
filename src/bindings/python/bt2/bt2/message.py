@@ -10,6 +10,8 @@ from bt2 import stream as bt2_stream
 from bt2 import native_bt
 from bt2 import clock_snapshot as bt2_clock_snapshot
 
+typing = bt2_utils._typing_mod
+
 
 def _create_from_ptr(ptr):
     msg_type = native_bt.message_get_type(ptr)
@@ -54,12 +56,12 @@ class _EventMessageConst(_MessageConst, _MessageWithDefaultClockSnapshot):
     _event_pycls = property(lambda _: bt2_event._EventConst)
 
     @property
-    def default_clock_snapshot(self):
+    def default_clock_snapshot(self) -> bt2_clock_snapshot._ClockSnapshotConst:
         self._check_has_default_clock_class(self.event.stream.cls.default_clock_class)
         return self._get_default_clock_snapshot(self._borrow_default_clock_snapshot)
 
     @property
-    def event(self):
+    def event(self) -> bt2_event._EventConst:
         event_ptr = self._borrow_event(self._ptr)
         assert event_ptr is not None
         return self._event_pycls._create_from_ptr_and_get_ref(
@@ -77,12 +79,12 @@ class _PacketMessageConst(_MessageConst, _MessageWithDefaultClockSnapshot):
     _packet_pycls = bt2_packet._PacketConst
 
     @property
-    def default_clock_snapshot(self):
+    def default_clock_snapshot(self) -> bt2_clock_snapshot._ClockSnapshotConst:
         self._check_has_default_clock_class(self.packet.stream.cls.default_clock_class)
         return self._get_default_clock_snapshot(self._borrow_default_clock_snapshot_ptr)
 
     @property
-    def packet(self):
+    def packet(self) -> bt2_packet._PacketConst:
         packet_ptr = self._borrow_packet(self._ptr)
         assert packet_ptr is not None
         return self._packet_pycls._create_from_ptr_and_get_ref(packet_ptr)
@@ -120,13 +122,13 @@ class _StreamMessageConst(_MessageConst, _MessageWithDefaultClockSnapshot):
     _stream_pycls = property(lambda _: bt2_stream._StreamConst)
 
     @property
-    def stream(self):
+    def stream(self) -> bt2_stream._StreamConst:
         stream_ptr = self._borrow_stream_ptr(self._ptr)
         assert stream_ptr
         return self._stream_pycls._create_from_ptr_and_get_ref(stream_ptr)
 
     @property
-    def default_clock_snapshot(self):
+    def default_clock_snapshot(self) -> bt2_clock_snapshot._ClockSnapshotConst:
         self._check_has_default_clock_class(self.stream.cls.default_clock_class)
 
         status, snapshot_ptr = self._borrow_default_clock_snapshot_ptr(self._ptr)
@@ -189,7 +191,7 @@ class _MessageIteratorInactivityMessageConst(
     )
 
     @property
-    def clock_snapshot(self):
+    def clock_snapshot(self) -> bt2_clock_snapshot._ClockSnapshotConst:
         # This kind of message always has a clock class: no
         # need to call self._check_has_default_clock_class() here.
         return self._get_default_clock_snapshot(self._borrow_clock_snapshot_ptr)
@@ -205,13 +207,13 @@ class _DiscardedMessageConst(_MessageConst, _MessageWithDefaultClockSnapshot):
     _stream_pycls = property(lambda _: bt2_stream._StreamConst)
 
     @property
-    def stream(self):
+    def stream(self) -> bt2_stream._StreamConst:
         stream_ptr = self._borrow_stream_ptr(self._ptr)
         assert stream_ptr
         return self._stream_pycls._create_from_ptr_and_get_ref(stream_ptr)
 
     @property
-    def count(self):
+    def count(self) -> typing.Optional[int]:
         avail, count = self._get_count(self._ptr)
         if avail is native_bt.PROPERTY_AVAILABILITY_AVAILABLE:
             return count
@@ -223,14 +225,16 @@ class _DiscardedMessageConst(_MessageConst, _MessageWithDefaultClockSnapshot):
             )
 
     @property
-    def beginning_default_clock_snapshot(self):
+    def beginning_default_clock_snapshot(
+        self,
+    ) -> bt2_clock_snapshot._ClockSnapshotConst:
         self._check_has_default_clock_snapshots()
         return self._get_default_clock_snapshot(
             self._borrow_beginning_clock_snapshot_ptr
         )
 
     @property
-    def end_default_clock_snapshot(self):
+    def end_default_clock_snapshot(self) -> bt2_clock_snapshot._ClockSnapshotConst:
         self._check_has_default_clock_snapshots()
         return self._get_default_clock_snapshot(self._borrow_end_clock_snapshot_ptr)
 

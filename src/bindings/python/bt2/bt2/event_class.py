@@ -9,6 +9,11 @@ from bt2 import native_bt
 from bt2 import field_class as bt2_field_class
 from bt2 import user_attributes as bt2_user_attrs
 
+typing = bt2_utils._typing_mod
+
+if typing.TYPE_CHECKING:
+    from bt2 import stream_class as bt2_stream_class
+
 
 def _bt2_stream_class():
     from bt2 import stream_class as bt2_stream_class
@@ -61,23 +66,23 @@ class _EventClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsCo
     _stream_class_pycls = property(lambda s: _bt2_stream_class()._StreamClassConst)
 
     @property
-    def stream_class(self):
+    def stream_class(self) -> "bt2_stream_class._StreamClassConst":
         sc_ptr = self._borrow_stream_class_ptr(self._ptr)
 
         if sc_ptr is not None:
             return self._stream_class_pycls._create_from_ptr_and_get_ref(sc_ptr)
 
     @property
-    def name(self):
+    def name(self) -> typing.Optional[str]:
         return native_bt.event_class_get_name(self._ptr)
 
     @property
-    def id(self):
+    def id(self) -> int:
         id = native_bt.event_class_get_id(self._ptr)
         return id if id >= 0 else None
 
     @property
-    def log_level(self):
+    def log_level(self) -> typing.Optional[EventClassLogLevel]:
         is_available, log_level = native_bt.event_class_get_log_level(self._ptr)
 
         if is_available != native_bt.PROPERTY_AVAILABILITY_AVAILABLE:
@@ -86,11 +91,13 @@ class _EventClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsCo
         return _EVENT_CLASS_LOG_LEVEL_TO_OBJ[log_level]
 
     @property
-    def emf_uri(self):
+    def emf_uri(self) -> typing.Optional[str]:
         return native_bt.event_class_get_emf_uri(self._ptr)
 
     @property
-    def specific_context_field_class(self):
+    def specific_context_field_class(
+        self,
+    ) -> typing.Optional[bt2_field_class._StructureFieldClassConst]:
         fc_ptr = self._borrow_specific_context_field_class_ptr(self._ptr)
 
         if fc_ptr is None:
@@ -99,7 +106,9 @@ class _EventClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsCo
         return self._create_field_class_from_ptr_and_get_ref(fc_ptr)
 
     @property
-    def payload_field_class(self):
+    def payload_field_class(
+        self,
+    ) -> typing.Optional[bt2_field_class._StructureFieldClassConst]:
         fc_ptr = self._borrow_payload_field_class_ptr(self._ptr)
 
         if fc_ptr is None:

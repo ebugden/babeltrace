@@ -2,12 +2,18 @@
 #
 # Copyright (c) 2017 Philippe Proulx <pproulx@efficios.com>
 
+
 from bt2 import error as bt2_error
 from bt2 import utils as bt2_utils
 from bt2 import value as bt2_value
 from bt2 import object as bt2_object
 from bt2 import native_bt
 from bt2 import interrupter as bt2_interrupter
+
+typing = bt2_utils._typing_mod
+
+if typing.TYPE_CHECKING:
+    from bt2 import component as bt2_component
 
 
 def _bt2_component():
@@ -22,12 +28,12 @@ class _QueryExecutorCommon:
         return self._as_query_executor_ptr()
 
     @property
-    def is_interrupted(self):
+    def is_interrupted(self) -> bool:
         is_interrupted = native_bt.query_executor_is_interrupted(self._common_ptr)
         return bool(is_interrupted)
 
     @property
-    def logging_level(self):
+    def logging_level(self) -> int:
         return native_bt.query_executor_get_logging_level(self._common_ptr)
 
 
@@ -43,7 +49,13 @@ class QueryExecutor(bt2_object._SharedObject, _QueryExecutorCommon):
     def _as_query_executor_ptr(self):
         return self._ptr
 
-    def __init__(self, component_class, object_name, params=None, method_obj=None):
+    def __init__(
+        self,
+        component_class: "bt2_component._ComponentClassConst",
+        object_name: str,
+        params=None,
+        method_obj: object = None,
+    ):
         if not isinstance(component_class, _bt2_component()._ComponentClassConst):
             err = False
 
@@ -89,12 +101,12 @@ class QueryExecutor(bt2_object._SharedObject, _QueryExecutorCommon):
         # query() method is called, the Python object still exists.
         self._method_obj = method_obj
 
-    def add_interrupter(self, interrupter):
+    def add_interrupter(self, interrupter: bt2_interrupter.Interrupter):
         bt2_utils._check_type(interrupter, bt2_interrupter.Interrupter)
         native_bt.query_executor_add_interrupter(self._ptr, interrupter._ptr)
 
     @property
-    def default_interrupter(self):
+    def default_interrupter(self) -> bt2_interrupter.Interrupter:
         ptr = native_bt.query_executor_borrow_default_interrupter(self._ptr)
         return bt2_interrupter.Interrupter._create_from_ptr_and_get_ref(ptr)
 
@@ -110,11 +122,11 @@ class QueryExecutor(bt2_object._SharedObject, _QueryExecutorCommon):
     )
 
     @property
-    def is_interrupted(self):
+    def is_interrupted(self) -> bool:
         is_interrupted = native_bt.query_executor_is_interrupted(self._ptr)
         return bool(is_interrupted)
 
-    def query(self):
+    def query(self) -> typing.Optional[bt2_value._ValueConst]:
         status, result_ptr = native_bt.query_executor_query(self._ptr)
         bt2_utils._handle_func_status(status, "cannot query component class")
         assert result_ptr is not None

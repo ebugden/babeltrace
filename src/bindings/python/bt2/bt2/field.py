@@ -12,6 +12,8 @@ from bt2 import object as bt2_object
 from bt2 import native_bt
 from bt2 import field_class as bt2_field_class
 
+typing = bt2_utils._typing_mod
+
 
 def _create_field_from_ptr_template(
     object_map, ptr, owner_ptr, owner_get_ref, owner_put_ref
@@ -59,12 +61,12 @@ class _FieldConst(bt2_object._UniqueObject):
     )
     _borrow_class_ptr = staticmethod(native_bt.field_borrow_class_const)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         other = _get_leaf_field(other)
         return self._spec_eq(other)
 
     @property
-    def cls(self):
+    def cls(self) -> bt2_field_class._FieldClassConst:
         field_class_ptr = self._borrow_class_ptr(self._ptr)
         assert field_class_ptr is not None
         return self._create_field_class_from_ptr_and_get_ref(field_class_ptr)
@@ -72,7 +74,7 @@ class _FieldConst(bt2_object._UniqueObject):
     def _repr(self):
         raise NotImplementedError
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self._repr()
 
 
@@ -88,7 +90,7 @@ class _BitArrayFieldConst(_FieldConst):
     _NAME = "Const bit array"
 
     @property
-    def value_as_integer(self):
+    def value_as_integer(self) -> int:
         return native_bt.field_bit_array_get_value_as_integer(self._ptr)
 
     def _spec_eq(self, other):
@@ -100,10 +102,10 @@ class _BitArrayFieldConst(_FieldConst):
     def _repr(self):
         return repr(self.value_as_integer)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.value_as_integer)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.cls.length
 
 
@@ -139,16 +141,16 @@ class _NumericFieldConst(_FieldConst):
             "'{}' object is not a number object".format(other.__class__.__name__)
         )
 
-    def __int__(self):
+    def __int__(self) -> int:
         return int(self._value)
 
-    def __float__(self):
+    def __float__(self) -> float:
         return float(self._value)
 
     def _repr(self):
         return repr(self._value)
 
-    def __lt__(self, other):
+    def __lt__(self, other) -> bool:
         if not isinstance(other, numbers.Number):
             raise TypeError(
                 "unorderable types: {}() < {}()".format(
@@ -164,7 +166,7 @@ class _NumericFieldConst(_FieldConst):
         except Exception:
             return False
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self._value)
 
     def __rmod__(self, other):
@@ -229,7 +231,7 @@ class _NumericFieldConst(_FieldConst):
 
 
 class _NumericField(_NumericFieldConst, _Field):
-    def __hash__(self):
+    def __hash__(self) -> int:
         # Non const field are not hashable as their value may be modified
         # without changing the underlying Python object.
         raise TypeError("unhashable type: '{}'".format(self._NAME))
@@ -277,7 +279,7 @@ class _IntegralField(_IntegralFieldConst, _NumericField):
 class _BoolFieldConst(_IntegralFieldConst, _FieldConst):
     _NAME = "Const boolean"
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self._value
 
     @classmethod
@@ -451,7 +453,7 @@ class _EnumerationFieldConst(_IntegerFieldConst):
         return "{} ({})".format(self._value, ", ".join(self.labels))
 
     @property
-    def labels(self):
+    def labels(self) -> typing.List[str]:
         status, labels = self._get_mapping_labels(self._ptr)
         bt2_utils._handle_func_status(status, "cannot get label for enumeration field")
 
@@ -515,25 +517,25 @@ class _StringFieldConst(_FieldConst):
         except Exception:
             return False
 
-    def __lt__(self, other):
+    def __lt__(self, other) -> bool:
         return self._value < self._value_to_str(other)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self._value)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self._value)
 
     def _repr(self):
         return repr(self._value)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self._value)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index) -> str:
         return self._value[index]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return native_bt.field_string_get_length(self._ptr)
 
 
@@ -546,7 +548,7 @@ class _StringField(_StringFieldConst, _Field):
 
     value = property(fset=_set_value)
 
-    def __iadd__(self, value):
+    def __iadd__(self, value) -> "_StringField":
         value = self._value_to_str(value)
         status = native_bt.field_string_append(self._ptr, value)
         bt2_utils._handle_func_status(
@@ -554,20 +556,20 @@ class _StringField(_StringFieldConst, _Field):
         )
         return self
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         # Non const field are not hashable as their value may be modified
         # without changing the underlying Python object.
         raise TypeError("unhashable type: '{}'".format(self._NAME))
 
 
 class _ContainerFieldConst(_FieldConst):
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return len(self) != 0
 
     def _count(self):
         return len(self.cls)
 
-    def __len__(self):
+    def __len__(self) -> int:
         count = self._count()
         assert count >= 0
         return count
@@ -597,7 +599,7 @@ class _StructureFieldConst(_ContainerFieldConst, collections.abc.Mapping):
     def _count(self):
         return len(self.cls)
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[str]:
         # same name iterator
         return iter(self.cls)
 
@@ -622,7 +624,7 @@ class _StructureFieldConst(_ContainerFieldConst, collections.abc.Mapping):
         items = ["{}: {}".format(repr(k), repr(v)) for k, v in self.items()]
         return "{{{}}}".format(", ".join(items))
 
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> _FieldConst:
         bt2_utils._check_str(key)
         field_ptr = self._borrow_member_field_ptr_by_name(self._ptr, key)
 
@@ -633,7 +635,7 @@ class _StructureFieldConst(_ContainerFieldConst, collections.abc.Mapping):
             field_ptr, self._owner_ptr, self._owner_get_ref, self._owner_put_ref
         )
 
-    def member_at_index(self, index):
+    def member_at_index(self, index) -> _FieldConst:
         bt2_utils._check_uint64(index)
 
         if index >= len(self):
@@ -656,7 +658,7 @@ class _StructureField(
         native_bt.field_structure_borrow_member_field_by_name
     )
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value):
         # raises if key is somehow invalid
         field = self[key]
 
@@ -679,7 +681,7 @@ class _OptionFieldConst(_FieldConst):
     _borrow_field_ptr = staticmethod(native_bt.field_option_borrow_field_const)
 
     @property
-    def field(self):
+    def field(self) -> typing.Optional[_FieldConst]:
         field_ptr = self._borrow_field_ptr(self._ptr)
 
         if field_ptr is None:
@@ -690,16 +692,16 @@ class _OptionFieldConst(_FieldConst):
         )
 
     @property
-    def has_field(self):
+    def has_field(self) -> bool:
         return self.field is not None
 
     def _spec_eq(self, other):
         return _get_leaf_field(self) == other
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self.has_field
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.field)
 
     def _repr(self):
@@ -735,11 +737,11 @@ class _VariantFieldConst(_ContainerFieldConst, _FieldConst):
         return len(self.cls)
 
     @property
-    def selected_option_index(self):
+    def selected_option_index(self) -> int:
         return native_bt.field_variant_get_selected_option_index(self._ptr)
 
     @property
-    def selected_option(self):
+    def selected_option(self) -> _FieldConst:
         # TODO: Is there a way to check if the variant field has a selected_option,
         # so we can raise an exception instead of hitting a pre-condition check?
         # If there is something, that check should be added to selected_option_index too.
@@ -752,10 +754,10 @@ class _VariantFieldConst(_ContainerFieldConst, _FieldConst):
     def _spec_eq(self, other):
         return _get_leaf_field(self) == other
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         raise NotImplementedError
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.selected_option)
 
     def _repr(self):
@@ -794,7 +796,7 @@ class _ArrayFieldConst(_ContainerFieldConst, _FieldConst, collections.abc.Sequen
 
     length = property(fget=_get_length)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> _FieldConst:
         if not isinstance(index, numbers.Integral):
             raise TypeError(
                 "'{}' is not an integral number object: invalid index".format(
@@ -813,7 +815,7 @@ class _ArrayFieldConst(_ContainerFieldConst, _FieldConst, collections.abc.Sequen
             field_ptr, self._owner_ptr, self._owner_get_ref, self._owner_put_ref
         )
 
-    def insert(self, index, value):
+    def insert(self, index: int, value):
         raise NotImplementedError
 
     def _spec_eq(self, other):
@@ -841,7 +843,7 @@ class _ArrayField(
         native_bt.field_array_borrow_element_field_by_index
     )
 
-    def __setitem__(self, index, value):
+    def __setitem__(self, index: int, value):
         # raises if index is somehow invalid
         field = self[index]
 

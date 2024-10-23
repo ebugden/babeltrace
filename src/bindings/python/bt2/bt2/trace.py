@@ -15,6 +15,11 @@ from bt2 import native_bt
 from bt2 import stream_class as bt2_stream_class
 from bt2 import user_attributes as bt2_user_attrs
 
+typing = bt2_utils._typing_mod
+
+if typing.TYPE_CHECKING:
+    from bt2 import trace_class as bt2_trace_class
+
 
 def _bt2_trace_class():
     from bt2 import trace_class as bt2_trace_class
@@ -30,7 +35,9 @@ class _TraceEnvironmentConst(collections.abc.Mapping):
     def __init__(self, trace):
         self._trace = trace
 
-    def __getitem__(self, key):
+    def __getitem__(
+        self, key: str
+    ) -> typing.Union[bt2_value.SignedIntegerValue, bt2_value.StringValue]:
         bt2_utils._check_str(key)
 
         borrow_entry_fn = native_bt.trace_borrow_environment_entry_value_by_name_const
@@ -41,12 +48,12 @@ class _TraceEnvironmentConst(collections.abc.Mapping):
 
         return self._create_value_from_ptr_and_get_ref(value_ptr)
 
-    def __len__(self):
+    def __len__(self) -> int:
         count = native_bt.trace_get_environment_entry_count(self._trace._ptr)
         assert count >= 0
         return count
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[str]:
         trace_ptr = self._trace._ptr
 
         for idx in range(len(self)):
@@ -61,7 +68,7 @@ class _TraceEnvironment(_TraceEnvironmentConst, collections.abc.MutableMapping):
         bt2_value._create_from_ptr_and_get_ref
     )
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: typing.Union[str, int]):
         if isinstance(value, str):
             set_env_entry_fn = native_bt.trace_set_environment_entry_string
         elif isinstance(value, int):
@@ -105,12 +112,12 @@ class _TraceConst(
     _trace_class_pycls = property(lambda _: _bt2_trace_class()._TraceClassConst)
     _trace_env_pycls = property(lambda _: _TraceEnvironmentConst)
 
-    def __len__(self):
+    def __len__(self) -> int:
         count = native_bt.trace_get_stream_count(self._ptr)
         assert count >= 0
         return count
 
-    def __getitem__(self, id):
+    def __getitem__(self, id: int) -> bt2_stream._StreamConst:
         bt2_utils._check_uint64(id)
 
         stream_ptr = self._borrow_stream_ptr_by_id(self._ptr, id)
@@ -120,7 +127,7 @@ class _TraceConst(
 
         return self._stream_pycls._create_from_ptr_and_get_ref(stream_ptr)
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[bt2_stream._StreamConst]:
         for idx in range(len(self)):
             stream_ptr = self._borrow_stream_ptr_by_index(self._ptr, idx)
             assert stream_ptr is not None
@@ -131,17 +138,17 @@ class _TraceConst(
             yield id
 
     @property
-    def cls(self):
+    def cls(self) -> "bt2_trace_class._TraceClassConst":
         trace_class_ptr = self._borrow_class_ptr(self._ptr)
         assert trace_class_ptr is not None
         return self._trace_class_pycls._create_from_ptr_and_get_ref(trace_class_ptr)
 
     @property
-    def name(self):
+    def name(self) -> typing.Optional[str]:
         return native_bt.trace_get_name(self._ptr)
 
     @property
-    def uuid(self):
+    def uuid(self) -> typing.Optional[uuidp.UUID]:
         uuid_bytes = native_bt.trace_get_uuid(self._ptr)
         if uuid_bytes is None:
             return
@@ -149,10 +156,12 @@ class _TraceConst(
         return uuidp.UUID(bytes=uuid_bytes)
 
     @property
-    def environment(self):
+    def environment(self) -> _TraceEnvironmentConst:
         return self._trace_env_pycls(self)
 
-    def add_destruction_listener(self, listener):
+    def add_destruction_listener(
+        self, listener: typing.Callable[["_TraceConst"], None]
+    ) -> bt2_utils._ListenerHandle:
         """Add a listener to be called when the trace is destroyed."""
         if not callable(listener):
             raise TypeError("'listener' parameter is not callable")
@@ -173,7 +182,7 @@ class _TraceConst(
 
         return handle
 
-    def remove_destruction_listener(self, listener_handle):
+    def remove_destruction_listener(self, listener_handle: bt2_utils._ListenerHandle):
         bt2_utils._check_type(listener_handle, bt2_utils._ListenerHandle)
 
         if listener_handle._addr != self.addr:
@@ -217,7 +226,13 @@ class _Trace(bt2_user_attrs._WithUserAttrs, _TraceConst):
         bt2_utils._check_type(uuid, uuidp.UUID)
         native_bt.trace_set_uuid(self._ptr, uuid.bytes)
 
-    def create_stream(self, stream_class, id=None, name=None, user_attributes=None):
+    def create_stream(
+        self,
+        stream_class: bt2_stream_class._StreamClass,
+        id: typing.Optional[int] = None,
+        name: typing.Optional[str] = None,
+        user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
+    ) -> bt2_stream._Stream:
         bt2_utils._check_type(stream_class, bt2_stream_class._StreamClass)
 
         if stream_class.assigns_automatic_stream_id:

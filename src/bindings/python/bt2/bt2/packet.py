@@ -2,9 +2,16 @@
 #
 # Copyright (c) 2016-2017 Philippe Proulx <pproulx@efficios.com>
 
+
 from bt2 import field as bt2_field
+from bt2 import utils as bt2_utils
 from bt2 import object as bt2_object
 from bt2 import native_bt
+
+typing = bt2_utils._typing_mod
+
+if typing.TYPE_CHECKING:
+    from bt2 import stream as bt2_stream
 
 
 def _bt2_stream():
@@ -30,13 +37,13 @@ class _PacketConst(bt2_object._SharedObject):
     _create_field_from_ptr = staticmethod(bt2_field._create_field_from_const_ptr)
 
     @property
-    def stream(self):
-        stream_ptr = self._borrow_stream_ptr(self._ptr)
-        assert stream_ptr is not None
-        return self._stream_pycls._create_from_ptr_and_get_ref(stream_ptr)
+    def stream(self) -> "bt2_stream._StreamConst":
+        return self._stream_pycls._create_from_ptr_and_get_ref(
+            self._borrow_stream_ptr(self._ptr)
+        )
 
     @property
-    def context_field(self):
+    def context_field(self) -> typing.Optional[bt2_field._StructureFieldConst]:
         field_ptr = self._borrow_context_field_ptr(self._ptr)
 
         if field_ptr is None:

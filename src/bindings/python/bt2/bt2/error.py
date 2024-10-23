@@ -6,6 +6,13 @@ from collections import abc
 
 from bt2 import native_bt
 
+try:
+    import typing as _typing_mod  # noqa: F401
+except ImportError:
+    from bt2 import local_typing as _typing_mod  # noqa: F401
+
+typing = _typing_mod
+
 
 class ComponentClassType:
     SOURCE = native_bt.COMPONENT_CLASS_TYPE_SOURCE
@@ -33,23 +40,23 @@ class _ErrorCause:
         self._line_number = native_bt.error_cause_get_line_number(ptr)
         self._str = native_bt.bt2_format_bt_error_cause(ptr)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self._str
 
     @property
-    def message(self):
+    def message(self) -> str:
         return self._message
 
     @property
-    def module_name(self):
+    def module_name(self) -> str:
         return self._module_name
 
     @property
-    def file_name(self):
+    def file_name(self) -> str:
         return self._file_name
 
     @property
-    def line_number(self):
+    def line_number(self) -> int:
         return self._line_number
 
 
@@ -68,19 +75,19 @@ class _ComponentErrorCause(_ErrorCause):
         self._plugin_name = native_bt.error_cause_component_actor_get_plugin_name(ptr)
 
     @property
-    def component_name(self):
+    def component_name(self) -> str:
         return self._component_name
 
     @property
-    def component_class_type(self):
+    def component_class_type(self) -> int:
         return self._component_class_type
 
     @property
-    def component_class_name(self):
+    def component_class_name(self) -> str:
         return self._component_class_name
 
     @property
-    def plugin_name(self):
+    def plugin_name(self) -> typing.Optional[str]:
         return self._plugin_name
 
 
@@ -98,15 +105,15 @@ class _ComponentClassErrorCause(_ErrorCause):
         )
 
     @property
-    def component_class_type(self):
+    def component_class_type(self) -> int:
         return self._component_class_type
 
     @property
-    def component_class_name(self):
+    def component_class_name(self) -> int:
         return self._component_class_name
 
     @property
-    def plugin_name(self):
+    def plugin_name(self) -> typing.Optional[str]:
         return self._plugin_name
 
 
@@ -132,23 +139,23 @@ class _MessageIteratorErrorCause(_ErrorCause):
         )
 
     @property
-    def component_name(self):
+    def component_name(self) -> str:
         return self._component_name
 
     @property
-    def component_output_port_name(self):
+    def component_output_port_name(self) -> str:
         return self._component_output_port_name
 
     @property
-    def component_class_type(self):
+    def component_class_type(self) -> int:
         return self._component_class_type
 
     @property
-    def component_class_name(self):
+    def component_class_name(self) -> str:
         return self._component_class_name
 
     @property
-    def plugin_name(self):
+    def plugin_name(self) -> typing.Optional[str]:
         return self._plugin_name
 
 
@@ -212,13 +219,13 @@ class _Error(Exception, abc.Sequence):
         if self._ptr is not None:
             native_bt.error_release(self._ptr)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> _ErrorCause:
         return self._causes[index]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._causes)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self._str
 
 
