@@ -4,7 +4,6 @@
 
 import collections.abc
 
-from bt2 import error as bt2_error
 from bt2 import utils as bt2_utils
 from bt2 import value as bt2_value
 from bt2 import object as bt2_object
@@ -60,12 +59,6 @@ class _FieldClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsCo
     @staticmethod
     def _borrow_user_attributes_ptr(ptr):
         return native_bt.field_class_borrow_user_attributes_const(ptr)
-
-    def _check_create_status(self, ptr):
-        if ptr is None:
-            raise bt2_error._MemoryError(
-                "cannot create {} field class object".format(self._NAME.lower())
-            )
 
 
 class _FieldClass(bt2_user_attrs._WithUserAttrs, _FieldClassConst):
