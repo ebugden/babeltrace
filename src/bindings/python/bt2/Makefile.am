@@ -12,46 +12,46 @@ INSTALLED_FILES=$(builddir)/installed_files.txt
 SWIG_INTERFACE_FILES =					\
 	bt2/native_bt.i					\
 	bt2/native_bt_autodisc.i			\
-	bt2/native_bt_autodisc.i.h			\
+	bt2/native_bt_autodisc.i.hpp			\
 	bt2/native_bt_bt2_objects.h			\
 	bt2/native_bt_clock_class.i			\
 	bt2/native_bt_clock_snapshot.i			\
 	bt2/native_bt_component.i			\
 	bt2/native_bt_component_class.i			\
-	bt2/native_bt_component_class.i.h		\
+	bt2/native_bt_component_class.i.hpp		\
 	bt2/native_bt_connection.i			\
 	bt2/native_bt_error.i				\
-	bt2/native_bt_error.i.h				\
+	bt2/native_bt_error.i.hpp			\
 	bt2/native_bt_event.i				\
 	bt2/native_bt_event_class.i			\
 	bt2/native_bt_field.i				\
 	bt2/native_bt_field_class.i			\
 	bt2/native_bt_field_path.i			\
 	bt2/native_bt_graph.i				\
-	bt2/native_bt_graph.i.h				\
+	bt2/native_bt_graph.i.hpp			\
 	bt2/native_bt_integer_range_set.i		\
 	bt2/native_bt_interrupter.i			\
 	bt2/native_bt_log_and_append_error.h		\
 	bt2/native_bt_logging.i				\
 	bt2/native_bt_message.i				\
 	bt2/native_bt_message_iterator.i		\
-	bt2/native_bt_message_iterator.i.h		\
+	bt2/native_bt_message_iterator.i.hpp		\
 	bt2/native_bt_mip.i				\
-	bt2/native_bt_mip.i.h				\
+	bt2/native_bt_mip.i.hpp				\
 	bt2/native_bt_packet.i				\
 	bt2/native_bt_plugin.i				\
-	bt2/native_bt_plugin.i.h			\
+	bt2/native_bt_plugin.i.hpp			\
 	bt2/native_bt_port.i				\
 	bt2/native_bt_query_exec.i			\
-	bt2/native_bt_query_exec.i.h			\
+	bt2/native_bt_query_exec.i.hpp			\
 	bt2/native_bt_stream.i				\
 	bt2/native_bt_stream_class.i			\
 	bt2/native_bt_trace.i				\
-	bt2/native_bt_trace.i.h				\
+	bt2/native_bt_trace.i.hpp			\
 	bt2/native_bt_trace_class.i			\
-	bt2/native_bt_trace_class.i.h			\
+	bt2/native_bt_trace_class.i.hpp			\
 	bt2/native_bt_value.i				\
-	bt2/native_bt_value.i.h				\
+	bt2/native_bt_value.i.hpp			\
 	bt2/native_bt_version.i
 
 # Non-generated files built into the native library.

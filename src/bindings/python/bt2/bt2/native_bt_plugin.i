@@ -51,7 +51,7 @@
 /* Helpers */
 
 %{
-#include "native_bt_plugin.i.h"
+#include "native_bt_plugin.i.hpp"
 %}
 
 bt_property_availability bt_bt2_plugin_get_version(

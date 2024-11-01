@@ -88,7 +88,7 @@
 /* Helper functions for Python */
 
 %{
-#include "native_bt_graph.i.h"
+#include "native_bt_graph.i.hpp"
 %}
 
 PyObject *bt_bt2_graph_add_port_added_listener(struct bt_graph *graph,

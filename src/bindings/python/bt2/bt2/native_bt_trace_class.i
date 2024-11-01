@@ -8,7 +8,7 @@
 
 /* Helper functions for Python */
 %{
-#include "native_bt_trace_class.i.h"
+#include "native_bt_trace_class.i.hpp"
 %}
 
 int bt_bt2_trace_class_add_destruction_listener(

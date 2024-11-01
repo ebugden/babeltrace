@@ -8,7 +8,7 @@
 %include <babeltrace2/graph/query-executor.h>
 
 %{
-#include "native_bt_query_exec.i.h"
+#include "native_bt_query_exec.i.hpp"
 %}
 
 bt_query_executor *bt_bt2_query_executor_create(

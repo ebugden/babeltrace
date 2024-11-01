@@ -11,7 +11,7 @@
 %include <babeltrace2/error-reporting.h>
 
 %{
-#include "native_bt_error.i.h"
+#include "native_bt_error.i.hpp"
 %}
 
 static

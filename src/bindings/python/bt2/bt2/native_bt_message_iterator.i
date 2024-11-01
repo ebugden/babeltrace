@@ -30,7 +30,7 @@
 
 /* Helper functions for Python */
 %{
-#include "native_bt_message_iterator.i.h"
+#include "native_bt_message_iterator.i.hpp"
 %}
 
 bt_message_iterator_create_from_message_iterator_status

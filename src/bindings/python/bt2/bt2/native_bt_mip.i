@@ -8,7 +8,7 @@
 %include <babeltrace2/graph/graph.h>
 
 %{
-#include "native_bt_mip.i.h"
+#include "native_bt_mip.i.hpp"
 %}
 
 bt_component_descriptor_set_add_descriptor_status

@@ -9,7 +9,7 @@
 %include <babeltrace2/graph/self-component-class.h>
 
 %{
-#include "native_bt_component_class.i.h"
+#include "native_bt_component_class.i.hpp"
 %}
 
 struct bt_component_class_source *bt_bt2_component_class_source_create(
