@@ -113,7 +113,7 @@ sysconfig.get_config_vars = our_get_config_vars
 
 # Returns 'True' when running on a MinGW system.
 def is_mingw():
-    return sys.platform == "win32" and shutil.which("cygpath") != None
+    return sys.platform == "win32" and shutil.which("cygpath") is not None
 
 
 # On MinGW systems run 'cygpath -m' on 'path', on other systems return 'path' as-is.
