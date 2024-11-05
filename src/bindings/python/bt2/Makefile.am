@@ -143,6 +143,8 @@ BUILD_FLAGS=CC="$(CC)" \
 		CPPFLAGS="$(AM_CPPFLAGS) $(CPPFLAGS) -I$(srcdir)/bt2" \
 		LDFLAGS="$(AM_LDFLAGS) $(LDFLAGS) $(GLIB_LIBS) $(PYTHON_LDFLAGS) $(LIBS)"
 
+SETUP_PY=$(BUILD_FLAGS) $(PYTHON) $(builddir)/setup.py
+
 all-local: build-python-bindings.stamp
 
 copy-static-deps.stamp: $(addprefix $(srcdir)/, $(STATIC_BINDINGS_DEPS))
@@ -155,7 +157,7 @@ copy-static-deps.stamp: $(addprefix $(srcdir)/, $(STATIC_BINDINGS_DEPS))
 
 build-python-bindings.stamp: copy-static-deps.stamp $(GENERATED_BINDINGS_DEPS) \
 		$(STATIC_NATIVE_LIB_SRCS) $(STATIC_LIBRARIES_DEPS)
-	$(BUILD_FLAGS) $(PYTHON) $(builddir)/setup.py build --force
+	$(SETUP_PY) build --force
 	touch $@
 
 swig_verbose = $(swig_verbose_@AM_V@)
@@ -185,7 +187,7 @@ install-exec-local: build-python-bindings.stamp
 	if [ "$(DESTDIR)" != "" ]; then \
 		opts="$$opts --root=$(DESTDIR)"; \
 	fi; \
-	$(PYTHON) $(builddir)/setup.py install $(PY_INSTALL_OPTS) $$opts;
+	$(SETUP_PY) install $(PY_INSTALL_OPTS) $$opts;
 
 clean-local:
 	rm -rf $(builddir)/build

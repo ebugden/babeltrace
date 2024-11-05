@@ -52,13 +52,15 @@ following command to your .bashrc/.zshrc:
 original_get_config_vars = sysconfig.get_config_vars
 
 
+# Get the value of environment variable `name` and assert that it exists.
+def getenv_assert(name: str):
+    value = os.getenv(name)
+    assert value is not None
+    return value
+
+
 def get_cflags():
-    cflags = os.environ.get("CFLAGS")
-
-    if cflags is None:
-        [cflags] = original_get_config_vars("CFLAGS")
-
-    return cflags
+    return getenv_assert("CFLAGS")
 
 
 # distutils performs a similar transformation step on LDSHARED on
@@ -70,22 +72,15 @@ def get_cflags():
 # by either the Python interprter's CC or the overridden CC don't cause a
 # build failure.
 def get_ldshared():
-    cc = os.environ.get("CC")
-    ldflags = os.environ.get("LDFLAGS")
+    cc = getenv_assert("CC")
+    ldflags = getenv_assert("LDFLAGS")
     [py_cc] = original_get_config_vars("CC")
     [py_ldshared] = original_get_config_vars("LDSHARED")
 
     if not py_ldshared.startswith(py_cc):
         return py_ldshared
 
-    if cc and ldflags:
-        return "{} -shared {}".format(cc, ldflags)
-    elif cc:
-        return cc + py_ldshared[len(py_cc) :]
-    elif ldflags:
-        return py_cc + py_ldshared[len(py_cc) :]
-    else:
-        return py_ldshared
+    return "{} -shared {}".format(cc, ldflags)
 
 
 def our_get_config_vars(*args):
@@ -135,16 +130,15 @@ def cygpath_m(path: str):
 # (starts with '-I/') and convert them to valid Windows paths using cygpath.
 if is_mingw():
     for flagvar in ["CFLAGS", "CPPFLAGS"]:
-        cur_flags = os.getenv(flagvar)
-        if cur_flags != None:
-            new_flags = ""
-            for flag in cur_flags.split():
-                if flag.startswith("-I/"):
-                    flag = "-I{}".format(cygpath_m(flag[2:]))
+        cur_flags = getenv_assert(flagvar)
+        new_flags = ""
+        for flag in cur_flags.split():
+            if flag.startswith("-I/"):
+                flag = "-I{}".format(cygpath_m(flag[2:]))
 
-                new_flags += " {}".format(flag)
+            new_flags += " {}".format(flag)
 
-            os.environ[flagvar] = new_flags
+        os.environ[flagvar] = new_flags
 
 
 def main():
