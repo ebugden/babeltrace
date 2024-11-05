@@ -24,29 +24,29 @@ static bt_graph_listener_func_status port_added_listener(
 	py_component_ptr = SWIG_NewPointerObj(SWIG_as_voidptr(component), component_swig_type, 0);
 	if (!py_component_ptr) {
 		BT_LOGF_STR("Failed to create component SWIG pointer object.");
-		status = __BT_FUNC_STATUS_MEMORY_ERROR;
+		status = BT_GRAPH_LISTENER_FUNC_STATUS_MEMORY_ERROR;
 		goto end;
 	}
 
 	py_port_ptr = SWIG_NewPointerObj(SWIG_as_voidptr(port), port_swig_type, 0);
 	if (!py_port_ptr) {
 		BT_LOGF_STR("Failed to create port SWIG pointer object.");
-		status = __BT_FUNC_STATUS_MEMORY_ERROR;
+		status = BT_GRAPH_LISTENER_FUNC_STATUS_MEMORY_ERROR;
 		goto end;
 	}
 
-	py_res = PyObject_CallFunction(py_callable, "(OiOi)",
+	py_res = PyObject_CallFunction(static_cast<PyObject *>(py_callable), "(OiOi)",
 		py_component_ptr, component_class_type, py_port_ptr, port_type);
 	if (!py_res) {
 		loge_exception_append_cause_clear(
 			"Graph's port added listener (Python)",
 			BT_LOG_OUTPUT_LEVEL);
-		status = __BT_FUNC_STATUS_ERROR;
+		status = BT_GRAPH_LISTENER_FUNC_STATUS_ERROR;
 		goto end;
 	}
 
 	BT_ASSERT(py_res == Py_None);
-	status = __BT_FUNC_STATUS_OK;
+	status = BT_GRAPH_LISTENER_FUNC_STATUS_OK;
 
 end:
 	Py_XDECREF(py_res);

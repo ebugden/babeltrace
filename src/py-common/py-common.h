@@ -15,6 +15,10 @@
 
 #include "common/macros.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Formats the Python traceback `py_exc_tb` using traceback.format_tb, from the
  * Python standard library, and return it as a Gstring.
@@ -45,5 +49,9 @@ GString *bt_py_common_format_exception(PyObject *py_exc_type,
  * that is fetched is always restored.
  */
 GString *bt_py_common_format_current_exception(int log_level);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BABELTRACE_PY_COMMON_PY_COMMON_H */

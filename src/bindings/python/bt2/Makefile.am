@@ -56,8 +56,8 @@ SWIG_INTERFACE_FILES =					\
 
 # Non-generated files built into the native library.
 STATIC_NATIVE_LIB_SRCS =				\
-	bt2/logging.c					\
-	bt2/logging.h
+	bt2/logging.cpp					\
+	bt2/logging.hpp
 
 STATIC_BINDINGS_DEPS =					\
 	bt2/__init__.py					\
@@ -105,7 +105,7 @@ STATIC_LIBRARIES_DEPS = \
 	$(top_builddir)/src/string-format/libstring-format.la
 
 GENERATED_BINDINGS_DEPS =	\
-	bt2/native_bt.c		\
+	bt2/native_bt.cpp	\
 	bt2/version.py		\
 	setup.py
 
@@ -114,34 +114,28 @@ GENERATED_BINDINGS_DEPS =	\
 # have renamed this global to `Swig_This_global`.
 #
 # Disable -Wshadow for that file.
-WARN_CFLAGS = -Wno-shadow
+WARN_CXXFLAGS = -Wno-shadow
 
-WARN_CFLAGS += -Wno-null-dereference
+WARN_CXXFLAGS += -Wno-null-dereference
 
 # Python 3.8 with SWIG 4.0.2 generates a deprecated warning for 'tp_print'
 # and in general there is not much we can do about deprecations in generated
 # code.
-WARN_CFLAGS += -Wno-deprecated-declarations
+WARN_CXXFLAGS += -Wno-deprecated-declarations
 
 # Python 3.11 + gcc 12.2.0 gave warnings of this kind in Python.h.
-WARN_CFLAGS += -Wno-redundant-decls
+WARN_CXXFLAGS += -Wno-redundant-decls
 
 # For SWIG generated code
-WARN_CFLAGS += -Wno-missing-field-initializers
-WARN_CFLAGS += -Wno-unused-parameter
+WARN_CXXFLAGS += -Wno-missing-field-initializers
+WARN_CXXFLAGS += -Wno-unused-parameter
 
-# SWIG 4.2.0 generates:
-#
-#   #if __cplusplus >=201103L
-#
-# ... leading to some `-Wundef` warnings when building the extension as C, where
-# `__cplusplus` is not defined.
-WARN_CFLAGS += -Wno-undef
-
-BUILD_FLAGS=CC="$(CC)" \
-		CFLAGS="$(GLIB_CFLAGS) $(AM_CFLAGS) $(CFLAGS) $(WARN_CFLAGS)" \
-		CPPFLAGS="$(AM_CPPFLAGS) $(CPPFLAGS) -I$(srcdir)/bt2" \
-		LDFLAGS="$(AM_LDFLAGS) $(LDFLAGS) $(GLIB_LIBS) $(PYTHON_LDFLAGS) $(LIBS)"
+BUILD_FLAGS= \
+	CC="$(CC)" \
+	CXX="$(CXX)" \
+	CXXFLAGS="$(GLIB_CFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) $(WARN_CXXFLAGS)" \
+	CPPFLAGS="$(AM_CPPFLAGS) $(CPPFLAGS) -I$(srcdir)/bt2" \
+	LDFLAGS="$(AM_LDFLAGS) $(LDFLAGS) $(GLIB_LIBS) $(PYTHON_LDFLAGS) $(LIBS)"
 
 SETUP_PY=$(BUILD_FLAGS) $(PYTHON) $(builddir)/setup.py
 
@@ -164,8 +158,8 @@ swig_verbose = $(swig_verbose_@AM_V@)
 swig_verbose_ = $(swig_verbose_@AM_DEFAULT_V@)
 swig_verbose_0 = @echo "  SWIG     " $@;
 
-$(builddir)/bt2/native_bt.c: $(SWIG_INTERFACE_FILES)
-	$(swig_verbose)$(SWIG) -MD -python -I"$(top_srcdir)/include" -o "$@" "$<"
+$(builddir)/bt2/native_bt.cpp: $(SWIG_INTERFACE_FILES)
+	$(swig_verbose)$(SWIG) -c++ -MD -python -I"$(top_srcdir)/include" -o "$@" "$<"
 
 -include bt2/native_bt.d
 
@@ -214,7 +208,7 @@ EXTRA_DIST = $(STATIC_BINDINGS_DEPS) $(SWIG_INTERFACE_FILES) $(STATIC_NATIVE_LIB
 # clean: generated C and Python files (by SWIG)
 CLEANFILES = \
 	build-python-bindings.stamp \
-	bt2/native_bt.c \
+	bt2/native_bt.cpp \
 	bt2/native_bt.d \
 	bt2/native_bt.py \
 	copy-static-deps.stamp

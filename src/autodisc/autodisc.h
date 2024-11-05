@@ -15,6 +15,10 @@
 #include <babeltrace2/func-status.h>
 #undef __BT_IN_BABELTRACE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct auto_source_discovery {
 	/* Array of `struct auto_source_discovery_result *`. */
 	GPtrArray *results;
@@ -70,5 +74,9 @@ auto_source_discovery_status auto_discover_source_components(
 		enum bt_logging_level log_level,
 		struct auto_source_discovery *auto_disc,
 		const bt_interrupter *interrupter);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BABELTRACE_AUTODISC_AUTODISC_H */

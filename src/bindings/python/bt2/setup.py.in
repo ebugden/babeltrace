@@ -11,8 +11,11 @@ import subprocess
 # Distutils was removed in Python 3.12, use setuptools as an alternative.
 if sys.version_info >= (3, 12):
     from setuptools import setup, Extension
+    from setuptools.command.build_ext import build_ext
 else:
     from distutils.core import setup, Extension
+    from distutils.command.build_ext import build_ext
+
 
 # Starting with Debian's Python 3.10, the default install scheme is
 # 'posix_local' which is a Debian specific scheme based on 'posix_prefix' but
@@ -59,10 +62,6 @@ def getenv_assert(name: str):
     return value
 
 
-def get_cflags():
-    return getenv_assert("CFLAGS")
-
-
 # distutils performs a similar transformation step on LDSHARED on
 # darwin to use the overridden CC as the default command for LDSHARED
 # (see distutils' customize_compiler() step in the sysconfig module).
@@ -85,7 +84,6 @@ def get_ldshared():
 
 def our_get_config_vars(*args):
     overridden_config_vars_funcs = {
-        "CFLAGS": get_cflags,
         "LDSHARED": get_ldshared,
     }
 
@@ -126,27 +124,73 @@ def cygpath_m(path: str):
     return path
 
 
-# On MinGW systems, check CFLAGS and CPPFLAGS for absolute include paths
-# (starts with '-I/') and convert them to valid Windows paths using cygpath.
-if is_mingw():
-    for flagvar in ["CFLAGS", "CPPFLAGS"]:
-        cur_flags = getenv_assert(flagvar)
-        new_flags = ""
-        for flag in cur_flags.split():
-            if flag.startswith("-I/"):
-                flag = "-I{}".format(cygpath_m(flag[2:]))
+# On MinGW systems, convert absolute include paths (starting with '-I/')
+# in 'flags' to valid Windows paths using cygpath. On other systems,
+# return 'flags' as-is.
+def transform_include_paths_if_mingw(flags: str):
+    if not is_mingw():
+        return flags
 
-            new_flags += " {}".format(flag)
+    return " ".join(
+        (
+            "-I{}".format(cygpath_m(flag[2:])) if flag.startswith("-I/") else flag
+            for flag in flags.split()
+        )
+    )
 
-        os.environ[flagvar] = new_flags
+
+class custom_build_ext(build_ext):
+    def build_extensions(self):
+        # There are multiple issues handled simultaneously here:
+        #
+        #  - distutils (at least before setuptools 72.2.0) doesn't
+        #    handle well building shared objects from C++ source files.
+        #    It will attempt to compile them using the C compiler. Set
+        #    the executable used to compile C++ source files that will
+        #    end up in shared objects so that it uses the C++ compiler
+        #    defined by the `CXX` environment variable.
+        #
+        #  - The CPPFLAGS and CXXFLAGS provided by sysconfig may not
+        #    work with the compiler we tell distutils to use. We
+        #    therefore also force our own flags (the call to
+        #    `set_executable()` below overrides any flags previously
+        #    found by distutils).
+        #
+        #   - On MSYS2, some include paths need to be converted from
+        #     Unix to Windows form.
+
+        cxxflags = transform_include_paths_if_mingw(getenv_assert("CXXFLAGS"))
+        cppflags = transform_include_paths_if_mingw(getenv_assert("CPPFLAGS"))
+        cxx = getenv_assert("CXX")
+
+        self.compiler.set_executable(
+            (
+                # setuptools >= 72.2.0 uses the `compiler_so_cxx`
+                # attribute:
+                #
+                #   https://github.com/pypa/setuptools/commit/2c937116cc0dcd9b26b6070e89a3dc5dcbedc2ae
+                #
+                # This version of setuptools seems to have better support
+                # for building shared objects from C++ source files, but
+                # we override the executable anyway, for consistency.
+                "compiler_so_cxx"
+                if hasattr(self.compiler, "compiler_so_cxx")
+                else "compiler_so"
+            ),
+            "{} {} {} {}".format(
+                cxx, sysconfig.get_config_var("CCSHARED"), cxxflags, cppflags
+            ),
+        )
+
+        super().build_extensions()
 
 
 def main():
     babeltrace_ext = Extension(
         "bt2._native_bt",
         sources=[
-            "bt2/native_bt.c",
-            cygpath_m("@srcdir@/bt2/logging.c"),
+            "bt2/native_bt.cpp",
+            cygpath_m("@srcdir@/bt2/logging.cpp"),
         ],
         libraries=["babeltrace2", "glib-2.0"],
         extra_objects=[
@@ -177,6 +221,7 @@ def main():
             "License :: OSI Approved :: The MIT License",
             "Programming Language :: Python :: 3" "Topic :: System :: Logging",
         ],
+        cmdclass={"build_ext": custom_build_ext},
     )
 
     # After the installation, we check that the install directory is included in

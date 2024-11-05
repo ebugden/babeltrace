@@ -115,8 +115,8 @@ bt_value *bt_bt2_auto_discover_source_components(const bt_value *inputs,
 	}
 
 	for (i = 0; i < auto_disc.results->len; i++) {
-		struct auto_source_discovery_result *autodisc_result =
-			g_ptr_array_index(auto_disc.results, i);
+		const auto autodisc_result = static_cast<auto_source_discovery_result*>(
+			g_ptr_array_index(auto_disc.results, i));
 		bt_value_array_append_element_status append_element_status;
 
 		component_info = bt_value_array_create();

@@ -9,7 +9,7 @@
  */
 %typemap(in, numinputs=0)
 	(bt_event_class_log_level *)
-	(bt_event_class_log_level temp = -1) {
+	(bt_event_class_log_level temp = static_cast<bt_event_class_log_level>(-1)) {
 	$1 = &temp;
 }
 

@@ -14,13 +14,13 @@ struct bt_value_map_get_keys_data {
 static bt_value_map_foreach_entry_const_func_status bt_value_map_get_keys_cb(
 		const char *key, const struct bt_value *object, void *data)
 {
-	int status;
-	struct bt_value_map_get_keys_data *priv_data = data;
+	const auto priv_data = static_cast<bt_value_map_get_keys_data *>(data);
+	bt_value_array_append_element_status status =
+		bt_value_array_append_string_element(priv_data->keys, key);
 
-	status = bt_value_array_append_string_element(priv_data->keys, key);
-	BT_ASSERT(status == __BT_FUNC_STATUS_OK ||
-		status == __BT_FUNC_STATUS_MEMORY_ERROR);
-	return status;
+	BT_ASSERT(status == BT_VALUE_ARRAY_APPEND_ELEMENT_STATUS_OK ||
+		status == BT_VALUE_ARRAY_APPEND_ELEMENT_STATUS_MEMORY_ERROR);
+	return static_cast<bt_value_map_foreach_entry_const_func_status>(status);
 }
 
 static struct bt_value *bt_value_map_get_keys(const struct bt_value *map_obj)

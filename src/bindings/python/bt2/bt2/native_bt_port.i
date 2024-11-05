@@ -14,7 +14,7 @@
 
 %typemap(out) void * {
 	Py_INCREF($1);
-	$result = $1;
+	$result = static_cast<PyObject *>($1);
 }
 
 %include <babeltrace2/graph/port.h>

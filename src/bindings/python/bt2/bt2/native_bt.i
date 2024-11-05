@@ -12,7 +12,7 @@
 
 %{
 #define BT_LOG_TAG "BT2-PY"
-#include "logging.h"
+#include "logging.hpp"
 
 /*
  * Include before `<babeltrace2/func-status.h>` because
@@ -59,7 +59,7 @@ typedef uint64_t bt_listener_id;
  * functions on which we apply this typemap don't guarantee that the value of
  * `temp_value` will be unchanged or valid.
  */
-%typemap(in, numinputs=0) (const char **) (char *temp_value = (void *) 1) {
+%typemap(in, numinputs=0) (const char **) (char *temp_value = reinterpret_cast<char *>(1)) {
 	$1 = &temp_value;
 }
 
@@ -248,6 +248,8 @@ void bt_bt2_exit_handler(void);
  * This function is defined by SWIG.  Declare here to avoid a
  * -Wmissing-prototypes warning.
  */
-PyObject *SWIG_init(void);
+extern "C" {
+	PyObject *SWIG_init(void);
+}
 
 %}
