@@ -49,10 +49,10 @@ static void register_cc_ptr_to_py_cls(struct bt_component_class *bt_cc, PyObject
 {
     if (!bt_cc_ptr_to_py_cls) {
         /*
-		 * Lazy-initializing this GHashTable because GLib
-		 * might not be initialized yet and it needs to be
-		 * before we call g_hash_table_new()
-		 */
+         * Lazy-initializing this GHashTable because GLib
+         * might not be initialized yet and it needs to be
+         * before we call g_hash_table_new()
+         */
         BT_LOGD_STR("Creating native component class to Python component class hash table.");
         bt_cc_ptr_to_py_cls = g_hash_table_new(g_direct_hash, g_direct_equal);
         BT_ASSERT(bt_cc_ptr_to_py_cls);
@@ -106,14 +106,14 @@ static inline int py_exc_to_status_clear(bt_self_component_class *self_component
         status = __BT_FUNC_STATUS_UNKNOWN_OBJECT;
     } else {
         /*
-		 * Unknown exception: convert to general error.
-		 *
-		 * Because we only want to fetch the log level when
-		 * we actually get an exception, and not systematically
-		 * when we call py_exc_to_status() (as py_exc_to_status()
-		 * can return `__BT_FUNC_STATUS_OK`), we get it here
-		 * depending on the actor's type.
-		 */
+         * Unknown exception: convert to general error.
+         *
+         * Because we only want to fetch the log level when
+         * we actually get an exception, and not systematically
+         * when we call py_exc_to_status() (as py_exc_to_status()
+         * can return `__BT_FUNC_STATUS_OK`), we get it here
+         * depending on the actor's type.
+         */
         if (self_component) {
             active_log_level = get_self_component_log_level(self_component);
         } else if (self_message_iterator) {
@@ -179,10 +179,10 @@ component_class_init(bt_self_component *self_component, void *self_component_v,
     BT_ASSERT(self_comp_cls_type_swig_type);
 
     /*
-	 * Get the user-defined Python class which created this
-	 * component's class in the first place (borrowed
-	 * reference).
-	 */
+     * Get the user-defined Python class which created this
+     * component's class in the first place (borrowed
+     * reference).
+     */
     py_cls = lookup_cc_ptr_to_py_cls(component_class);
     if (!py_cls) {
         BT_COMP_LOG_CUR_LVL(BT_LOG_ERROR, log_level, self_component,
@@ -207,20 +207,20 @@ component_class_init(bt_self_component *self_component, void *self_component_v,
     }
 
     /*
-	 * Do the equivalent of this:
-	 *
-	 *     py_comp = py_cls._bt_init_from_native(py_comp_ptr,
-	 *         py_params_ptr, init_method_data ? init_method_data : Py_None)
-	 *
-	 * _UserComponentType._bt_init_from_native() calls the Python
-	 * component object's __init__() function.
-	 *
-	 * We don't take any reference on `init_method_data` which, if
-	 * not `NULL`, is assumed to be a `PyObject *`: the user's
-	 * __init__() function will eventually take a reference if
-	 * needed. If `init_method_data` is `NULL`, then we pass
-	 * `Py_None` as the initialization's Python object.
-	 */
+     * Do the equivalent of this:
+     *
+     *     py_comp = py_cls._bt_init_from_native(py_comp_ptr,
+     *         py_params_ptr, init_method_data ? init_method_data : Py_None)
+     *
+     * _UserComponentType._bt_init_from_native() calls the Python
+     * component object's __init__() function.
+     *
+     * We don't take any reference on `init_method_data` which, if
+     * not `NULL`, is assumed to be a `PyObject *`: the user's
+     * __init__() function will eventually take a reference if
+     * needed. If `init_method_data` is `NULL`, then we pass
+     * `Py_None` as the initialization's Python object.
+     */
     py_comp = PyObject_CallMethod(py_cls, "_bt_init_from_native", "(OOO)", py_comp_ptr,
                                   py_params_ptr, init_method_data ? init_method_data : Py_None);
     if (!py_comp) {
@@ -234,10 +234,10 @@ component_class_init(bt_self_component *self_component, void *self_component_v,
     }
 
     /*
-	 * Our user Python component object is now fully created and
-	 * initialized by the user. Since we just created it, this
-	 * native component is its only (persistent) owner.
-	 */
+     * Our user Python component object is now fully created and
+     * initialized by the user. Since we just created it, this
+     * native component is its only (persistent) owner.
+     */
     bt_self_component_set_data(self_component, py_comp);
     py_comp = NULL;
 
@@ -289,12 +289,12 @@ component_class_get_supported_mip_versions(const bt_component_class *component_c
     }
 
     /*
-	 * We don't take any reference on `init_method_data` which, if
-	 * not `NULL`, is assumed to be a `PyObject *`: the user's
-	 * _user_get_supported_mip_versions() function will eventually
-	 * take a reference if needed. If `init_method_data` is `NULL`,
-	 * then we pass `Py_None` as the initialization's Python object.
-	 */
+     * We don't take any reference on `init_method_data` which, if
+     * not `NULL`, is assumed to be a `PyObject *`: the user's
+     * _user_get_supported_mip_versions() function will eventually
+     * take a reference if needed. If `init_method_data` is `NULL`,
+     * then we pass `Py_None` as the initialization's Python object.
+     */
     py_range_set_addr = PyObject_CallMethod(
         py_cls, "_bt_get_supported_mip_versions_from_native", "(OOi)", py_params_ptr,
         init_method_data ? init_method_data : Py_None, (int) log_level);
@@ -310,10 +310,10 @@ component_class_get_supported_mip_versions(const bt_component_class *component_c
     }
 
     /*
-	 * The returned object, on success, is an integer object
-	 * (PyLong) containing the address of a BT unsigned integer
-	 * range set object (new reference).
-	 */
+     * The returned object, on success, is an integer object
+     * (PyLong) containing the address of a BT unsigned integer
+     * range set object (new reference).
+     */
     ret_range_set =
         static_cast<bt_integer_range_set_unsigned *>(PyLong_AsVoidPtr(py_range_set_addr));
     BT_ASSERT(!PyErr_Occurred());
@@ -458,10 +458,10 @@ static void component_class_finalize(bt_self_component *self_component)
         bt_logging_level log_level = get_self_component_log_level(self_component);
 
         /*
-		 * Ignore any exception raised by the _user_finalize() method
-		 * because it won't change anything at this point: the component
-		 * is being destroyed anyway.
-		 */
+         * Ignore any exception raised by the _user_finalize() method
+         * because it won't change anything at this point: the component
+         * is being destroyed anyway.
+         */
         BT_COMP_LOG_CUR_LVL(
             BT_LOG_WARNING, log_level, self_component,
             "User component's _user_finalize() method raised an exception: ignoring:");
@@ -511,10 +511,10 @@ static void component_class_source_finalize(bt_self_component_source *self_compo
     component_class_finalize(self_component);
 
     /*
-	 * Free the user data Python object attached to the port.  The
-	 * corresponding incref was done by the `void *` typemap in
-	 * native_bt_port.i.
-	 */
+     * Free the user data Python object attached to the port.  The
+     * corresponding incref was done by the `void *` typemap in
+     * native_bt_port.i.
+     */
     for (i = 0; i < bt_component_source_get_output_port_count(component_source); i++) {
         bt_self_component_port_output *port_output;
 
@@ -537,10 +537,10 @@ static void component_class_filter_finalize(bt_self_component_filter *self_compo
     component_class_finalize(self_component);
 
     /*
-	 * Free the user data Python object attached to the port.  The
-	 * corresponding incref was done by the `void *` typemap in
-	 * native_bt_port.i.
-	 */
+     * Free the user data Python object attached to the port.  The
+     * corresponding incref was done by the `void *` typemap in
+     * native_bt_port.i.
+     */
     for (i = 0; i < bt_component_filter_get_input_port_count(component_filter); i++) {
         bt_self_component_port_input *port_input;
 
@@ -571,10 +571,10 @@ static void component_class_sink_finalize(bt_self_component_sink *self_component
     component_class_finalize(self_component);
 
     /*
-	 * Free the user data Python object attached to the port.  The
-	 * corresponding incref was done by the `void *` typemap in
-	 * native_bt_port.i.
-	 */
+     * Free the user data Python object attached to the port.  The
+     * corresponding incref was done by the `void *` typemap in
+     * native_bt_port.i.
+     */
     for (i = 0; i < bt_component_sink_get_input_port_count(component_sink); i++) {
         bt_self_component_port_input *port_input;
 
@@ -845,10 +845,10 @@ component_class_query(const bt_component_class *component_class,
     bt_logging_level log_level = bt_query_executor_get_logging_level(query_exec);
 
     /*
-	 * If there's any `method_data`, assume this component class is
-	 * getting queried from Python, so that `method_data` is a
-	 * Python object to pass to the user's _user_query() method.
-	 */
+     * If there's any `method_data`, assume this component class is
+     * getting queried from Python, so that `method_data` is a
+     * Python object to pass to the user's _user_query() method.
+     */
     BT_ASSERT(!method_data || bt_bt2_is_python_component_class(component_class));
 
     py_cls = lookup_cc_ptr_to_py_cls(component_class);
@@ -884,12 +884,12 @@ component_class_query(const bt_component_class *component_class,
     }
 
     /*
-	 * We don't take any reference on `method_data` which, if not
-	 * `NULL`, is assumed to be a `PyObject *`: the user's
-	 * _user_query() function will eventually take a reference if
-	 * needed. If `method_data` is `NULL`, then we pass `Py_None` as
-	 * the initialization's Python object.
-	 */
+     * We don't take any reference on `method_data` which, if not
+     * `NULL`, is assumed to be a `PyObject *`: the user's
+     * _user_query() function will eventually take a reference if
+     * needed. If `method_data` is `NULL`, then we pass `Py_None` as
+     * the initialization's Python object.
+     */
     py_results_addr =
         PyObject_CallMethod(py_cls, "_bt_query_from_native", "(OOOO)", py_priv_query_exec_ptr,
                             py_object, py_params_ptr, method_data ? method_data : Py_None);
@@ -908,10 +908,10 @@ component_class_query(const bt_component_class *component_class,
     }
 
     /*
-	 * The returned object, on success, is an integer object
-	 * (PyLong) containing the address of a BT value object (new
-	 * reference).
-	 */
+     * The returned object, on success, is an integer object
+     * (PyLong) containing the address of a BT value object (new
+     * reference).
+     */
     *result = static_cast<const bt_value *>(PyLong_AsVoidPtr(py_results_addr));
     BT_ASSERT(!PyErr_Occurred());
     BT_ASSERT(*result);
@@ -1022,11 +1022,11 @@ component_class_message_iterator_init(bt_self_message_iterator *self_message_ite
     }
 
     /*
-	 * Create object with borrowed native message iterator
-	 * reference:
-	 *
-	 *     py_iter = py_iter_cls.__new__(py_iter_cls, py_iter_ptr)
-	 */
+     * Create object with borrowed native message iterator
+     * reference:
+     *
+     *     py_iter = py_iter_cls.__new__(py_iter_cls, py_iter_ptr)
+     */
     py_iter = PyObject_CallMethod(py_iter_cls, "__new__", "(OO)", py_iter_cls, py_iter_ptr);
     if (!py_iter) {
         BT_COMP_LOG_CUR_LVL(BT_LOG_ERROR, log_level, self_component,
@@ -1037,17 +1037,17 @@ component_class_message_iterator_init(bt_self_message_iterator *self_message_ite
     }
 
     /*
-	 * Initialize object:
-	 *
-	 *     py_iter.__init__(config, self_output_port)
-	 *
-	 * through the _init_from_native helper static method.
-	 *
-	 * At this point, py_iter._ptr is set, so this initialization
-	 * function has access to self._component (which gives it the
-	 * user Python component object from which the iterator was
-	 * created).
-	 */
+     * Initialize object:
+     *
+     *     py_iter.__init__(config, self_output_port)
+     *
+     * through the _init_from_native helper static method.
+     *
+     * At this point, py_iter._ptr is set, so this initialization
+     * function has access to self._component (which gives it the
+     * user Python component object from which the iterator was
+     * created).
+     */
     py_config_ptr = SWIG_NewPointerObj(SWIG_as_voidptr(config),
                                        SWIGTYPE_p_bt_self_message_iterator_configuration, 0);
     if (!py_config_ptr) {
@@ -1076,23 +1076,23 @@ component_class_message_iterator_init(bt_self_message_iterator *self_message_ite
     }
 
     /*
-	 * Since the Python code can never instantiate a user-defined
-	 * message iterator class, the native message iterator
-	 * object does NOT belong to a user Python message iterator
-	 * object (borrowed reference). However this Python object is
-	 * owned by this native message iterator object.
-	 *
-	 * In the Python world, the lifetime of the native message
-	 * iterator is managed by a _GenericMessageIterator
-	 * instance:
-	 *
-	 *     _GenericMessageIterator instance:
-	 *         owns a native bt_message_iterator object (iter)
-	 *             owns a _UserMessageIterator instance (py_iter)
-	 *                 self._ptr is a borrowed reference to the
-	 *                 native bt_private_connection_private_message_iterator
-	 *                 object (iter)
-	 */
+     * Since the Python code can never instantiate a user-defined
+     * message iterator class, the native message iterator
+     * object does NOT belong to a user Python message iterator
+     * object (borrowed reference). However this Python object is
+     * owned by this native message iterator object.
+     *
+     * In the Python world, the lifetime of the native message
+     * iterator is managed by a _GenericMessageIterator
+     * instance:
+     *
+     *     _GenericMessageIterator instance:
+     *         owns a native bt_message_iterator object (iter)
+     *             owns a _UserMessageIterator instance (py_iter)
+     *                 self._ptr is a borrowed reference to the
+     *                 native bt_private_connection_private_message_iterator
+     *                 object (iter)
+     */
     bt_self_message_iterator_set_data(self_message_iterator, py_iter);
     py_iter = NULL;
     goto end;
@@ -1135,10 +1135,10 @@ static void component_class_message_iterator_finalize(bt_self_message_iterator *
         bt_logging_level log_level = get_self_component_log_level(self_comp);
 
         /*
-		 * Ignore any exception raised by the _user_finalize() method
-		 * because it won't change anything at this point: the component
-		 * is being destroyed anyway.
-		 */
+         * Ignore any exception raised by the _user_finalize() method
+         * because it won't change anything at this point: the component
+         * is being destroyed anyway.
+         */
         BT_COMP_LOG_CUR_LVL(BT_LOG_WARNING, log_level, self_comp,
                             "User's _user_finalize() method raised an exception: ignoring:");
         logw_exception_clear(get_self_message_iterator_log_level(message_iterator));
@@ -1169,10 +1169,10 @@ component_class_message_iterator_next(bt_self_message_iterator *message_iterator
     }
 
     /*
-	 * The returned object, on success, is an integer object
-	 * (PyLong) containing the address of a native message
-	 * object (which is now ours).
-	 */
+     * The returned object, on success, is an integer object
+     * (PyLong) containing the address of a native message
+     * object (which is now ours).
+     */
     msgs[0] = static_cast<const bt_message *>(PyLong_AsVoidPtr(py_method_result));
     *count = 1;
 

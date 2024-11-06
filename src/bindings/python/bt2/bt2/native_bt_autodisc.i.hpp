@@ -176,9 +176,9 @@ error:
 end:
     if (result) {
         /*
-		 * If an error happened, we must clear the error temporarily
-		 * while we insert the status in the map.
-		 */
+         * If an error happened, we must clear the error temporarily
+         * while we insert the status in the map.
+         */
         error = bt_current_thread_take_error();
         insert_entry_status = bt_value_map_insert_signed_integer_entry(result, "status", status);
         if (insert_entry_status == BT_VALUE_MAP_INSERT_ENTRY_STATUS_OK) {
