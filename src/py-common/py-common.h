@@ -13,8 +13,6 @@
 #include <Python.h>
 #include <stdbool.h>
 
-#include "common/macros.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
