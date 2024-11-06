@@ -368,7 +368,7 @@ if ENABLE_PYTHON_COMMON_DEPS
 noinst_LTLIBRARIES += py-common/libpy-common.la
 
 py_common_libpy_common_la_SOURCES = \
-	py-common/py-common.c \
+	py-common/py-common.cpp \
 	py-common/py-common.h
 
 py_common_libpy_common_la_CPPFLAGS = \
