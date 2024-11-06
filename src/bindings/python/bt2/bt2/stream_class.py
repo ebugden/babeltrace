@@ -91,10 +91,9 @@ class _StreamClassConst(
 
     @property
     def trace_class(self) -> "bt2_trace_class._TraceClassConst":
-        tc_ptr = self._borrow_trace_class_ptr(self._ptr)
-
-        if tc_ptr is not None:
-            return self._trace_class_cls._create_from_ptr_and_get_ref(tc_ptr)
+        return self._trace_class_cls._create_from_ptr_and_get_ref(
+            self._borrow_trace_class_ptr(self._ptr)
+        )
 
     @property
     def name(self) -> typing.Optional[str]:
@@ -144,12 +143,7 @@ class _StreamClassConst(
 
     @property
     def id(self) -> int:
-        id = native_bt.stream_class_get_id(self._ptr)
-
-        if id < 0:
-            return
-
-        return id
+        return native_bt.stream_class_get_id(self._ptr)
 
     @property
     def packet_context_field_class(

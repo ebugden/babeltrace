@@ -53,8 +53,7 @@ class _StreamConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsConst)
 
     @property
     def id(self) -> int:
-        id = native_bt.stream_get_id(self._ptr)
-        return id if id >= 0 else None
+        return native_bt.stream_get_id(self._ptr)
 
     @property
     def trace(self) -> "bt2_trace._TraceConst":

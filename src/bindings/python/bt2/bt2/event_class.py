@@ -67,10 +67,9 @@ class _EventClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsCo
 
     @property
     def stream_class(self) -> "bt2_stream_class._StreamClassConst":
-        sc_ptr = self._borrow_stream_class_ptr(self._ptr)
-
-        if sc_ptr is not None:
-            return self._stream_class_pycls._create_from_ptr_and_get_ref(sc_ptr)
+        return self._stream_class_pycls._create_from_ptr_and_get_ref(
+            self._borrow_stream_class_ptr(self._ptr)
+        )
 
     @property
     def name(self) -> typing.Optional[str]:
@@ -78,8 +77,7 @@ class _EventClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsCo
 
     @property
     def id(self) -> int:
-        id = native_bt.event_class_get_id(self._ptr)
-        return id if id >= 0 else None
+        return native_bt.event_class_get_id(self._ptr)
 
     @property
     def log_level(self) -> typing.Optional[EventClassLogLevel]:

@@ -43,7 +43,7 @@ class _EventConst(bt2_object._UniqueObject, collections.abc.Mapping):
         return self.cls.name
 
     @property
-    def id(self) -> typing.Optional[int]:
+    def id(self) -> int:
         return self.cls.id
 
     @property
