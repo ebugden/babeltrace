@@ -13,7 +13,7 @@ SWIG_INTERFACE_FILES =					\
 	bt2/native_bt.i					\
 	bt2/native_bt_autodisc.i			\
 	bt2/native_bt_autodisc.i.hpp			\
-	bt2/native_bt_bt2_objects.h			\
+	bt2/native_bt_bt2_objects.hpp			\
 	bt2/native_bt_clock_class.i			\
 	bt2/native_bt_clock_snapshot.i			\
 	bt2/native_bt_component.i			\
@@ -31,7 +31,7 @@ SWIG_INTERFACE_FILES =					\
 	bt2/native_bt_graph.i.hpp			\
 	bt2/native_bt_integer_range_set.i		\
 	bt2/native_bt_interrupter.i			\
-	bt2/native_bt_log_and_append_error.h		\
+	bt2/native_bt_log_and_append_error.hpp		\
 	bt2/native_bt_logging.i				\
 	bt2/native_bt_message.i				\
 	bt2/native_bt_message_iterator.i		\

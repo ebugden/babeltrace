@@ -32,8 +32,8 @@
 #include "py-common/py-common.h"
 
 /* Used by some interface files */
-#include "native_bt_bt2_objects.h"
-#include "native_bt_log_and_append_error.h"
+#include "native_bt_bt2_objects.hpp"
+#include "native_bt_log_and_append_error.hpp"
 %}
 
 typedef int bt_bool;
