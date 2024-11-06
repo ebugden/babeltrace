@@ -11,6 +11,8 @@
 
 #include "logging/comp-logging.h"
 
+#include "py-common/py-common.h"
+
 static void restore_current_thread_error_and_append_exception_chain_recursive(
     int active_log_level, PyObject *py_exc_value, bt_self_component_class *self_component_class,
     bt_self_component *self_component, bt_self_message_iterator *self_message_iterator,

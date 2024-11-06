@@ -29,7 +29,6 @@
 #include <babeltrace2/func-status.h>
 
 #include "common/assert.h"
-#include "py-common/py-common.h"
 
 /* Used by some interface files */
 #include "native_bt_bt2_objects.hpp"
