@@ -833,6 +833,46 @@ class _OptionField(_OptionFieldConst, _Field):
     value = property(fset=_set_value)
 
 
+class _OptionWithBoolSelectorFieldConst(_OptionFieldConst):
+    @property
+    def cls(self) -> bt2_field_class._OptionWithBoolSelectorFieldClassConst:
+        return self._cls
+
+
+class _OptionWithBoolSelectorField(_OptionWithBoolSelectorFieldConst, _OptionField):
+    @property
+    def cls(self) -> bt2_field_class._OptionWithBoolSelectorFieldClass:
+        return self._cls
+
+
+class _OptionWithUnsignedIntegerSelectorFieldConst(_OptionFieldConst):
+    @property
+    def cls(self) -> bt2_field_class._OptionWithUnsignedIntegerSelectorFieldClassConst:
+        return self._cls
+
+
+class _OptionWithUnsignedIntegerSelectorField(
+    _OptionWithUnsignedIntegerSelectorFieldConst, _OptionField
+):
+    @property
+    def cls(self) -> bt2_field_class._OptionWithUnsignedIntegerSelectorFieldClass:
+        return self._cls
+
+
+class _OptionWithSignedIntegerSelectorFieldConst(_OptionFieldConst):
+    @property
+    def cls(self) -> bt2_field_class._OptionWithSignedIntegerSelectorFieldClassConst:
+        return self._cls
+
+
+class _OptionWithSignedIntegerSelectorField(
+    _OptionWithSignedIntegerSelectorFieldConst, _OptionField
+):
+    @property
+    def cls(self) -> bt2_field_class._OptionWithSignedIntegerSelectorFieldClass:
+        return self._cls
+
+
 class _VariantFieldConst(_ContainerFieldConst, _FieldConst):
     _NAME = "Const variant"
     _borrow_selected_option_field_ptr = staticmethod(
@@ -896,6 +936,34 @@ class _VariantField(_VariantFieldConst, _ContainerField, _Field):
         self.selected_option.value = value
 
     value = property(fset=_set_value)
+
+
+class _VariantFieldWithUnsignedIntegerSelectorConst(_VariantFieldConst):
+    @property
+    def cls(self) -> bt2_field_class._VariantFieldClassWithUnsignedIntegerSelectorConst:
+        return self._cls
+
+
+class _VariantFieldWithUnsignedIntegerSelector(
+    _VariantFieldWithUnsignedIntegerSelectorConst, _VariantField
+):
+    @property
+    def cls(self) -> bt2_field_class._VariantFieldClassWithUnsignedIntegerSelector:
+        return self._cls
+
+
+class _VariantFieldWithSignedIntegerSelectorConst(_VariantFieldConst):
+    @property
+    def cls(self) -> bt2_field_class._VariantFieldClassWithSignedIntegerSelectorConst:
+        return self._cls
+
+
+class _VariantFieldWithSignedIntegerSelector(
+    _VariantFieldWithSignedIntegerSelectorConst, _VariantField
+):
+    @property
+    def cls(self) -> bt2_field_class._VariantFieldClassWithSignedIntegerSelector:
+        return self._cls
 
 
 class _ArrayFieldConst(_ContainerFieldConst, _FieldConst, collections.abc.Sequence):
@@ -1060,12 +1128,12 @@ _TYPE_ID_TO_CONST_OBJ = {
     native_bt.FIELD_CLASS_TYPE_DYNAMIC_ARRAY_WITHOUT_LENGTH_FIELD: _DynamicArrayFieldConst,
     native_bt.FIELD_CLASS_TYPE_DYNAMIC_ARRAY_WITH_LENGTH_FIELD: _DynamicArrayFieldConst,
     native_bt.FIELD_CLASS_TYPE_OPTION_WITHOUT_SELECTOR_FIELD: _OptionFieldConst,
-    native_bt.FIELD_CLASS_TYPE_OPTION_WITH_BOOL_SELECTOR_FIELD: _OptionFieldConst,
-    native_bt.FIELD_CLASS_TYPE_OPTION_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD: _OptionFieldConst,
-    native_bt.FIELD_CLASS_TYPE_OPTION_WITH_SIGNED_INTEGER_SELECTOR_FIELD: _OptionFieldConst,
+    native_bt.FIELD_CLASS_TYPE_OPTION_WITH_BOOL_SELECTOR_FIELD: _OptionWithBoolSelectorFieldConst,
+    native_bt.FIELD_CLASS_TYPE_OPTION_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD: _OptionWithUnsignedIntegerSelectorFieldConst,
+    native_bt.FIELD_CLASS_TYPE_OPTION_WITH_SIGNED_INTEGER_SELECTOR_FIELD: _OptionWithSignedIntegerSelectorFieldConst,
     native_bt.FIELD_CLASS_TYPE_VARIANT_WITHOUT_SELECTOR_FIELD: _VariantFieldConst,
-    native_bt.FIELD_CLASS_TYPE_VARIANT_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD: _VariantFieldConst,
-    native_bt.FIELD_CLASS_TYPE_VARIANT_WITH_SIGNED_INTEGER_SELECTOR_FIELD: _VariantFieldConst,
+    native_bt.FIELD_CLASS_TYPE_VARIANT_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD: _VariantFieldWithUnsignedIntegerSelectorConst,
+    native_bt.FIELD_CLASS_TYPE_VARIANT_WITH_SIGNED_INTEGER_SELECTOR_FIELD: _VariantFieldWithSignedIntegerSelectorConst,
 }
 
 _TYPE_ID_TO_OBJ = {
@@ -1083,10 +1151,10 @@ _TYPE_ID_TO_OBJ = {
     native_bt.FIELD_CLASS_TYPE_DYNAMIC_ARRAY_WITHOUT_LENGTH_FIELD: _DynamicArrayField,
     native_bt.FIELD_CLASS_TYPE_DYNAMIC_ARRAY_WITH_LENGTH_FIELD: _DynamicArrayField,
     native_bt.FIELD_CLASS_TYPE_OPTION_WITHOUT_SELECTOR_FIELD: _OptionField,
-    native_bt.FIELD_CLASS_TYPE_OPTION_WITH_BOOL_SELECTOR_FIELD: _OptionField,
-    native_bt.FIELD_CLASS_TYPE_OPTION_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD: _OptionField,
-    native_bt.FIELD_CLASS_TYPE_OPTION_WITH_SIGNED_INTEGER_SELECTOR_FIELD: _OptionField,
+    native_bt.FIELD_CLASS_TYPE_OPTION_WITH_BOOL_SELECTOR_FIELD: _OptionWithBoolSelectorField,
+    native_bt.FIELD_CLASS_TYPE_OPTION_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD: _OptionWithUnsignedIntegerSelectorField,
+    native_bt.FIELD_CLASS_TYPE_OPTION_WITH_SIGNED_INTEGER_SELECTOR_FIELD: _OptionWithSignedIntegerSelectorField,
     native_bt.FIELD_CLASS_TYPE_VARIANT_WITHOUT_SELECTOR_FIELD: _VariantField,
-    native_bt.FIELD_CLASS_TYPE_VARIANT_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD: _VariantField,
-    native_bt.FIELD_CLASS_TYPE_VARIANT_WITH_SIGNED_INTEGER_SELECTOR_FIELD: _VariantField,
+    native_bt.FIELD_CLASS_TYPE_VARIANT_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD: _VariantFieldWithUnsignedIntegerSelector,
+    native_bt.FIELD_CLASS_TYPE_VARIANT_WITH_SIGNED_INTEGER_SELECTOR_FIELD: _VariantFieldWithSignedIntegerSelector,
 }

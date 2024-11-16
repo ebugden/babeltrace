@@ -67,6 +67,10 @@ from bt2.field import (
     _DoublePrecisionRealFieldConst,
     _SinglePrecisionRealFieldConst,
     _UnsignedEnumerationFieldConst,
+    _VariantFieldWithSignedIntegerSelector,
+    _VariantFieldWithUnsignedIntegerSelector,
+    _VariantFieldWithSignedIntegerSelectorConst,
+    _VariantFieldWithUnsignedIntegerSelectorConst,
 )
 from bt2.graph import Graph
 from bt2.utils import Stop, TryAgain, UnknownObject, _OverflowError
