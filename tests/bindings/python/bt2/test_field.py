@@ -2325,8 +2325,9 @@ class OptionFieldTestCase(unittest.TestCase):
 class VariantFieldTestCase(unittest.TestCase):
     @staticmethod
     def _const_value_setter(field):
-        field.selected_option_index = 3
-        field.value = 1334
+        variant_field = field["variant_field"]
+        variant_field.selected_option_index = 3
+        variant_field.value = 1334
 
     def _create_fc(self, tc: bt2._TraceClass):
         ft0 = tc.create_signed_integer_field_class(32)
@@ -2347,11 +2348,10 @@ class VariantFieldTestCase(unittest.TestCase):
 
         self._def_value = 1334
         self._def_selected_index = 3
-        const_fc = self._create_fc(self._tc)["variant_field"]
 
         fld_const = create_const_field(
-            self._tc, const_fc.field_class, self._const_value_setter
-        )
+            self._tc, self._create_fc(self._tc), self._const_value_setter
+        )["variant_field"]
         self._def_const = fld_const
 
     def test_bool_op(self):

@@ -1153,6 +1153,8 @@ struct bt_field_class *bt_field_class_structure_create(
 		goto error;
 	}
 
+	struct_fc->scope = -1;
+
 	BT_LIB_LOGD("Created structure field class object: %!+F", struct_fc);
 	goto end;
 
@@ -1258,13 +1260,45 @@ end:
 	return opt;
 }
 
+/*
+ * Return true if `fc` is part of something. I.e., one of:
+ *
+ *  ‣ used as a structure member or variant option
+ *  ‣ used as a stream class or event class scope root
+ */
+static
+bool field_class_is_part_of_something(const struct bt_field_class *fc)
+{
+	bool is_part;
+
+	if (fc->type == BT_FIELD_CLASS_TYPE_STRUCTURE) {
+		struct bt_field_class_structure *struct_fc =
+			(struct bt_field_class_structure *) fc;
+
+		if (struct_fc->scope != -1) {
+			is_part = true;
+			goto end;
+		}
+	}
+
+	is_part = fc->parent != NULL;
+
+end:
+	return is_part;
+
+}
+
 static
 int append_named_field_class_to_container_field_class(
-		struct bt_field_class_named_field_class_container *container_fc,
+		struct bt_field_class *gen_container_fc,
 		struct bt_named_field_class *named_fc, const char *api_func,
 		const char *unique_entry_precond_id)
 {
+	struct bt_field_class_named_field_class_container *container_fc
+		= (struct bt_field_class_named_field_class_container *) gen_container_fc;
+
 	BT_ASSERT(container_fc);
+	BT_ASSERT(is_named_container_field_class(gen_container_fc));
 	BT_ASSERT(named_fc);
 	BT_ASSERT_PRE_DEV_FC_HOT_FROM_FUNC(api_func, container_fc);
 	BT_ASSERT_PRE_FROM_FUNC(api_func, unique_entry_precond_id,
@@ -1281,6 +1315,11 @@ int append_named_field_class_to_container_field_class(
 	 * properties of the member/option object.
 	 */
 	bt_field_class_freeze(named_fc->fc);
+
+	/* Record parent and index in parent. */
+	named_fc->fc->parent = gen_container_fc;
+	named_fc->fc->index_in_parent = container_fc->named_fcs->len;
+
 	g_ptr_array_add(container_fc->named_fcs, named_fc);
 
 	if (named_fc->name) {
@@ -1316,7 +1355,7 @@ bt_field_class_structure_append_member(
 		goto end;
 	}
 
-	status = append_named_field_class_to_container_field_class((void *) fc,
+	status = append_named_field_class_to_container_field_class(fc,
 		named_fc, __func__,
 		"structure-field-class-member-name-is-unique");
 	if (status == BT_FUNC_STATUS_OK) {
@@ -1568,6 +1607,7 @@ struct bt_field_class *create_option_field_class(
 	opt_fc->content_fc = content_fc;
 	bt_object_get_ref_no_null_check(opt_fc->content_fc);
 	bt_field_class_freeze(opt_fc->content_fc);
+	opt_fc->content_fc->parent = &opt_fc->common;
 
 	if (selector_fc) {
 		bt_field_class_freeze(selector_fc);
@@ -2173,7 +2213,7 @@ bt_field_class_variant_without_selector_append_option(struct bt_field_class *fc,
 		goto end;
 	}
 
-	status = append_named_field_class_to_container_field_class((void *) fc,
+	status = append_named_field_class_to_container_field_class(fc,
 		named_fc, __func__, VAR_FC_OPT_NAME_IS_UNIQUE_ID);
 	if (status == BT_FUNC_STATUS_OK) {
 		/* Moved to the container */
@@ -2316,7 +2356,7 @@ int append_option_to_variant_with_selector_field_field_class(
 		goto end;
 	}
 
-	status = append_named_field_class_to_container_field_class((void *) fc,
+	status = append_named_field_class_to_container_field_class(fc,
 		&opt->common, __func__, VAR_FC_OPT_NAME_IS_UNIQUE_ID);
 	if (status == BT_FUNC_STATUS_OK) {
 		/* Moved to the container */
@@ -2598,6 +2638,7 @@ int init_array_field_class(struct bt_field_class_array *fc,
 	fc->element_fc = element_fc;
 	bt_object_get_ref_no_null_check(fc->element_fc);
 	bt_field_class_freeze(element_fc);
+	element_fc->parent = &fc->common;
 
 end:
 	return ret;
@@ -3003,6 +3044,91 @@ void bt_field_class_make_part_of_trace_class(const struct bt_field_class *c_fc)
 
 		bt_field_class_make_part_of_trace_class(array_fc->element_fc);
 	}
+}
+
+/*
+ * Mark `c_struct_fc`, a structure field class, as being the root of a
+ * a stream class or event class scope.
+ *
+ * Only one of `stream_class` and `event_class` must be non-`NULL`,
+ * depending on `scope`.
+ *
+ * This is used for debugging (pre-condition checking) and logging purposes.
+ */
+void bt_field_class_struct_mark_scope_root(
+		const struct bt_field_class *c_struct_fc,
+		enum bt_field_location_scope scope,
+		const struct bt_stream_class *stream_class,
+		const struct bt_event_class *event_class,
+		const char *api_func)
+{
+	struct bt_field_class_structure *struct_fc =
+		(struct bt_field_class_structure *) c_struct_fc;
+
+	BT_ASSERT(c_struct_fc);
+	BT_ASSERT(c_struct_fc->type == BT_FIELD_CLASS_TYPE_STRUCTURE);
+	BT_ASSERT_PRE_FROM_FUNC(api_func,
+		"field-class-is-not-part-of-field-class-event-class-stream-class",
+		!field_class_is_part_of_something(c_struct_fc),
+		"Field class is already part of a field class, event class or stream class: %!+F",
+		c_struct_fc);
+
+	struct_fc->scope = scope;
+
+	switch (scope) {
+	case BT_FIELD_LOCATION_SCOPE_PACKET_CONTEXT:
+	case BT_FIELD_LOCATION_SCOPE_EVENT_COMMON_CONTEXT:
+		BT_ASSERT(stream_class != NULL);
+		BT_ASSERT(event_class == NULL);
+		struct_fc->stream_class = stream_class;
+		break;
+
+	case BT_FIELD_LOCATION_SCOPE_EVENT_SPECIFIC_CONTEXT:
+	case BT_FIELD_LOCATION_SCOPE_EVENT_PAYLOAD:
+		BT_ASSERT(stream_class == NULL);
+		BT_ASSERT(event_class != NULL);
+		struct_fc->event_class = event_class;
+		break;
+	}
+}
+
+/*
+ * Return true if `field_class` is a named container field class
+ * (structure or variant).
+ *
+ * If this function returns true, it is safe to cast `fc` to
+ * `struct bt_field_class_named_field_class_container`.
+ */
+bool is_named_container_field_class(const struct bt_field_class *field_class)
+{
+	return bt_field_class_type_is(field_class->type,
+			BT_FIELD_CLASS_TYPE_STRUCTURE) ||
+		bt_field_class_type_is(field_class->type,
+			BT_FIELD_CLASS_TYPE_VARIANT);
+}
+
+/*
+ * Given `fc`, a field class used as a structure member or variant option,
+ * return the name of the member or option.
+ *
+ * If the variant option does not have a name, return `NULL`.
+ */
+const char *field_class_name_in_parent(const struct bt_field_class *fc)
+{
+	const struct bt_field_class_named_field_class_container *container_fc;
+	const struct bt_named_field_class *named_fc;
+
+	BT_ASSERT(fc);
+	BT_ASSERT(fc->parent != NULL);
+	BT_ASSERT(is_named_container_field_class(fc->parent));
+
+	container_fc =
+		(const struct bt_field_class_named_field_class_container *) fc->parent;
+	BT_ASSERT(fc->index_in_parent < container_fc->named_fcs->len);
+	named_fc = g_ptr_array_index(container_fc->named_fcs,
+		fc->index_in_parent);
+
+	return named_fc->name->str;
 }
 
 BT_EXPORT

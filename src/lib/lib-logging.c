@@ -162,6 +162,125 @@ static inline void format_blob_field_class(char **buf_ch, const char *prefix,
 		PRFIELD(field_class->media_type->str));
 }
 
+static
+void stream_class_trace_ir_path(const struct bt_stream_class *stream_class,
+		GString *str)
+{
+	if (stream_class->name) {
+		g_string_append_printf(str, "/<stream class \"%s\">",
+			stream_class->name);
+	} else {
+		g_string_append_printf(str, "/<stream class %" PRIu64 ">",
+			stream_class->id);
+	}
+}
+
+static
+void event_class_trace_ir_path(const struct bt_event_class *event_class,
+		GString *str)
+{
+	stream_class_trace_ir_path(
+		bt_event_class_borrow_stream_class_inline(event_class), str);
+
+	if (event_class->name) {
+		g_string_append_printf(str, "/<event class \"%s\">",
+			event_class->name);
+	} else {
+		g_string_append_printf(str, "/<event class %" PRIu64 ">",
+			event_class->id);
+	}
+}
+
+static
+void field_class_trace_ir_path_recursive(
+		const struct bt_field_class *field_class, GString *str)
+{
+	/* Is this field class part of a composite field class? */
+	if (field_class->parent != NULL) {
+		field_class_trace_ir_path_recursive(field_class->parent, str);
+
+		if (is_named_container_field_class(field_class->parent)) {
+			const char *name_in_parent =
+				field_class_name_in_parent(field_class);
+
+			if (name_in_parent) {
+				g_string_append_printf(str, "/%s", name_in_parent);
+			} else {
+				g_string_append_printf(str, "/<option %" PRIu64 ">",
+					field_class->index_in_parent);
+			}
+		} else {
+			/*
+			 * Don't print anything special if used as array element
+			 * or option content field class.
+			 */
+			BT_ASSERT (bt_field_class_type_is(field_class->parent->type,
+						BT_FIELD_CLASS_TYPE_ARRAY) ||
+					bt_field_class_type_is(field_class->parent->type,
+						BT_FIELD_CLASS_TYPE_OPTION));
+		}
+
+		goto end;
+	}
+
+	/* Is this field class the root of a scope? */
+	if (bt_field_class_type_is(field_class->type,
+			BT_FIELD_CLASS_TYPE_STRUCTURE)) {
+		const struct bt_field_class_structure *struct_fc =
+			(const struct bt_field_class_structure *) field_class;
+
+		if (struct_fc->scope != -1) {
+			switch (struct_fc->scope) {
+			case BT_FIELD_LOCATION_SCOPE_PACKET_CONTEXT:
+				stream_class_trace_ir_path(
+					struct_fc->stream_class, str);
+				g_string_append(str, "/<packet-context>");
+				break;
+
+			case BT_FIELD_LOCATION_SCOPE_EVENT_COMMON_CONTEXT:
+				stream_class_trace_ir_path(
+					struct_fc->stream_class, str);
+				g_string_append(str, "/<event-common-context>");
+				break;
+
+			case BT_FIELD_LOCATION_SCOPE_EVENT_SPECIFIC_CONTEXT:
+				event_class_trace_ir_path(
+					struct_fc->event_class, str);
+				g_string_append(str, "/<event-specific-context>");
+				break;
+
+			case BT_FIELD_LOCATION_SCOPE_EVENT_PAYLOAD:
+				event_class_trace_ir_path(
+					struct_fc->event_class, str);
+				g_string_append(str, "/<event-payload>");
+				break;
+
+			default:
+				bt_common_abort();
+			}
+
+			goto end;
+		}
+
+        }
+
+	/* The field class is still dangling. */
+	g_string_append(str, "<not connected>");
+
+end:
+	return;
+}
+
+static
+gchar *field_class_trace_ir_path (const struct bt_field_class *field_class)
+{
+	GString *str = g_string_new(NULL);
+
+	BT_ASSERT(str);
+	field_class_trace_ir_path_recursive(field_class, str);
+	return g_string_free(str, FALSE);
+}
+
 static inline void format_field_class(char **buf_ch, bool extended,
 		const char *prefix, const struct bt_field_class *field_class)
 {
@@ -171,9 +290,13 @@ static inline void format_field_class(char **buf_ch, bool extended,
 		PRFIELD(bt_common_field_class_type_string(field_class->type)));
 
 	if (extended) {
+		gchar *trace_ir_path = field_class_trace_ir_path(field_class);
+
 		BUF_APPEND(", %sis-frozen=%d", PRFIELD(field_class->frozen));
 		BUF_APPEND(", %sis-part-of-trace-class=%d",
 			PRFIELD(field_class->part_of_trace_class));
+		BUF_APPEND(", %strace-ir-path=%s", PRFIELD(trace_ir_path));
+		g_free(trace_ir_path);
 	} else {
 		return;
 	}
@@ -412,6 +535,8 @@ static inline void format_field_integer_extended(char **buf_ch,
 static inline void format_field(char **buf_ch, bool extended,
 		const char *prefix, const struct bt_field *field)
 {
+	gchar *trace_ir_path;
+
 	BUF_APPEND(", %sis-set=%d", PRFIELD(field->is_set));
 
 	if (extended) {
@@ -426,6 +551,10 @@ static inline void format_field(char **buf_ch, bool extended,
 
 	BUF_APPEND(", %sclass-type=%s",
 		PRFIELD(bt_common_field_class_type_string(field->class->type)));
+
+	trace_ir_path = field_class_trace_ir_path(field->class);
+	BUF_APPEND(", class-trace-ir-path=%s", trace_ir_path);
+	g_free(trace_ir_path);
 
 	if (!extended || !field->is_set) {
 		return;

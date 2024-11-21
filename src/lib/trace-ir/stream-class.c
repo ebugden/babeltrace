@@ -369,6 +369,12 @@ bt_stream_class_set_packet_context_field_class(
 	BT_ASSERT_PRE_DEV_STREAM_CLASS_HOT(stream_class);
 	BT_ASSERT_PRE_FC_IS_STRUCT("field-class", field_class,
 		"Packet context field class");
+
+	bt_field_class_struct_mark_scope_root(field_class,
+		BT_FIELD_LOCATION_SCOPE_PACKET_CONTEXT,
+		stream_class, NULL,
+		__func__);
+
 	resolve_status = bt_resolve_field_paths(field_class, &resolve_ctx, __func__);
 	if (resolve_status != BT_RESOLVE_FIELD_XREF_STATUS_OK) {
 		status = (int) resolve_status;
@@ -428,6 +434,11 @@ bt_stream_class_set_event_common_context_field_class(
 	BT_ASSERT_PRE_DEV_STREAM_CLASS_HOT(stream_class);
 	BT_ASSERT_PRE_FC_IS_STRUCT("field-class", field_class,
 		"Event common context field class");
+
+	bt_field_class_struct_mark_scope_root(field_class,
+		BT_FIELD_LOCATION_SCOPE_EVENT_COMMON_CONTEXT,
+		stream_class, NULL, __func__);
+
 	resolve_ctx.packet_context = stream_class->packet_context_fc;
 	resolve_status = bt_resolve_field_paths(field_class, &resolve_ctx, __func__);
 	if (resolve_status != BT_RESOLVE_FIELD_XREF_STATUS_OK) {

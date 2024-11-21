@@ -343,6 +343,11 @@ bt_event_class_set_specific_context_field_class(
 	BT_ASSERT_PRE_DEV_EVENT_CLASS_HOT(event_class);
 	BT_ASSERT_PRE_FC_IS_STRUCT("specific-context", field_class,
 		"Specific context field class");
+
+	bt_field_class_struct_mark_scope_root(field_class,
+		BT_FIELD_LOCATION_SCOPE_EVENT_SPECIFIC_CONTEXT,
+		NULL, event_class, __func__);
+
 	stream_class = bt_event_class_borrow_stream_class_inline(
 		event_class);
 	resolve_ctx.packet_context = stream_class->packet_context_fc;
@@ -406,6 +411,11 @@ bt_event_class_set_payload_field_class(
 	BT_ASSERT_PRE_FC_NON_NULL(field_class);
 	BT_ASSERT_PRE_DEV_EVENT_CLASS_HOT(event_class);
 	BT_ASSERT_PRE_FC_IS_STRUCT("payload", field_class, "Payload field class");
+
+	bt_field_class_struct_mark_scope_root(field_class,
+		BT_FIELD_LOCATION_SCOPE_EVENT_PAYLOAD,
+		NULL, event_class, __func__);
+
 	stream_class = bt_event_class_borrow_stream_class_inline(
 		event_class);
 	resolve_ctx.packet_context = stream_class->packet_context_fc;
