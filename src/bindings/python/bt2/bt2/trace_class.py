@@ -125,6 +125,12 @@ class _TraceClassConst(
         listener_handle._invalidate()
 
 
+_FieldClassT = typing.TypeVar("_FieldClassT", bound="bt2_field_class._FieldClass")
+_IntegerFieldClassT = typing.TypeVar(
+    "_IntegerFieldClassT", bound="bt2_field_class._IntegerFieldClass"
+)
+
+
 class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
     _borrow_stream_class_ptr_by_index = staticmethod(
         native_bt.trace_class_borrow_stream_class_by_index
@@ -285,13 +291,15 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         ptr,
         type_name: str,
         user_attributes: typing.Optional[bt2_value._MapValueConst],
-    ):
+        expected_type: typing.Type[_FieldClassT],
+    ) -> _FieldClassT:
         if ptr is None:
             raise bt2_error._MemoryError(
                 "cannot create {} field class".format(type_name)
             )
 
         fc = bt2_field_class._create_field_class_from_ptr(ptr)
+        assert type(fc) is expected_type
 
         if user_attributes is not None:
             fc._set_user_attributes(user_attributes)
@@ -302,7 +310,10 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         self, user_attributes: typing.Optional[bt2_value._MapValueConst] = None
     ) -> bt2_field_class._BoolFieldClass:
         return self._check_and_wrap_field_class(
-            native_bt.field_class_bool_create(self._ptr), "boolean", user_attributes
+            native_bt.field_class_bool_create(self._ptr),
+            "boolean",
+            user_attributes,
+            bt2_field_class._BoolFieldClass,
         )
 
     def create_bit_array_field_class(
@@ -323,6 +334,7 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             native_bt.field_class_bit_array_create(self._ptr, length),
             "bit array",
             user_attributes,
+            bt2_field_class._BitArrayFieldClass,
         )
 
     def _create_integer_field_class(
@@ -332,9 +344,10 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         field_value_range,
         preferred_display_base,
         user_attributes,
-    ):
+        expected_type: typing.Type[_IntegerFieldClassT],
+    ) -> _IntegerFieldClassT:
         fc = self._check_and_wrap_field_class(
-            create_func(self._ptr), type_name, user_attributes
+            create_func(self._ptr), type_name, user_attributes, expected_type
         )
 
         if field_value_range is not None:
@@ -359,6 +372,7 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             field_value_range,
             preferred_display_base,
             user_attributes,
+            bt2_field_class._SignedIntegerFieldClass,
         )
 
     def create_unsigned_integer_field_class(
@@ -375,6 +389,7 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             field_value_range,
             preferred_display_base,
             user_attributes,
+            bt2_field_class._UnsignedIntegerFieldClass,
         )
 
     def create_signed_enumeration_field_class(
@@ -391,6 +406,7 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             field_value_range,
             preferred_display_base,
             user_attributes,
+            bt2_field_class._SignedEnumerationFieldClass,
         )
 
     def create_unsigned_enumeration_field_class(
@@ -407,6 +423,7 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             field_value_range,
             preferred_display_base,
             user_attributes,
+            bt2_field_class._UnsignedEnumerationFieldClass,
         )
 
     def create_single_precision_real_field_class(
@@ -416,6 +433,7 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             native_bt.field_class_real_single_precision_create(self._ptr),
             "single-precision real",
             user_attributes,
+            bt2_field_class._SinglePrecisionRealFieldClass,
         )
 
     def create_double_precision_real_field_class(
@@ -425,6 +443,7 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             native_bt.field_class_real_double_precision_create(self._ptr),
             "double-precision real",
             user_attributes,
+            bt2_field_class._DoublePrecisionRealFieldClass,
         )
 
     def create_structure_field_class(
@@ -434,13 +453,17 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             native_bt.field_class_structure_create(self._ptr),
             "structure",
             user_attributes,
+            bt2_field_class._StructureFieldClass,
         )
 
     def create_string_field_class(
         self, user_attributes: typing.Optional[bt2_value._MapValueConst] = None
     ) -> bt2_field_class._StringFieldClass:
         return self._check_and_wrap_field_class(
-            native_bt.field_class_string_create(self._ptr), "string", user_attributes
+            native_bt.field_class_string_create(self._ptr),
+            "string",
+            user_attributes,
+            bt2_field_class._StringFieldClass,
         )
 
     def create_static_array_field_class(
@@ -455,6 +478,7 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             native_bt.field_class_array_static_create(self._ptr, elem_fc._ptr, length),
             "static array",
             user_attributes,
+            bt2_field_class._StaticArrayFieldClass,
         )
 
     def create_dynamic_array_field_class(
@@ -464,11 +488,14 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
     ) -> bt2_field_class._DynamicArrayFieldClass:
         bt2_utils._check_type(elem_fc, bt2_field_class._FieldClass)
-        length_fc_ptr = None
 
         if length_fc is not None:
             bt2_utils._check_type(length_fc, bt2_field_class._UnsignedIntegerFieldClass)
             length_fc_ptr = length_fc._ptr
+            expected_type = bt2_field_class._DynamicArrayWithLengthFieldFieldClass
+        else:
+            length_fc_ptr = None
+            expected_type = bt2_field_class._DynamicArrayFieldClass
 
         return self._check_and_wrap_field_class(
             native_bt.field_class_array_dynamic_create(
@@ -476,6 +503,7 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             ),
             "dynamic array",
             user_attributes,
+            expected_type,
         )
 
     def create_option_without_selector_field_class(
@@ -491,6 +519,7 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             ),
             "option",
             user_attributes,
+            bt2_field_class._OptionFieldClass,
         )
 
     def create_option_with_bool_selector_field_class(
@@ -509,6 +538,7 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             ),
             "option",
             user_attributes,
+            bt2_field_class._OptionWithBoolSelectorFieldClass,
         )
         fc._set_selector_is_reversed(selector_is_reversed)
         return fc
@@ -531,6 +561,7 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             ptr = native_bt.field_class_option_with_selector_field_integer_unsigned_create(
                 self._ptr, content_fc._ptr, selector_fc._ptr, ranges._ptr
             )
+            expected_type = bt2_field_class._OptionWithUnsignedIntegerSelectorFieldClass
         else:
             bt2_utils._check_type(ranges, bt2_integer_range_set.SignedIntegerRangeSet)
             ptr = (
@@ -538,22 +569,32 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
                     self._ptr, content_fc._ptr, selector_fc._ptr, ranges._ptr
                 )
             )
+            expected_type = bt2_field_class._OptionWithSignedIntegerSelectorFieldClass
 
-        return self._check_and_wrap_field_class(ptr, "option", user_attributes)
+        return self._check_and_wrap_field_class(
+            ptr, "option", user_attributes, expected_type
+        )
 
     def create_variant_field_class(
         self,
         selector_fc: typing.Optional[bt2_field_class._FieldClass] = None,
         user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
     ) -> bt2_field_class._VariantFieldClass:
-        selector_fc_ptr = None
-
         if selector_fc is not None:
             bt2_utils._check_type(selector_fc, bt2_field_class._IntegerFieldClass)
             selector_fc_ptr = selector_fc._ptr
+            expected_type = (
+                bt2_field_class._VariantFieldClassWithUnsignedIntegerSelector
+                if isinstance(selector_fc, bt2_field_class._UnsignedIntegerFieldClass)
+                else bt2_field_class._VariantFieldClassWithSignedIntegerSelector
+            )
+        else:
+            selector_fc_ptr = None
+            expected_type = bt2_field_class._VariantFieldClassWithoutSelector
 
         return self._check_and_wrap_field_class(
             native_bt.field_class_variant_create(self._ptr, selector_fc_ptr),
             "variant",
             user_attributes,
+            expected_type,
         )
