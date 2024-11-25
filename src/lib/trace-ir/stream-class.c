@@ -381,7 +381,6 @@ bt_stream_class_set_packet_context_field_class(
 		goto end;
 	}
 
-	bt_field_class_make_part_of_trace_class(field_class);
 	bt_object_put_ref(stream_class->packet_context_fc);
 	stream_class->packet_context_fc = field_class;
 	bt_object_get_ref_no_null_check(stream_class->packet_context_fc);
@@ -446,7 +445,6 @@ bt_stream_class_set_event_common_context_field_class(
 		goto end;
 	}
 
-	bt_field_class_make_part_of_trace_class(field_class);
 	bt_object_put_ref(stream_class->event_common_context_fc);
 	stream_class->event_common_context_fc = field_class;
 	bt_object_get_ref_no_null_check(stream_class->event_common_context_fc);

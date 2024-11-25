@@ -293,8 +293,6 @@ static inline void format_field_class(char **buf_ch, bool extended,
 		gchar *trace_ir_path = field_class_trace_ir_path(field_class);
 
 		BUF_APPEND(", %sis-frozen=%d", PRFIELD(field_class->frozen));
-		BUF_APPEND(", %sis-part-of-trace-class=%d",
-			PRFIELD(field_class->part_of_trace_class));
 		BUF_APPEND(", %strace-ir-path=%s", PRFIELD(trace_ir_path));
 		g_free(trace_ir_path);
 	} else {

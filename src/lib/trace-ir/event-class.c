@@ -360,7 +360,6 @@ bt_event_class_set_specific_context_field_class(
 		goto end;
 	}
 
-	bt_field_class_make_part_of_trace_class(field_class);
 	bt_object_put_ref(event_class->specific_context_fc);
 	event_class->specific_context_fc = field_class;
 	bt_object_get_ref_no_null_check(event_class->specific_context_fc);
@@ -429,7 +428,6 @@ bt_event_class_set_payload_field_class(
 		goto end;
 	}
 
-	bt_field_class_make_part_of_trace_class(field_class);
 	bt_object_put_ref(event_class->payload_fc);
 	event_class->payload_fc = field_class;
 	bt_object_get_ref_no_null_check(event_class->payload_fc);

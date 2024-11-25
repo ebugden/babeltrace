@@ -44,12 +44,6 @@ struct bt_field_class {
 	struct bt_value *user_attributes;
 
 	/*
-	 * This flag indicates whether or not this field class is part
-	 * of a trace class.
-	 */
-	bool part_of_trace_class;
-
-	/*
 	 * If this field class is a child of a structure or variant field class:
 	 *
 	 *  ‣ `parent` is the structure or variant field class
@@ -371,15 +365,6 @@ void _bt_named_field_class_freeze(const struct bt_named_field_class *named_fc);
 #else
 # define bt_named_field_class_freeze(_named_fc)	((void) _named_fc)
 #endif
-
-/*
- * This function recursively marks `field_class` and its children as
- * being part of a trace. This is used to validate that all field classes
- * are used at a single location within trace objects even if they are
- * shared objects for other purposes.
- */
-void bt_field_class_make_part_of_trace_class(
-		const struct bt_field_class *field_class);
 
 void bt_field_class_struct_mark_scope_root(
 		const struct bt_field_class *struct_fc,
