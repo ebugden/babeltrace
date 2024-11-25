@@ -227,7 +227,7 @@ bt_cli() {
 
 	local -a bt_cli_args=("$@")
 
-	echo "Running: \`$BT_TESTS_BT2_BIN ${bt_cli_args[*]}\`" >&2
+	diag "Running: \`$BT_TESTS_BT2_BIN ${bt_cli_args[*]}\`" >&2
 	bt_run_in_py_env "$BT_TESTS_BT2_BIN" "${bt_cli_args[@]}" 1>"$stdout_file" 2>"$stderr_file"
 }
 
@@ -517,7 +517,7 @@ bt_gen_mctf_trace() {
 		"$input_file"
 	)
 
-	echo "Running: \`${cmd[*]}\`" >&2
+	diag "Running: \`${cmd[*]}\`" >&2
 	bt_run_in_py_utils_env "${cmd[@]}"
 }
 
