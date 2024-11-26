@@ -820,8 +820,13 @@ class _UserComponent(metaclass=_UserComponentType):
         description: typing.Optional[str] = None,
         precision: typing.Optional[int] = None,
         offset: typing.Optional[int] = None,
-        origin_is_unix_epoch: bool = True,
+        origin_is_unix_epoch: typing.Optional[bool] = None,
         uuid: typing.Optional[uuidp.UUID] = None,
+        accuracy: typing.Optional[int] = None,
+        origin_is_unknown: bool = False,
+        origin: typing.Optional[bt2_clock_class.ClockClassOrigin] = None,
+        namespace: typing.Optional[str] = None,
+        uid: typing.Optional[str] = None,
     ) -> bt2_clock_class._ClockClass:
         ptr = self._bt_as_self_component_ptr(self._bt_ptr)
         cc_ptr = native_bt.clock_class_create(ptr)
@@ -834,8 +839,14 @@ class _UserComponent(metaclass=_UserComponentType):
         if frequency is not None:
             cc._set_frequency(frequency)
 
+        if namespace is not None:
+            cc._set_namespace(namespace)
+
         if name is not None:
             cc._set_name(name)
+
+        if uid is not None:
+            cc._set_uid(uid)
 
         if user_attributes is not None:
             cc._set_user_attributes(user_attributes)
@@ -846,10 +857,38 @@ class _UserComponent(metaclass=_UserComponentType):
         if precision is not None:
             cc._set_precision(precision)
 
+        if accuracy is not None:
+            cc._set_accuracy(accuracy)
+
         if offset is not None:
             cc._set_offset(offset)
 
-        cc._set_origin_is_unix_epoch(origin_is_unix_epoch)
+        if (
+            int(origin_is_unix_epoch is not None)
+            + int(origin_is_unknown)
+            + int(origin is not None)
+            > 1
+        ):
+            raise ValueError(
+                "Only one of `origin_is_unix_epoch`, `origin_is_unknown` and `origin` can be set."
+            )
+
+        if origin_is_unix_epoch is not None:
+            bt2_utils._check_bool(origin_is_unix_epoch)
+
+            if origin_is_unix_epoch:
+                cc._set_origin_unix_epoch()
+            else:
+                cc._set_origin_unknown()
+
+        bt2_utils._check_bool(origin_is_unknown)
+
+        if origin_is_unknown:
+            bt2_utils._check_mip_ge(self, "Clock class set origin unknown", 1)
+            cc._set_origin_unknown()
+
+        if origin is not None:
+            cc._set_origin(origin)
 
         if uuid is not None:
             cc._set_uuid(uuid)

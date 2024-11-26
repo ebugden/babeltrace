@@ -35,6 +35,36 @@ class ClockClassOffset:
         return (self.seconds, self.cycles) == (other.seconds, other.cycles)
 
 
+class ClockClassOrigin:
+    def __init__(
+        self,
+        namespace: typing.Optional[str],
+        name: str,
+        uid: str,
+    ):
+        if namespace is not None:
+            bt2_utils._check_str(namespace)
+
+        bt2_utils._check_str(name)
+        bt2_utils._check_str(uid)
+
+        self._namespace = namespace
+        self._name = name
+        self._uid = uid
+
+    @property
+    def namespace(self) -> typing.Optional[str]:
+        return self._namespace
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def uid(self) -> str:
+        return self._uid
+
+
 class _ClockClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsConst):
     @staticmethod
     def _get_ref(ptr):
@@ -49,8 +79,18 @@ class _ClockClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsCo
         return native_bt.clock_class_borrow_user_attributes_const(ptr)
 
     @property
+    def namespace(self) -> typing.Optional[str]:
+        bt2_utils._check_mip_ge(self, "Clock class namespace", 1)
+        return native_bt.clock_class_get_namespace(self._ptr)
+
+    @property
     def name(self) -> typing.Optional[str]:
         return native_bt.clock_class_get_name(self._ptr)
+
+    @property
+    def uid(self) -> typing.Optional[str]:
+        bt2_utils._check_mip_ge(self, "Clock class UID", 1)
+        return native_bt.clock_class_get_uid(self._ptr)
 
     @property
     def description(self) -> typing.Optional[str]:
@@ -62,7 +102,27 @@ class _ClockClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsCo
 
     @property
     def precision(self) -> int:
+        bt2_utils._check_mip_eq(self, "Non-optional clock class precision", 0)
         return native_bt.clock_class_get_precision(self._ptr)
+
+    @property
+    def opt_precision(self) -> typing.Optional[int]:
+        avail, precision = native_bt.clock_class_get_opt_precision(self._ptr)
+
+        if avail != native_bt.PROPERTY_AVAILABILITY_AVAILABLE:
+            return None
+
+        return precision
+
+    @property
+    def accuracy(self) -> typing.Optional[int]:
+        bt2_utils._check_mip_ge(self, "Clock class accuracy", 1)
+        avail, accuracy = native_bt.clock_class_get_accuracy(self._ptr)
+
+        if avail != native_bt.PROPERTY_AVAILABILITY_AVAILABLE:
+            return None
+
+        return accuracy
 
     @property
     def offset(self) -> ClockClassOffset:
@@ -74,13 +134,35 @@ class _ClockClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsCo
         return native_bt.clock_class_origin_is_unix_epoch(self._ptr)
 
     @property
+    def origin_is_known(self) -> bool:
+        return native_bt.clock_class_origin_is_known(self._ptr)
+
+    @property
+    def origin(self) -> ClockClassOrigin:
+        bt2_utils._check_mip_ge(self, "Clock class origin", 1)
+
+        if not self.origin_is_known:
+            raise ValueError("clock class origin is not known")
+
+        return ClockClassOrigin(
+            native_bt.clock_class_get_origin_namespace(self._ptr),
+            native_bt.clock_class_get_origin_name(self._ptr),
+            native_bt.clock_class_get_origin_uid(self._ptr),
+        )
+
+    @property
     def uuid(self) -> typing.Optional[uuidp.UUID]:
+        bt2_utils._check_mip_eq(self, "Clock class UUID", 0)
         uuid_bytes = native_bt.clock_class_get_uuid(self._ptr)
 
         if uuid_bytes is None:
             return
 
         return uuidp.UUID(bytes=uuid_bytes)
+
+    @property
+    def graph_mip_version(self) -> int:
+        return native_bt.clock_class_get_graph_mip_version(self._ptr)
 
     def cycles_to_ns_from_origin(self, cycles: int) -> int:
         bt2_utils._check_uint64(cycles)
@@ -101,11 +183,27 @@ class _ClockClass(bt2_user_attrs._WithUserAttrs, _ClockClassConst):
     def _set_user_attributes_ptr(obj_ptr, value_ptr):
         native_bt.clock_class_set_user_attributes(obj_ptr, value_ptr)
 
+    def _set_namespace(self, namespace: str):
+        bt2_utils._check_mip_ge(self, "Clock class namespace", 1)
+        bt2_utils._check_str(namespace)
+        bt2_utils._handle_func_status(
+            native_bt.clock_class_set_namespace(self._ptr, namespace),
+            "cannot set clock class object's namespace",
+        )
+
     def _set_name(self, name):
         bt2_utils._check_str(name)
         bt2_utils._handle_func_status(
             native_bt.clock_class_set_name(self._ptr, name),
             "cannot set clock class object's name",
+        )
+
+    def _set_uid(self, uid: str):
+        bt2_utils._check_mip_ge(self, "Clock class UID", 1)
+        bt2_utils._check_str(uid)
+        bt2_utils._handle_func_status(
+            native_bt.clock_class_set_uid(self._ptr, uid),
+            "cannot set clock class object's UID",
         )
 
     def _set_description(self, description):
@@ -123,16 +221,29 @@ class _ClockClass(bt2_user_attrs._WithUserAttrs, _ClockClassConst):
         bt2_utils._check_uint64(precision)
         native_bt.clock_class_set_precision(self._ptr, precision)
 
+    def _set_accuracy(self, accuracy):
+        bt2_utils._check_mip_ge(self, "Clock class accuracy", 1)
+        bt2_utils._check_uint64(accuracy)
+        native_bt.clock_class_set_accuracy(self._ptr, accuracy)
+
     def _set_offset(self, offset):
         bt2_utils._check_type(offset, ClockClassOffset)
         native_bt.clock_class_set_offset(self._ptr, offset.seconds, offset.cycles)
 
-    def _set_origin_is_unix_epoch(self, origin_is_unix_epoch):
-        bt2_utils._check_bool(origin_is_unix_epoch)
-        native_bt.clock_class_set_origin_is_unix_epoch(
-            self._ptr, int(origin_is_unix_epoch)
+    def _set_origin_unix_epoch(self):
+        native_bt.clock_class_set_origin_unix_epoch(self._ptr)
+
+    def _set_origin_unknown(self):
+        native_bt.clock_class_set_origin_unknown(self._ptr)
+
+    def _set_origin(self, origin: ClockClassOrigin):
+        bt2_utils._check_mip_ge(self, "Clock class origin", 1)
+        bt2_utils._check_type(origin, ClockClassOrigin)
+        native_bt.clock_class_set_origin(
+            self._ptr, origin.namespace, origin.name, origin.uid
         )
 
     def _set_uuid(self, uuid):
+        bt2_utils._check_mip_eq(self, "Clock class UUID", 0)
         bt2_utils._check_type(uuid, uuidp.UUID)
         native_bt.clock_class_set_uuid(self._ptr, uuid.bytes)

@@ -11,6 +11,7 @@ from bt2 import object as bt2_object
 from bt2 import native_bt
 from bt2 import field_path as bt2_field_path
 from bt2 import typing_mod
+from bt2 import field_location as bt2_field_location
 from bt2 import user_attributes as bt2_user_attrs
 from bt2 import integer_range_set as bt2_integer_range_set
 
@@ -67,6 +68,10 @@ class _FieldClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsCo
     def _borrow_user_attributes_ptr(ptr):
         return native_bt.field_class_borrow_user_attributes_const(ptr)
 
+    @property
+    def graph_mip_version(self) -> int:
+        return native_bt.field_class_get_graph_mip_version(self._ptr)
+
 
 class _FieldClass(bt2_user_attrs._WithUserAttrs, _FieldClassConst):
     @staticmethod
@@ -86,6 +91,77 @@ class _BoolFieldClass(_BoolFieldClassConst, _FieldClass):
     _NAME = "Boolean"
 
 
+# NOTE TO REVIEWER:
+# A bit array field class flag does not have a reference count, it lives
+# as long as the field class it came from.
+#
+# We could make it a `_UniqueObject`, meaning that a `_BitArrayFlag`
+# object would own a strong reference on the field class it comes from.
+# But the intermediary object `_BitArrayFlags` would still have that
+# lifetime problem. That one would have to manually keep a reference
+# on the field class, which is doable.
+#
+# A similar case is the `TraceEnvironment` object coming from the `Trace`
+# object.  There, we don't seem to bother with lifetime issues, so I'm not
+# sure if we should do it here.
+class _BitArrayFlag:
+    def __init__(self, ptr):
+        self._ptr = ptr
+
+    @property
+    def label(self) -> str:
+        return native_bt.field_class_bit_array_flag_get_label(self._ptr)
+
+    @property
+    def ranges(self) -> bt2_integer_range_set._UnsignedIntegerRangeSetConst:
+        return (
+            bt2_integer_range_set.UnsignedIntegerRangeSet._create_from_ptr_and_get_ref(
+                native_bt.field_class_bit_array_flag_borrow_index_ranges_const(
+                    self._ptr
+                )
+            )
+        )
+
+
+# Note to reviewer: we could get rid of this proxy class, instead making
+# __len__, __iter__ and __getitem__ operate directly on `_BitArrayFieldClassConst`.
+# I did this because I don't think it's totally obvious that a "bit array field
+# class" is a container of flags, so I would think that this:
+#
+#    count = len(bit_array_fc.flags)
+#    my_flag = bit_array_fc.flags[4]
+class _BitArrayFlags(collections.abc.Mapping):
+    def __init__(self, fc_ptr):
+        self._fc_ptr = fc_ptr
+
+    def __len__(self) -> int:
+        return native_bt.field_class_bit_array_get_flag_count(self._fc_ptr)
+
+    # FIXME: I think this is wrong... for this to act like a mapping, the iterator
+    # should yield keys - i.e. what __getitem__ takes
+    # FIXME 2: should there be a way to borrow by index?  a `dict` doesn't AFAIK,
+    # so there should be no need here.  It's probably possible to call .items() or
+    # .values() or .keys().
+    def __iter__(self) -> typing.Generator[_BitArrayFlag, None, None]:
+        for idx in range(len(self)):
+            yield _BitArrayFlag(
+                native_bt.field_class_bit_array_borrow_flag_by_index_const(
+                    self._fc_ptr, idx
+                )
+            )
+
+    def __getitem__(self, label: str) -> _BitArrayFlag:
+        bt2_utils._check_str(label)
+        flag_ptr = native_bt.field_class_bit_array_borrow_flag_by_label_const(
+            self._fc_ptr, label
+        )
+
+        if flag_ptr is None:
+            raise KeyError(label)
+
+        return _BitArrayFlag(flag_ptr)
+
+
 class _BitArrayFieldClassConst(_FieldClassConst):
     _NAME = "Const bit array"
 
@@ -93,9 +169,70 @@ class _BitArrayFieldClassConst(_FieldClassConst):
     def length(self) -> int:
         return native_bt.field_class_bit_array_get_length(self._ptr)
 
+    def active_flag_labels_for_value_as_integer(
+        self, value_as_integer: int
+    ) -> typing.List[str]:
+        bt2_utils._check_mip_ge(self, "Bit array field class flags", 1)
+        bt2_utils._check_int64(value_as_integer)
+        (
+            status,
+            labels,
+        ) = native_bt.field_class_bit_array_get_active_flag_labels_for_value_as_integer(
+            self._ptr, value_as_integer
+        )
+        bt2_utils._handle_func_status(
+            status,
+            "cannot get active flag labels for value {}".format(value_as_integer),
+        )
+        return labels
+
+    @property
+    def flags(self) -> _BitArrayFlags:
+        bt2_utils._check_mip_ge(self, "Bit array field class flags", 1)
+        return _BitArrayFlags(self._ptr)
+
 
 class _BitArrayFieldClass(_BitArrayFieldClassConst, _FieldClass):
     _NAME = "Bit array"
+
+    def add_flag(
+        self,
+        label: str,
+        index_ranges: bt2_integer_range_set._UnsignedIntegerRangeSetConst,
+    ):
+        bt2_utils._check_mip_ge(self, "Bit array field class flags", 1)
+        bt2_utils._check_str(label)
+        bt2_utils._check_type(
+            index_ranges, bt2_integer_range_set._UnsignedIntegerRangeSetConst
+        )
+
+        if label in self.flags:
+            raise ValueError("Duplicate flag label '{}'".format(label))
+
+        for rng in index_ranges:
+            if rng.upper >= self.length:
+                raise ValueError(
+                    "Index range's bound ({}) is too large for bit array length ({})".format(
+                        rng.upper, self.length
+                    )
+                )
+
+        bt2_utils._handle_func_status(
+            native_bt.field_class_bit_array_add_flag(
+                self._ptr, label, index_ranges._ptr
+            )
+        )
+
+    def __iadd__(
+        self,
+        mappings: typing.Iterable[
+            typing.Tuple[str, bt2_integer_range_set._UnsignedIntegerRangeSetConst]
+        ],
+    ) -> "_BitArrayFieldClass":
+        for label, ranges in mappings:
+            self.add_flag(label, ranges)
+
+        return self
 
 
 class _IntegerFieldClassConst(_FieldClassConst):
@@ -505,6 +642,8 @@ class _OptionWithSelectorFieldClassConst(_OptionFieldClassConst):
 
     @property
     def selector_field_path(self) -> typing.Optional[bt2_field_path._FieldPathConst]:
+        bt2_utils._check_mip_eq(self, "selector_field_path", 0)
+
         ptr = native_bt.field_class_option_with_selector_field_borrow_selector_field_path_const(
             self._ptr
         )
@@ -512,6 +651,16 @@ class _OptionWithSelectorFieldClassConst(_OptionFieldClassConst):
             return
 
         return bt2_field_path._FieldPathConst._create_from_ptr_and_get_ref(ptr)
+
+    @property
+    def selector_field_location(self) -> bt2_field_location._FieldLocationConst:
+        bt2_utils._check_mip_ge(self, "selector_field_location", 1)
+
+        return bt2_field_location._FieldLocationConst._create_from_ptr_and_get_ref(
+            native_bt.field_class_option_with_selector_field_borrow_selector_field_location_const(
+                self._ptr
+            )
+        )
 
 
 class _OptionWithBoolSelectorFieldClassConst(_OptionWithSelectorFieldClassConst):
@@ -627,7 +776,7 @@ class _VariantFieldClassOptionConst(bt2_user_attrs._WithUserAttrsConst):
         self._opt_ptr = option_ptr
 
     @property
-    def name(self) -> str:
+    def name(self) -> typing.Optional[str]:
         return native_bt.field_class_variant_option_get_name(self._opt_ptr)
 
     @property
@@ -744,7 +893,8 @@ class _VariantFieldClassConst(_FieldClassConst, collections.abc.Mapping):
     def __getitem__(self, key: str) -> _VariantFieldClassOptionConst:
         return _VariantFieldClassOptionConst(self, self._getitem(key))
 
-    def __iter__(self) -> typing.Iterator[str]:
+    # FIXME: this is a bit weird, but I guess we don't have a choice
+    def __iter__(self) -> typing.Iterator[typing.Optional[str]]:
         for idx in range(len(self)):
             yield native_bt.field_class_variant_option_get_name(
                 self._as_option_ptr(self._borrow_option_ptr_by_index(self._ptr, idx))
@@ -792,14 +942,17 @@ class _VariantFieldClassWithoutSelector(
 
     def append_option(
         self,
-        name: str,
+        name: typing.Optional[str],
         field_class: _FieldClass,
         user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
     ):
-        bt2_utils._check_str(name)
+        # Name is mandatory in MIP 0
+        if self.graph_mip_version == 0 or name is not None:
+            bt2_utils._check_str(name)
+
         bt2_utils._check_type(field_class, _FieldClass)
 
-        if name in self:
+        if name is not None and name in self:
             raise ValueError("duplicate option name '{}'".format(name))
 
         # check now that user attributes are valid
@@ -841,6 +994,8 @@ class _VariantFieldClassWithIntegerSelectorConst(_VariantFieldClassConst):
 
     @property
     def selector_field_path(self) -> typing.Optional[bt2_field_path._FieldPathConst]:
+        bt2_utils._check_mip_eq(self, "selector_field_path", 0)
+
         ptr = native_bt.field_class_variant_with_selector_field_borrow_selector_field_path_const(
             self._ptr
         )
@@ -849,6 +1004,16 @@ class _VariantFieldClassWithIntegerSelectorConst(_VariantFieldClassConst):
             return
 
         return bt2_field_path._FieldPathConst._create_from_ptr_and_get_ref(ptr)
+
+    @property
+    def selector_field_location(self) -> bt2_field_location._FieldLocationConst:
+        bt2_utils._check_mip_ge(self, "selector_field_location", 1)
+
+        return bt2_field_location._FieldLocationConst._create_from_ptr_and_get_ref(
+            native_bt.field_class_variant_with_selector_field_borrow_selector_field_location_const(
+                self._ptr
+            )
+        )
 
 
 class _VariantFieldClassWithIntegerSelector(
@@ -868,16 +1033,19 @@ class _VariantFieldClassWithIntegerSelector(
 
     def append_option(
         self,
-        name: str,
+        name: typing.Optional[str],
         field_class: _FieldClass,
         ranges: bt2_integer_range_set._IntegerRangeSetConst,
         user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
     ):
-        bt2_utils._check_str(name)
+        # Name is mandatory in MIP 0
+        if self.graph_mip_version == 0 or name is not None:
+            bt2_utils._check_str(name)
+
         bt2_utils._check_type(field_class, _FieldClass)
         bt2_utils._check_type(ranges, self._variant_option_pycls._range_set_pycls)
 
-        if name in self:
+        if name is not None and name in self:
             raise ValueError("duplicate option name '{}'".format(name))
 
         if len(ranges) == 0:
@@ -1062,6 +1230,8 @@ class _DynamicArrayWithLengthFieldFieldClassConst(_DynamicArrayFieldClassConst):
 
     @property
     def length_field_path(self) -> typing.Optional[bt2_field_path._FieldPathConst]:
+        bt2_utils._check_mip_eq(self, "length field path", 0)
+
         ptr = native_bt.field_class_array_dynamic_with_length_field_borrow_length_field_path_const(
             self._ptr
         )
@@ -1069,6 +1239,16 @@ class _DynamicArrayWithLengthFieldFieldClassConst(_DynamicArrayFieldClassConst):
             return
 
         return bt2_field_path._FieldPathConst._create_from_ptr_and_get_ref(ptr)
+
+    @property
+    def length_field_location(self) -> bt2_field_location._FieldLocationConst:
+        bt2_utils._check_mip_ge(self, "length field location", 1)
+
+        return bt2_field_location._FieldLocationConst._create_from_ptr_and_get_ref(
+            native_bt.field_class_array_dynamic_with_length_field_borrow_length_field_location_const(
+                self._ptr
+            )
+        )
 
 
 class _DynamicArrayFieldClass(_DynamicArrayFieldClassConst, _ArrayFieldClass):
@@ -1079,6 +1259,57 @@ class _DynamicArrayWithLengthFieldFieldClass(
     _DynamicArrayWithLengthFieldFieldClassConst, _DynamicArrayFieldClass
 ):
     _NAME = "Dynamic array (with length field)"
+
+
+class _BlobFieldClassConst(_FieldClassConst):
+    @property
+    def media_type(self) -> str:
+        return native_bt.field_class_blob_get_media_type(self._ptr)
+
+
+class _BlobFieldClass(_BlobFieldClassConst, _FieldClass):
+    def _set_media_type(self, media_type: str):
+        bt2_utils._check_str(media_type)
+        bt2_utils._handle_func_status(
+            native_bt.field_class_blob_set_media_type(self._ptr, media_type)
+        )
+
+
+class _StaticBlobFieldClassConst(_BlobFieldClassConst):
+    @property
+    def length(self) -> int:
+        return native_bt.field_class_blob_static_get_length(self._ptr)
+
+
+class _StaticBlobFieldClass(_StaticBlobFieldClassConst, _BlobFieldClass):
+    pass
+
+
+class _DynamicBlobFieldClassConst(_BlobFieldClassConst):
+    pass
+
+
+class _DynamicBlobFieldClass(_DynamicBlobFieldClassConst, _BlobFieldClass):
+    pass
+
+
+# FIXME: Should we add _DynamicBlobWithoutLengthFieldFieldClassConst too?
+
+
+class _DynamicBlobWithLengthFieldFieldClassConst(_DynamicBlobFieldClassConst):
+    @property
+    def length_field_location(self) -> bt2_field_location._FieldLocationConst:
+        return bt2_field_location._FieldLocationConst._create_from_ptr_and_get_ref(
+            native_bt.field_class_blob_dynamic_with_length_field_borrow_length_field_location_const(
+                self._ptr
+            )
+        )
+
+
+class _DynamicBlobWithLengthFieldFieldClass(
+    _DynamicBlobWithLengthFieldFieldClassConst, _DynamicBlobFieldClass
+):
+    pass
 
 
 _FIELD_CLASS_TYPE_TO_CONST_OBJ = {
@@ -1102,6 +1333,9 @@ _FIELD_CLASS_TYPE_TO_CONST_OBJ = {
     native_bt.FIELD_CLASS_TYPE_VARIANT_WITHOUT_SELECTOR_FIELD: _VariantFieldClassWithoutSelectorConst,
     native_bt.FIELD_CLASS_TYPE_VARIANT_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD: _VariantFieldClassWithUnsignedIntegerSelectorConst,
     native_bt.FIELD_CLASS_TYPE_VARIANT_WITH_SIGNED_INTEGER_SELECTOR_FIELD: _VariantFieldClassWithSignedIntegerSelectorConst,
+    native_bt.FIELD_CLASS_TYPE_STATIC_BLOB: _StaticBlobFieldClassConst,
+    native_bt.FIELD_CLASS_TYPE_DYNAMIC_BLOB_WITHOUT_LENGTH_FIELD: _DynamicBlobFieldClassConst,
+    native_bt.FIELD_CLASS_TYPE_DYNAMIC_BLOB_WITH_LENGTH_FIELD: _DynamicBlobWithLengthFieldFieldClassConst,
 }
 
 _FIELD_CLASS_TYPE_TO_OBJ = {
@@ -1125,4 +1359,7 @@ _FIELD_CLASS_TYPE_TO_OBJ = {
     native_bt.FIELD_CLASS_TYPE_VARIANT_WITHOUT_SELECTOR_FIELD: _VariantFieldClassWithoutSelector,
     native_bt.FIELD_CLASS_TYPE_VARIANT_WITH_UNSIGNED_INTEGER_SELECTOR_FIELD: _VariantFieldClassWithUnsignedIntegerSelector,
     native_bt.FIELD_CLASS_TYPE_VARIANT_WITH_SIGNED_INTEGER_SELECTOR_FIELD: _VariantFieldClassWithSignedIntegerSelector,
+    native_bt.FIELD_CLASS_TYPE_STATIC_BLOB: _StaticBlobFieldClass,
+    native_bt.FIELD_CLASS_TYPE_DYNAMIC_BLOB_WITHOUT_LENGTH_FIELD: _DynamicBlobFieldClass,
+    native_bt.FIELD_CLASS_TYPE_DYNAMIC_BLOB_WITH_LENGTH_FIELD: _DynamicBlobWithLengthFieldFieldClass,
 }

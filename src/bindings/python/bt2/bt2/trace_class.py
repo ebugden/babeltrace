@@ -17,6 +17,7 @@ from bt2 import native_bt, typing_mod
 from bt2 import clock_class as bt2_clock_class
 from bt2 import field_class as bt2_field_class
 from bt2 import stream_class as bt2_stream_class
+from bt2 import field_location as bt2_field_location
 from bt2 import user_attributes as bt2_user_attrs
 from bt2 import integer_range_set as bt2_integer_range_set
 
@@ -77,6 +78,10 @@ class _TraceClassConst(
             yield native_bt.stream_class_get_id(
                 self._borrow_stream_class_ptr_by_index(self._ptr, idx)
             )
+
+    @property
+    def graph_mip_version(self) -> int:
+        return native_bt.trace_class_get_graph_mip_version(self._ptr)
 
     @property
     def assigns_automatic_stream_class_id(self):
@@ -155,6 +160,8 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         environment: typing.Optional[
             typing.Mapping[str, typing.Union[str, int]]
         ] = None,
+        namespace: typing.Optional[str] = None,
+        uid: typing.Optional[str] = None,
     ) -> bt2_trace._Trace:
         trace_ptr = native_bt.trace_create(self._ptr)
 
@@ -163,8 +170,14 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
 
         trace = bt2_trace._Trace._create_from_ptr(trace_ptr)
 
+        if namespace is not None:
+            trace._set_namespace(namespace)
+
         if name is not None:
             trace._set_name(name)
+
+        if uid is not None:
+            trace._set_uid(uid)
 
         if user_attributes is not None:
             trace._set_user_attributes(user_attributes)
@@ -199,6 +212,8 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         discarded_events_have_default_clock_snapshots: bool = False,
         supports_discarded_packets: bool = False,
         discarded_packets_have_default_clock_snapshots: bool = False,
+        namespace: typing.Optional[str] = None,
+        uid: typing.Optional[str] = None,
     ) -> bt2_stream_class._StreamClass:
         # Validate parameters before we create the object.
         bt2_stream_class._StreamClass._validate_create_params(
@@ -236,8 +251,14 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
 
         sc = bt2_stream_class._StreamClass._create_from_ptr(sc_ptr)
 
+        if namespace is not None:
+            sc._set_namespace(namespace)
+
         if name is not None:
             sc._set_name(name)
+
+        if uid is not None:
+            sc._set_uid(uid)
 
         if user_attributes is not None:
             sc._set_user_attributes(user_attributes)
@@ -283,6 +304,26 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         return native_bt.trace_class_set_assigns_automatic_stream_class_id(
             self._ptr, auto_id
         )
+
+    def create_field_location(
+        self, root_scope: bt2_field_location.FieldLocationScope, items: typing.List[str]
+    ) -> bt2_field_location._FieldLocationConst:
+        bt2_utils._check_mip_ge(self, "Field location", 1)
+        bt2_utils._check_type(root_scope, bt2_field_location.FieldLocationScope)
+        bt2_utils._check_type(items, list)
+
+        if len(items) == 0:
+            raise ValueError("items list must not be empty")
+
+        for item in items:
+            bt2_utils._check_str(item)
+
+        ptr = native_bt.field_location_create(self._ptr, root_scope.value, items)
+
+        if ptr is None:
+            raise bt2_error._MemoryError("could not create field location")
+
+        return bt2_field_location._FieldLocationConst._create_from_ptr(ptr)
 
     # Field class creation methods.
 
@@ -499,30 +540,72 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             bt2_field_class._StaticArrayFieldClass,
         )
 
+    # FIXME: should we create a new set of methods for MIP 1,
+    # e.g. create_dynamic_array_without_length_field_location_field_class
+    # and create_dynamic_array_with_length_field_location_field_class
     def create_dynamic_array_field_class(
         self,
         elem_fc: bt2_field_class._FieldClass,
         length_fc: typing.Optional[bt2_field_class._FieldClass] = None,
         user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
+        length_field_location: typing.Optional[
+            bt2_field_location._FieldLocationConst
+        ] = None,
     ) -> bt2_field_class._DynamicArrayFieldClass:
         bt2_utils._check_type(elem_fc, bt2_field_class._FieldClass)
 
-        if length_fc is not None:
-            bt2_utils._check_type(length_fc, bt2_field_class._UnsignedIntegerFieldClass)
-            length_fc_ptr = length_fc._ptr
-            expected_type = bt2_field_class._DynamicArrayWithLengthFieldFieldClass
-        else:
-            length_fc_ptr = None
-            expected_type = bt2_field_class._DynamicArrayFieldClass
+        if self.graph_mip_version == 0:
+            if length_field_location is not None:
+                raise ValueError("length field location is not supported with MIP 0")
 
-        return self._check_and_wrap_field_class(
-            native_bt.field_class_array_dynamic_create(
-                self._ptr, elem_fc._ptr, length_fc_ptr
-            ),
-            "dynamic array",
-            user_attributes,
-            expected_type,
-        )
+            if length_fc is not None:
+                bt2_utils._check_type(
+                    length_fc, bt2_field_class._UnsignedIntegerFieldClass
+                )
+                length_fc_ptr = length_fc._ptr
+                expected_type = bt2_field_class._DynamicArrayWithLengthFieldFieldClass
+            else:
+                length_fc_ptr = None
+                expected_type = bt2_field_class._DynamicArrayFieldClass
+
+            return self._check_and_wrap_field_class(
+                native_bt.field_class_array_dynamic_create(
+                    self._ptr, elem_fc._ptr, length_fc_ptr
+                ),
+                "dynamic array",
+                user_attributes,
+                expected_type,
+            )
+
+        else:
+            if length_fc is not None:
+                raise ValueError(
+                    "length field class is not supported with MIP {}".format(
+                        self.graph_mip_version
+                    )
+                )
+
+            if length_field_location is None:
+                return self._check_and_wrap_field_class(
+                    native_bt.field_class_array_dynamic_without_length_field_location_create(
+                        self._ptr, elem_fc._ptr
+                    ),
+                    "dynamic array",
+                    user_attributes,
+                    bt2_field_class._DynamicArrayFieldClass,
+                )
+            else:
+                bt2_utils._check_type(
+                    length_field_location, bt2_field_location._FieldLocationConst
+                )
+                return self._check_and_wrap_field_class(
+                    native_bt.field_class_array_dynamic_with_length_field_location_create(
+                        self._ptr, elem_fc._ptr, length_field_location._ptr
+                    ),
+                    "dynamic array",
+                    user_attributes,
+                    bt2_field_class._DynamicArrayWithLengthFieldFieldClass,
+                )
 
     def create_option_without_selector_field_class(
         self,
@@ -530,30 +613,65 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
     ) -> bt2_field_class._OptionFieldClass:
         bt2_utils._check_type(content_fc, bt2_field_class._FieldClass)
-
         return self._check_and_wrap_field_class(
-            native_bt.field_class_option_without_selector_create(
-                self._ptr, content_fc._ptr
-            ),
+            (
+                native_bt.field_class_option_without_selector_create
+                if self.graph_mip_version == 0
+                else native_bt.field_class_option_without_selector_field_location_create
+            )(self._ptr, content_fc._ptr),
             "option",
             user_attributes,
             bt2_field_class._OptionFieldClass,
         )
 
+    # FIXME: should we create a new set of methods for MIP 1,
+    # e.g. create_option_with_bool_selector_field_location_field_class
+    # Instead of trying to make it work for both MIP 0 and 1?
     def create_option_with_bool_selector_field_class(
         self,
         content_fc: bt2_field_class._FieldClass,
-        selector_fc: bt2_field_class._FieldClass,
+        selector_fc: typing.Optional[bt2_field_class._FieldClass] = None,
         selector_is_reversed: bool = False,
         user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
+        selector_field_location: typing.Optional[
+            bt2_field_location._FieldLocationConst
+        ] = None,
     ) -> bt2_field_class._OptionWithBoolSelectorFieldClass:
         bt2_utils._check_type(content_fc, bt2_field_class._FieldClass)
         bt2_utils._check_bool(selector_is_reversed)
-        bt2_utils._check_type(selector_fc, bt2_field_class._BoolFieldClass)
-        fc = self._check_and_wrap_field_class(
-            native_bt.field_class_option_with_selector_field_bool_create(
+
+        if self.graph_mip_version == 0:
+            selector_fc = bt2_utils._check_type(
+                selector_fc, bt2_field_class._BoolFieldClass
+            )
+
+            if selector_field_location is not None:
+                raise ValueError("selector field location is not supported with MIP 0")
+
+            fc_ptr = native_bt.field_class_option_with_selector_field_bool_create(
                 self._ptr, content_fc._ptr, selector_fc._ptr
-            ),
+            )
+
+        else:
+            selector_field_location = bt2_utils._check_type(
+                selector_field_location, bt2_field_location._FieldLocationConst
+            )
+
+            if selector_fc is not None:
+                raise ValueError(
+                    "selector field class is not supported with MIP {}".format(
+                        self.graph_mip_version
+                    )
+                )
+
+            fc_ptr = (
+                native_bt.field_class_option_with_selector_field_location_bool_create(
+                    self._ptr, content_fc._ptr, selector_field_location._ptr
+                )
+            )
+
+        fc = self._check_and_wrap_field_class(
+            fc_ptr,
             "option",
             user_attributes,
             bt2_field_class._OptionWithBoolSelectorFieldClass,
@@ -568,6 +686,9 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
         ranges: bt2_integer_range_set._IntegerRangeSetConst,
         user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
     ) -> bt2_field_class._OptionWithIntegerSelectorFieldClass:
+        bt2_utils._check_mip_eq(
+            self, "create_option_with_integer_selector_field_class", 0
+        )
         bt2_utils._check_type(content_fc, bt2_field_class._FieldClass)
         bt2_utils._check_type(selector_fc, bt2_field_class._IntegerFieldClass)
 
@@ -593,11 +714,69 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             ptr, "option", user_attributes, expected_type
         )
 
+    def create_option_with_unsigned_integer_selector_field_class(
+        self,
+        content_fc: bt2_field_class._FieldClass,
+        selector_field_location: bt2_field_location._FieldLocationConst,
+        ranges: bt2_integer_range_set._UnsignedIntegerRangeSetConst,
+        user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
+    ) -> bt2_field_class._OptionWithUnsignedIntegerSelectorFieldClass:
+        bt2_utils._check_mip_ge(
+            self, "create_option_with_unsigned_integer_selector_field_class", 1
+        )
+        bt2_utils._check_type(content_fc, bt2_field_class._FieldClass)
+        bt2_utils._check_type(
+            selector_field_location, bt2_field_location._FieldLocationConst
+        )
+        bt2_utils._check_type(ranges, bt2_integer_range_set.UnsignedIntegerRangeSet)
+
+        if len(ranges) == 0:
+            raise ValueError("integer range set is empty")
+
+        return self._check_and_wrap_field_class(
+            native_bt.field_class_option_with_selector_field_location_integer_unsigned_create(
+                self._ptr, content_fc._ptr, selector_field_location._ptr, ranges._ptr
+            ),
+            "option",
+            user_attributes,
+            bt2_field_class._OptionWithUnsignedIntegerSelectorFieldClass,
+        )
+
+    def create_option_with_signed_integer_selector_field_class(
+        self,
+        content_fc: bt2_field_class._FieldClass,
+        selector_field_location: bt2_field_location._FieldLocationConst,
+        ranges: bt2_integer_range_set._SignedIntegerRangeSetConst,
+        user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
+    ) -> bt2_field_class._OptionWithSignedIntegerSelectorFieldClass:
+        bt2_utils._check_mip_ge(
+            self, "create_option_with_signed_integer_selector_field_class", 1
+        )
+        bt2_utils._check_type(content_fc, bt2_field_class._FieldClass)
+        bt2_utils._check_type(
+            selector_field_location, bt2_field_location._FieldLocationConst
+        )
+        bt2_utils._check_type(ranges, bt2_integer_range_set.SignedIntegerRangeSet)
+
+        if len(ranges) == 0:
+            raise ValueError("integer range set is empty")
+
+        return self._check_and_wrap_field_class(
+            native_bt.field_class_option_with_selector_field_location_integer_signed_create(
+                self._ptr, content_fc._ptr, selector_field_location._ptr, ranges._ptr
+            ),
+            "option",
+            user_attributes,
+            bt2_field_class._OptionWithSignedIntegerSelectorFieldClass,
+        )
+
     def create_variant_field_class(
         self,
         selector_fc: typing.Optional[bt2_field_class._FieldClass] = None,
         user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
     ) -> bt2_field_class._VariantFieldClass:
+        bt2_utils._check_mip_eq(self, "create_variant_field_class", 0)
+
         if selector_fc is not None:
             bt2_utils._check_type(selector_fc, bt2_field_class._IntegerFieldClass)
             selector_fc_ptr = selector_fc._ptr
@@ -616,3 +795,116 @@ class _TraceClass(bt2_user_attrs._WithUserAttrs, _TraceClassConst):
             user_attributes,
             expected_type,
         )
+
+    def create_variant_without_selector_field_class(
+        self, user_attributes: typing.Optional[bt2_value._MapValueConst] = None
+    ) -> bt2_field_class._VariantFieldClassWithoutSelector:
+        bt2_utils._check_mip_ge(self, "Variant without selector field location", 1)
+
+        return self._check_and_wrap_field_class(
+            native_bt.field_class_variant_without_selector_field_location_create(
+                self._ptr
+            ),
+            "variant",
+            user_attributes,
+            bt2_field_class._VariantFieldClassWithoutSelector,
+        )
+
+    def _create_variant_with_selector_field_class(
+        self,
+        create_func,
+        selector_field_location: bt2_field_location._FieldLocationConst,
+        user_attributes: typing.Optional[bt2_value._MapValueConst],
+        expected_type: typing.Type[_FieldClassT],
+    ):
+        bt2_utils._check_mip_ge(self, "Variant with selector field location", 1)
+        bt2_utils._check_type(
+            selector_field_location, bt2_field_location._FieldLocationConst
+        )
+
+        return self._check_and_wrap_field_class(
+            create_func(self._ptr, selector_field_location._ptr),
+            "variant",
+            user_attributes,
+            expected_type,
+        )
+
+    def create_variant_with_unsigned_selector_field_class(
+        self,
+        selector_field_location: bt2_field_location._FieldLocationConst,
+        user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
+    ) -> bt2_field_class._VariantFieldClassWithUnsignedIntegerSelector:
+        return self._create_variant_with_selector_field_class(
+            native_bt.field_class_variant_with_selector_field_location_integer_unsigned_create,
+            selector_field_location,
+            user_attributes,
+            bt2_field_class._VariantFieldClassWithUnsignedIntegerSelector,
+        )
+
+    def create_variant_with_signed_selector_field_class(
+        self,
+        selector_field_location: bt2_field_location._FieldLocationConst,
+        user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
+    ) -> bt2_field_class._VariantFieldClassWithSignedIntegerSelector:
+        return self._create_variant_with_selector_field_class(
+            native_bt.field_class_variant_with_selector_field_location_integer_signed_create,
+            selector_field_location,
+            user_attributes,
+            bt2_field_class._VariantFieldClassWithSignedIntegerSelector,
+        )
+
+    def create_static_blob_field_class(
+        self,
+        length: int,
+        media_type: typing.Optional[str] = None,
+        user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
+    ) -> bt2_field_class._StaticBlobFieldClass:
+        bt2_utils._check_mip_ge(self, "Static blob field class", 1)
+        bt2_utils._check_uint64(length)
+
+        fc = self._check_and_wrap_field_class(
+            native_bt.field_class_blob_static_create(self._ptr, length),
+            "static blob",
+            user_attributes,
+            bt2_field_class._StaticBlobFieldClass,
+        )
+
+        if media_type is not None:
+            fc._set_media_type(media_type)
+
+        return fc
+
+    def create_dynamic_blob_field_class(
+        self,
+        length_field_location: typing.Optional[
+            bt2_field_location._FieldLocationConst
+        ] = None,
+        media_type: typing.Optional[str] = None,
+        user_attributes: typing.Optional[bt2_value._MapValueConst] = None,
+    ) -> bt2_field_class._DynamicBlobFieldClass:
+        bt2_utils._check_mip_ge(self, "Dynamic blob field class", 1)
+
+        if length_field_location is None:
+            ptr = (
+                native_bt.field_class_blob_dynamic_without_length_field_location_create(
+                    self._ptr
+                )
+            )
+            expected_type = bt2_field_class._DynamicBlobFieldClass
+        else:
+            bt2_utils._check_type(
+                length_field_location, bt2_field_location._FieldLocationConst
+            )
+            ptr = native_bt.field_class_blob_dynamic_with_length_field_location_create(
+                self._ptr, length_field_location._ptr
+            )
+            expected_type = bt2_field_class._DynamicBlobWithLengthFieldFieldClass
+
+        fc = self._check_and_wrap_field_class(
+            ptr, "dynamic blob", user_attributes, expected_type
+        )
+
+        if media_type is not None:
+            fc._set_media_type(media_type)
+
+        return fc

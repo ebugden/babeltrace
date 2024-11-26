@@ -123,6 +123,24 @@ def _check_alignment(a):
         raise ValueError("{} is not a power of two".format(a))
 
 
+def _check_mip_ge(obj, what, mip):
+    if obj.graph_mip_version < mip:
+        raise ValueError(
+            "{} is only available with MIP {} or higher (currently {})".format(
+                what, mip, obj.graph_mip_version
+            )
+        )
+
+
+def _check_mip_eq(obj, what, mip):
+    if obj.graph_mip_version != mip:
+        raise ValueError(
+            "{} is only available with MIP {} (currently {})".format(
+                what, mip, obj.graph_mip_version
+            )
+        )
+
+
 def _handle_func_status(status, msg=None):
     if status == native_bt.__BT_FUNC_STATUS_OK:
         # no error
