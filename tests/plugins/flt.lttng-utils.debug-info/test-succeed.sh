@@ -27,7 +27,7 @@ this_dir_relative="plugins/flt.lttng-utils.debug-info"
 succeed_trace_dir="$BT_CTF_TRACES_PATH/1/succeed"
 expect_dir="$BT_TESTS_DATADIR/$this_dir_relative"
 binary_artefact_dir="$BT_TESTS_DATADIR/$this_dir_relative"
-data_dir="$BT_TESTS_DATADIR/$this_dir_relative"
+python_utils_dir="$BT_TESTS_SRCDIR/utils/python"
 
 test_debug_info() {
 	local name="$1"
@@ -105,8 +105,8 @@ test_compare_ctf_src_trace() {
 
 test_compare_complete_src_trace() {
 
-	local source_name="src.test-debug-info.CompleteSrc"
-	local cli_args=("--plugin-path=$data_dir" "-c" "$source_name")
+	local source_name="src.complete.CompleteSrc"
+	local cli_args=("--plugin-path=$python_utils_dir" "-c" "$source_name")
 	test_compare_to_ctf_fs "$source_name" "${cli_args[@]}"
 }
 

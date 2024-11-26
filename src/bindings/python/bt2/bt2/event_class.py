@@ -72,10 +72,14 @@ class _EventClassConst(bt2_object._SharedObject, bt2_user_attrs._WithUserAttrsCo
         return self.stream_class.graph_mip_version
 
     @property
-    def stream_class(self) -> "bt2_stream_class._StreamClassConst":
+    def _stream_class(self):
         return self._stream_class_pycls._create_from_ptr_and_get_ref(
             self._borrow_stream_class_ptr(self._ptr)
         )
+
+    @property
+    def stream_class(self) -> "bt2_stream_class._StreamClassConst":
+        return self._stream_class
 
     @property
     def namespace(self) -> typing.Optional[str]:
@@ -150,6 +154,10 @@ class _EventClass(bt2_user_attrs._WithUserAttrs, _EventClassConst):
     @staticmethod
     def _set_user_attributes_ptr(obj_ptr, value_ptr):
         native_bt.event_class_set_user_attributes(obj_ptr, value_ptr)
+
+    @property
+    def stream_class(self) -> "bt2_stream_class._StreamClass":
+        return self._stream_class
 
     def _set_namespace(self, namespace: str):
         bt2_utils._check_mip_ge(self, "Event class namespace", 1)
