@@ -33,10 +33,10 @@ test_debug_info() {
 	local name="$1"
 	local local_args=(
 		"--allowed-mip-versions=0"
-		"-c" "flt.lttng-utils.debug-info"
-		"-p" "target-prefix=\"$binary_artefact_dir/x86-64-linux-gnu/dwarf-full\""
-		"-c" "sink.text.details"
-		"-p" "with-trace-name=no,with-stream-name=no"
+		"--component" "flt.lttng-utils.debug-info"
+		"--params" "target-prefix=\"$binary_artefact_dir/x86-64-linux-gnu/dwarf-full\""
+		"--component" "sink.text.details"
+		"--params" "with-trace-name=no,with-stream-name=no"
 	)
 
 	bt_diff_cli "$expect_dir/trace-$name.expect" "/dev/null" \
@@ -51,9 +51,9 @@ test_compare_to_ctf_fs() {
 	local test_name=$1
 	shift 1
 	local cli_args=("$@")
-	local debug_info_cli_args=("-c" "flt.lttng-utils.debug-info")
+	local debug_info_cli_args=("--component" "flt.lttng-utils.debug-info")
 	local details_cli_args=(
-		"-c" "sink.text.details"
+		"--component" "sink.text.details"
 		"--params" "with-trace-name=false,with-stream-name=false,with-uuid=false,with-uid=false"
 	)
 	local actual_stdout
@@ -108,7 +108,7 @@ test_compare_ctf_src_trace() {
 test_compare_complete_src_trace() {
 
 	local source_name="src.complete.CompleteSrc"
-	local cli_args=("--plugin-path=$python_utils_dir" "-c" "$source_name")
+	local cli_args=("--plugin-path=$python_utils_dir" "--component" "$source_name")
 	test_compare_to_ctf_fs "$source_name" "${cli_args[@]}"
 }
 
