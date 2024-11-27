@@ -68,6 +68,28 @@ class CompleteSrcIter(bt2._UserMessageIterator):
         variant.selected_option_index = 0
         variant.value = "Couche-Tard"
 
+        mip = self._component._graph_mip_version
+
+        if mip > 0:
+            c(payload["static-blob"], bt2._StaticBlobField).data = b"Masbourian"
+
+            dynamic_blob_without_length_field = c(
+                payload["dynamic-blob-without-length-field"], bt2._DynamicBlobField
+            )
+            dynamic_blob_without_length_field.length = 3
+            dynamic_blob_without_length_field.data = b"mdr"
+
+            c(
+                payload["dynamic-blob-with-length-field-length"],
+                bt2._UnsignedIntegerField,
+            ).value = 5
+            dynamic_blob_with_length_field = c(
+                payload["dynamic-blob-with-length-field"],
+                bt2._DynamicBlobWithLengthFieldField,
+            )
+            dynamic_blob_with_length_field.length = 5
+            dynamic_blob_with_length_field.data = b"buick"
+
         self._msgs = [
             self._create_stream_beginning_message(stream),
             ev,
@@ -167,88 +189,116 @@ class CompleteSrc(bt2._UserSourceComponent, message_iterator_class=CompleteSrcIt
                 ranges=option_int_ranges,
             )
 
-        ec = sc.create_event_class(
-            name="my-event",
-            payload_field_class=tc.create_structure_field_class(
-                members=(
-                    ("bool", tc.create_bool_field_class()),
-                    ("real_single", tc.create_single_precision_real_field_class()),
-                    ("real_double", tc.create_double_precision_real_field_class()),
-                    ("int32", tc.create_signed_integer_field_class(32)),
-                    ("int3", tc.create_signed_integer_field_class(3)),
-                    (
-                        "int9_hex",
-                        tc.create_signed_integer_field_class(
-                            9,
-                            preferred_display_base=bt2.IntegerDisplayBase.HEXADECIMAL,
-                        ),
+        payload = tc.create_structure_field_class(
+            members=(
+                ("bool", tc.create_bool_field_class()),
+                ("real_single", tc.create_single_precision_real_field_class()),
+                ("real_double", tc.create_double_precision_real_field_class()),
+                ("int32", tc.create_signed_integer_field_class(32)),
+                ("int3", tc.create_signed_integer_field_class(3)),
+                (
+                    "int9_hex",
+                    tc.create_signed_integer_field_class(
+                        9,
+                        preferred_display_base=bt2.IntegerDisplayBase.HEXADECIMAL,
                     ),
-                    ("uint32", tc.create_unsigned_integer_field_class(32)),
-                    ("uint61", tc.create_unsigned_integer_field_class(61)),
-                    (
-                        "uint5_oct",
-                        tc.create_unsigned_integer_field_class(
-                            5, preferred_display_base=bt2.IntegerDisplayBase.OCTAL
-                        ),
+                ),
+                ("uint32", tc.create_unsigned_integer_field_class(32)),
+                ("uint61", tc.create_unsigned_integer_field_class(61)),
+                (
+                    "uint5_oct",
+                    tc.create_unsigned_integer_field_class(
+                        5, preferred_display_base=bt2.IntegerDisplayBase.OCTAL
                     ),
-                    (
-                        "struct",
-                        tc.create_structure_field_class(
-                            members=(
-                                ("str", tc.create_string_field_class()),
-                                (
-                                    "option_real",
-                                    tc.create_option_without_selector_field_class(
-                                        tc.create_double_precision_real_field_class()
-                                    ),
+                ),
+                (
+                    "struct",
+                    tc.create_structure_field_class(
+                        members=(
+                            ("str", tc.create_string_field_class()),
+                            (
+                                "option_real",
+                                tc.create_option_without_selector_field_class(
+                                    tc.create_double_precision_real_field_class()
                                 ),
-                            )
-                        ),
+                            ),
+                        )
                     ),
-                    ("string", tc.create_string_field_class()),
-                    (
-                        "dyn_array",
-                        tc.create_dynamic_array_field_class(
-                            tc.create_double_precision_real_field_class()
-                        ),
+                ),
+                ("string", tc.create_string_field_class()),
+                (
+                    "dyn_array",
+                    tc.create_dynamic_array_field_class(
+                        tc.create_double_precision_real_field_class()
                     ),
-                    ("dyn_array_len", dyn_array_with_len_fc),
-                    (
-                        "dyn_array_with_len",
-                        dyn_array_fc,
+                ),
+                ("dyn_array_len", dyn_array_with_len_fc),
+                (
+                    "dyn_array_with_len",
+                    dyn_array_fc,
+                ),
+                (
+                    "sta_array",
+                    tc.create_static_array_field_class(
+                        tc.create_string_field_class(), 3
                     ),
-                    (
-                        "sta_array",
-                        tc.create_static_array_field_class(
-                            tc.create_string_field_class(), 3
-                        ),
+                ),
+                (
+                    "option_none",
+                    tc.create_option_without_selector_field_class(
+                        tc.create_double_precision_real_field_class()
                     ),
-                    (
-                        "option_none",
-                        tc.create_option_without_selector_field_class(
-                            tc.create_double_precision_real_field_class()
-                        ),
+                ),
+                (
+                    "option_some",
+                    tc.create_option_without_selector_field_class(
+                        tc.create_string_field_class()
                     ),
-                    (
-                        "option_some",
-                        tc.create_option_without_selector_field_class(
-                            tc.create_string_field_class()
-                        ),
-                    ),
-                    ("option_bool_selector", option_bool_selector_fc),
-                    ("option_bool", option_bool_fc),
-                    (
-                        "option_bool_reversed",
-                        option_bool_reversed_fc,
-                    ),
-                    ("option_int_selector", option_int_selector_fc),
-                    (
-                        "option_int",
-                        option_int_fc,
-                    ),
-                    ("variant", variant_fc),
-                )
-            ),
+                ),
+                ("option_bool_selector", option_bool_selector_fc),
+                ("option_bool", option_bool_fc),
+                (
+                    "option_bool_reversed",
+                    option_bool_reversed_fc,
+                ),
+                ("option_int_selector", option_int_selector_fc),
+                (
+                    "option_int",
+                    option_int_fc,
+                ),
+                ("variant", variant_fc),
+            )
         )
 
+        if mip > 0:
+            payload += (
+                (
+                    "static-blob",
+                    tc.create_static_blob_field_class(
+                        10, media_type="application/x-gameboy-rom"
+                    ),
+                ),
+                (
+                    "dynamic-blob-without-length-field",
+                    tc.create_dynamic_blob_field_class(
+                        media_type="application/x-shockwave-flash"
+                    ),
+                ),
+                (
+                    "dynamic-blob-with-length-field-length",
+                    tc.create_unsigned_integer_field_class(8),
+                ),
+                (
+                    "dynamic-blob-with-length-field",
+                    tc.create_dynamic_blob_field_class(
+                        length_field_location=tc.create_field_location(
+                            bt2.FieldLocationScope.EVENT_PAYLOAD,
+                            ["dynamic-blob-with-length-field-length"],
+                        ),
+                        media_type="application/x-shockwave-flash",
+                    ),
+                ),
+            )
+
+        ec = sc.create_event_class(name="my-event", payload_field_class=payload)
         self._add_output_port("some-name", ec)
