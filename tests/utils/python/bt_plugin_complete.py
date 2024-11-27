@@ -83,6 +83,12 @@ class CompleteSrcIter(bt2._UserMessageIterator):
 
 @bt2.plugin_component_class
 class CompleteSrc(bt2._UserSourceComponent, message_iterator_class=CompleteSrcIter):
+    @staticmethod
+    def _user_get_supported_mip_versions(
+        params: bt2._MapValueConst, obj: object, log_level: bt2.LoggingLevel
+    ):
+        return [0, 1]
+
     def __init__(
         self,
         config: bt2._UserSourceComponentConfiguration,
@@ -92,14 +98,74 @@ class CompleteSrc(bt2._UserSourceComponent, message_iterator_class=CompleteSrcIt
         tc = self._create_trace_class()
         cc = self._create_clock_class()
         sc = tc.create_stream_class(default_clock_class=cc)
+        mip = self._graph_mip_version
 
         dyn_array_with_len_fc = tc.create_unsigned_integer_field_class(19)
-        variant_fc = tc.create_variant_field_class()
+
+        if mip == 0:
+            dyn_array_fc = tc.create_dynamic_array_field_class(
+                tc.create_double_precision_real_field_class(),
+                length_fc=dyn_array_with_len_fc,
+            )
+        else:
+            dyn_array_fc = tc.create_dynamic_array_field_class(
+                tc.create_double_precision_real_field_class(),
+                length_field_location=tc.create_field_location(
+                    bt2.FieldLocationScope.EVENT_PAYLOAD, ["dyn_array_len"]
+                ),
+            )
+
+        variant_fc = (
+            tc.create_variant_field_class()
+            if mip == 0
+            else tc.create_variant_without_selector_field_class()
+        )
         variant_fc.append_option(
             name="var_str", field_class=tc.create_string_field_class()
         )
+
         option_bool_selector_fc = tc.create_bool_field_class()
+
+        if mip == 0:
+            option_bool_fc = tc.create_option_with_bool_selector_field_class(
+                tc.create_string_field_class(), selector_fc=option_bool_selector_fc
+            )
+            option_bool_reversed_fc = tc.create_option_with_bool_selector_field_class(
+                tc.create_string_field_class(),
+                selector_fc=option_bool_selector_fc,
+                selector_is_reversed=True,
+            )
+        else:
+            option_bool_selector_fl = tc.create_field_location(
+                bt2.FieldLocationScope.EVENT_PAYLOAD, ["option_bool_selector"]
+            )
+            option_bool_fc = tc.create_option_with_bool_selector_field_class(
+                tc.create_string_field_class(),
+                selector_field_location=option_bool_selector_fl,
+            )
+            option_bool_reversed_fc = tc.create_option_with_bool_selector_field_class(
+                tc.create_string_field_class(),
+                selector_field_location=option_bool_selector_fl,
+                selector_is_reversed=True,
+            )
+
         option_int_selector_fc = tc.create_unsigned_integer_field_class(8)
+        option_int_ranges = bt2.UnsignedIntegerRangeSet([(1, 3), (18, 44)])
+
+        if mip == 0:
+            option_int_fc = tc.create_option_with_integer_selector_field_class(
+                tc.create_string_field_class(),
+                selector_fc=option_int_selector_fc,
+                ranges=option_int_ranges,
+            )
+        else:
+            option_int_fc = tc.create_option_with_unsigned_integer_selector_field_class(
+                tc.create_string_field_class(),
+                selector_field_location=tc.create_field_location(
+                    bt2.FieldLocationScope.EVENT_PAYLOAD, ["option_int_selector"]
+                ),
+                ranges=option_int_ranges,
+            )
 
         ec = sc.create_event_class(
             name="my-event",
@@ -149,10 +215,7 @@ class CompleteSrc(bt2._UserSourceComponent, message_iterator_class=CompleteSrcIt
                     ("dyn_array_len", dyn_array_with_len_fc),
                     (
                         "dyn_array_with_len",
-                        tc.create_dynamic_array_field_class(
-                            tc.create_double_precision_real_field_class(),
-                            length_fc=dyn_array_with_len_fc,
-                        ),
+                        dyn_array_fc,
                     ),
                     (
                         "sta_array",
@@ -173,28 +236,15 @@ class CompleteSrc(bt2._UserSourceComponent, message_iterator_class=CompleteSrcIt
                         ),
                     ),
                     ("option_bool_selector", option_bool_selector_fc),
-                    (
-                        "option_bool",
-                        tc.create_option_with_bool_selector_field_class(
-                            tc.create_string_field_class(), option_bool_selector_fc
-                        ),
-                    ),
+                    ("option_bool", option_bool_fc),
                     (
                         "option_bool_reversed",
-                        tc.create_option_with_bool_selector_field_class(
-                            tc.create_string_field_class(),
-                            option_bool_selector_fc,
-                            selector_is_reversed=True,
-                        ),
+                        option_bool_reversed_fc,
                     ),
                     ("option_int_selector", option_int_selector_fc),
                     (
                         "option_int",
-                        tc.create_option_with_integer_selector_field_class(
-                            tc.create_string_field_class(),
-                            option_int_selector_fc,
-                            bt2.UnsignedIntegerRangeSet([(1, 3), (18, 44)]),
-                        ),
+                        option_int_fc,
                     ),
                     ("variant", variant_fc),
                 )
