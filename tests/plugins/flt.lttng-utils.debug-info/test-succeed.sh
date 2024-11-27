@@ -108,11 +108,14 @@ test_compare_ctf_src_trace() {
 test_compare_complete_src_trace() {
 
 	local source_name="src.complete.CompleteSrc"
-	local cli_args=("--plugin-path=$python_utils_dir" "--component" "$source_name")
-	test_compare_to_ctf_fs "$source_name" "${cli_args[@]}"
+
+	for mip_version in 0 1; do
+		local cli_args=("--plugin-path=$python_utils_dir" "--component=$source_name" "--allowed-mip-versions=$mip_version")
+		test_compare_to_ctf_fs "$source_name" "${cli_args[@]}"
+	done
 }
 
-plan_tests 9
+plan_tests 11
 
 test_debug_info debug-info
 
