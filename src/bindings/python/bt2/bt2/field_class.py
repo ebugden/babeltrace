@@ -719,19 +719,15 @@ class _VariantFieldClassConst(_FieldClassConst, collections.abc.Mapping):
     _borrow_option_ptr_by_index = staticmethod(
         native_bt.field_class_variant_borrow_option_by_index_const
     )
-    _variant_option_pycls = _VariantFieldClassOptionConst
 
     @staticmethod
     def _as_option_ptr(opt_ptr):
         return opt_ptr
 
-    def _create_option_from_ptr(self, opt_ptr):
-        return self._variant_option_pycls(self, opt_ptr)
-
     def __len__(self) -> int:
         return native_bt.field_class_variant_get_option_count(self._ptr)
 
-    def __getitem__(self, key: str) -> _VariantFieldClassOptionConst:
+    def _getitem(self, key: str):
         if not isinstance(key, str):
             raise TypeError(
                 "key must be a 'str' object, got '{}'".format(key.__class__.__name__)
@@ -742,7 +738,10 @@ class _VariantFieldClassConst(_FieldClassConst, collections.abc.Mapping):
         if opt_ptr is None:
             raise KeyError(key)
 
-        return self._create_option_from_ptr(opt_ptr)
+        return opt_ptr
+
+    def __getitem__(self, key: str) -> _VariantFieldClassOptionConst:
+        return _VariantFieldClassOptionConst(self, self._getitem(key))
 
     def __iter__(self) -> typing.Iterator[str]:
         for idx in range(len(self)):
@@ -750,14 +749,17 @@ class _VariantFieldClassConst(_FieldClassConst, collections.abc.Mapping):
                 self._as_option_ptr(self._borrow_option_ptr_by_index(self._ptr, idx))
             )
 
-    def option_at_index(self, index: int) -> _VariantFieldClassOptionConst:
+    def _option_at_index(self, index: int):
         bt2_utils._check_uint64(index)
 
         if index >= len(self):
             raise IndexError
 
-        return self._create_option_from_ptr(
-            self._borrow_option_ptr_by_index(self._ptr, index)
+        return self._borrow_option_ptr_by_index(self._ptr, index)
+
+    def option_at_index(self, index: int) -> _VariantFieldClassOptionConst:
+        return _VariantFieldClassOptionConst(
+            self, self._borrow_option_ptr_by_index(self._ptr, index)
         )
 
 
@@ -770,6 +772,12 @@ class _VariantFieldClass(_VariantFieldClassConst, _FieldClass, collections.abc.M
         native_bt.field_class_variant_borrow_option_by_index
     )
     _variant_option_pycls = _VariantFieldClassOption
+
+    def __getitem__(self, key: str) -> _VariantFieldClassOption:
+        return _VariantFieldClassOption(self, self._getitem(key))
+
+    def option_at_index(self, index: int) -> _VariantFieldClassOption:
+        return _VariantFieldClassOption(self, self._option_at_index(index))
 
 
 class _VariantFieldClassWithoutSelectorConst(_VariantFieldClassConst):
@@ -818,6 +826,18 @@ class _VariantFieldClassWithoutSelector(
 class _VariantFieldClassWithIntegerSelectorConst(_VariantFieldClassConst):
     _NAME = "Const variant (with selector)"
 
+    def __getitem__(self, key: str) -> _VariantFieldClassWithIntegerSelectorOptionConst:
+        return _VariantFieldClassWithIntegerSelectorOptionConst(
+            self, self._getitem(key)
+        )
+
+    def option_at_index(
+        self, index: int
+    ) -> _VariantFieldClassWithIntegerSelectorOptionConst:
+        return _VariantFieldClassWithIntegerSelectorOptionConst(
+            self, self._option_at_index(index)
+        )
+
     @property
     def selector_field_path(self) -> typing.Optional[bt2_field_path._FieldPathConst]:
         ptr = native_bt.field_class_variant_with_selector_field_borrow_selector_field_path_const(
@@ -834,6 +854,16 @@ class _VariantFieldClassWithIntegerSelector(
     _VariantFieldClassWithIntegerSelectorConst, _VariantFieldClass
 ):
     _NAME = "Variant (with selector)"
+
+    def __getitem__(self, key: str) -> _VariantFieldClassWithIntegerSelectorOption:
+        return _VariantFieldClassWithIntegerSelectorOption(self, self._getitem(key))
+
+    def option_at_index(
+        self, index: int
+    ) -> _VariantFieldClassWithIntegerSelectorOption:
+        return _VariantFieldClassWithIntegerSelectorOption(
+            self, self._option_at_index(index)
+        )
 
     def append_option(
         self,
@@ -887,8 +917,23 @@ class _VariantFieldClassWithUnsignedIntegerSelectorConst(
     _borrow_option_ptr_by_index = staticmethod(
         native_bt.field_class_variant_with_selector_field_integer_unsigned_borrow_option_by_index_const
     )
-    _variant_option_pycls = _VariantFieldClassWithUnsignedIntegerSelectorOptionConst
-    _as_option_ptr = staticmethod(_variant_option_pycls._as_option_ptr)
+    _as_option_ptr = staticmethod(
+        _VariantFieldClassWithUnsignedIntegerSelectorOptionConst._as_option_ptr
+    )
+
+    def __getitem__(
+        self, key: str
+    ) -> _VariantFieldClassWithUnsignedIntegerSelectorOptionConst:
+        return _VariantFieldClassWithUnsignedIntegerSelectorOptionConst(
+            self, self._getitem(key)
+        )
+
+    def option_at_index(
+        self, index: int
+    ) -> _VariantFieldClassWithUnsignedIntegerSelectorOptionConst:
+        return _VariantFieldClassWithUnsignedIntegerSelectorOptionConst(
+            self, self._option_at_index(index)
+        )
 
 
 class _VariantFieldClassWithUnsignedIntegerSelector(
@@ -902,6 +947,20 @@ class _VariantFieldClassWithUnsignedIntegerSelector(
         native_bt.field_class_variant_with_selector_field_integer_unsigned_append_option
     )
 
+    def __getitem__(
+        self, key: str
+    ) -> _VariantFieldClassWithUnsignedIntegerSelectorOption:
+        return _VariantFieldClassWithUnsignedIntegerSelectorOption(
+            self, self._getitem(key)
+        )
+
+    def option_at_index(
+        self, index: int
+    ) -> _VariantFieldClassWithUnsignedIntegerSelectorOption:
+        return _VariantFieldClassWithUnsignedIntegerSelectorOption(
+            self, self._option_at_index(index)
+        )
+
 
 class _VariantFieldClassWithSignedIntegerSelectorConst(
     _VariantFieldClassWithIntegerSelectorConst
@@ -913,8 +972,23 @@ class _VariantFieldClassWithSignedIntegerSelectorConst(
     _borrow_option_ptr_by_index = staticmethod(
         native_bt.field_class_variant_with_selector_field_integer_signed_borrow_option_by_index_const
     )
-    _variant_option_pycls = _VariantFieldClassWithSignedIntegerSelectorOptionConst
-    _as_option_ptr = staticmethod(_variant_option_pycls._as_option_ptr)
+    _as_option_ptr = staticmethod(
+        _VariantFieldClassWithSignedIntegerSelectorOptionConst._as_option_ptr
+    )
+
+    def __getitem__(
+        self, key: str
+    ) -> _VariantFieldClassWithSignedIntegerSelectorOptionConst:
+        return _VariantFieldClassWithSignedIntegerSelectorOptionConst(
+            self, self._getitem(key)
+        )
+
+    def option_at_index(
+        self, index: int
+    ) -> _VariantFieldClassWithSignedIntegerSelectorOptionConst:
+        return _VariantFieldClassWithSignedIntegerSelectorOptionConst(
+            self, self._option_at_index(index)
+        )
 
 
 class _VariantFieldClassWithSignedIntegerSelector(
@@ -927,6 +1001,20 @@ class _VariantFieldClassWithSignedIntegerSelector(
     _append_option = staticmethod(
         native_bt.field_class_variant_with_selector_field_integer_signed_append_option
     )
+
+    def __getitem__(
+        self, key: str
+    ) -> _VariantFieldClassWithSignedIntegerSelectorOption:
+        return _VariantFieldClassWithSignedIntegerSelectorOption(
+            self, self._getitem(key)
+        )
+
+    def option_at_index(
+        self, index: int
+    ) -> _VariantFieldClassWithSignedIntegerSelectorOption:
+        return _VariantFieldClassWithSignedIntegerSelectorOption(
+            self, self._option_at_index(index)
+        )
 
 
 class _ArrayFieldClassConst(_FieldClassConst):
